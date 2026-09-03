@@ -5,3 +5,6 @@ Cargo.lock
 *.db-shm
 *.db-wal
 .DS_Store
+node_modules/
+test-results/
+playwright-report/

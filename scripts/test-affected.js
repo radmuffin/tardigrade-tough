@@ -4,7 +4,14 @@
  * ⚡ Smart Affected Test Runner for Tardigrade Tough
  *
  * Inspects git diffs (staged, unstaged, or branch diffs against origin/main or trunk)
- * and executes test suites and linters directly affected by changes.
+ * and executes ONLY the test suites and linters directly affected by changes.
+ *
+ * Usage:
+ *   node scripts/test-affected.js
+ *   node scripts/test-affected.js --base=origin/trunk
+ *   node scripts/test-affected.js --staged
+ *   node scripts/test-affected.js --all
+ *   node scripts/test-affected.js --dry-run
  */
 
 const { execSync, spawnSync } = require('child_process');
@@ -15,7 +22,7 @@ const isDryRun = args.includes('--dry-run');
 const runAll = args.includes('--all');
 const stagedOnly = args.includes('--staged');
 const baseArg = args.find((a) => a.startsWith('--base='));
-const baseBranch = baseArg ? baseArg.split('=')[1] : 'origin/main';
+const baseBranch = baseArg ? baseArg.split('=')[1] : 'origin/trunk';
 
 function getChangedFiles() {
   if (runAll) return null;
@@ -67,11 +74,12 @@ function resolveAffectedTests(changedFiles) {
     rustFmt: false,
     rustClippy: false,
     rustFull: false,
+    e2eSpecs: new Set(),
     description: []
   };
 
   if (!changedFiles || changedFiles.length === 0) {
-    plan.description.push('Running standard baseline test verification.');
+    plan.description.push('Running standard baseline verification.');
     plan.rustFull = true;
     plan.rustClippy = true;
     plan.rustFmt = true;
@@ -85,6 +93,7 @@ function resolveAffectedTests(changedFiles) {
       norm === 'Cargo.toml' ||
       norm === 'Cargo.lock' ||
       norm === 'package.json' ||
+      norm === 'package-lock.json' ||
       norm.startsWith('.github/') ||
       norm.endsWith('Dockerfile')
     ) {
@@ -93,6 +102,11 @@ function resolveAffectedTests(changedFiles) {
       plan.rustClippy = true;
       plan.rustFmt = true;
       return plan;
+    }
+
+    if (norm.startsWith('static/') || norm.startsWith('tests/e2e/')) {
+      plan.e2eSpecs.add('tests/e2e/app.spec.js');
+      plan.description.push(`Frontend/E2E change: ${norm}`);
     }
 
     if (norm.endsWith('.rs') || norm.startsWith('src/') || norm.startsWith('tests/')) {
@@ -148,6 +162,12 @@ function main() {
 
   if (plan.rustClippy) {
     passed = passed && runCommand('cargo clippy --all-targets', 'Rust Clippy Linter Check');
+    if (!passed) process.exit(1);
+  }
+
+  if (plan.e2eSpecs.size > 0 && process.env.RUN_E2E) {
+    const specs = Array.from(plan.e2eSpecs).join(' ');
+    passed = passed && runCommand(`npx playwright test ${specs}`, `Targeted Playwright E2E (${specs})`);
     if (!passed) process.exit(1);
   }
 

@@ -7,8 +7,8 @@ on:
     branches: [ trunk, main ]
 
 jobs:
-  test:
-    name: Test & Lint
+  backend-test:
+    name: Backend Test & Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -28,5 +28,32 @@ jobs:
       - name: Run Clippy Linter
         run: cargo clippy --all-targets -- -D warnings
 
-      - name: Run Tests
+      - name: Run Backend Integration Tests
         run: cargo test --all-targets --verbose
+
+  e2e-test:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Install Playwright Browsers & Deps
+        run: npx playwright install --with-deps
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run Playwright E2E Tests
+        run: npx playwright test
