@@ -18,6 +18,3 @@ futures-util = "0.3"
 tower = { version = "0.4", features = ["util"] }
 http-body-util = "0.1"
 axum-test = "16.0"
-
-[patch."https://github.com/radmuffin/fly-common"]
-fly_common = { path = "../fly-common" }
