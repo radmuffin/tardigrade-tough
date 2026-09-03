@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT"
 
 [dependencies]
-fly_common = { path = "../fly-common", features = ["ws", "sync", "qr", "db", "auth", "server", "security"] }
+fly_common = { git = "https://github.com/radmuffin/fly-common", features = ["ws", "sync", "qr", "db", "auth", "server", "security"] }
 axum = { version = "0.7", features = ["macros", "ws"] }
 tokio = { version = "1.0", features = ["full"] }
 rusqlite = { version = "0.31", features = ["bundled"] }
@@ -13,3 +13,11 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 futures-util = "0.3"
+
+[dev-dependencies]
+tower = { version = "0.4", features = ["util"] }
+http-body-util = "0.1"
+axum-test = "16.0"
+
+[patch."https://github.com/radmuffin/fly-common"]
+fly_common = { path = "../fly-common" }

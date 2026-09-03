@@ -32,9 +32,9 @@ pub struct Goal {
     pub category: String, // "weight", "distance", "elevation"
     pub target_value: f64,
     pub current_value: f64,
-    pub unit: String, // "lbs", "kg", "mi", "km", "ft", "m"
+    pub unit: String,      // "lbs", "kg", "mi", "km", "ft", "m"
     pub theme_key: String, // "pando", "whale", "caribou", "everest", "custom"
-    pub status: String, // "active", "completed"
+    pub status: String,    // "active", "completed"
     pub description: String,
     pub created_at: String,
 }

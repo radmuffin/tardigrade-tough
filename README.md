@@ -1,51 +1,145 @@
-# 🦠 Tardigrade Tough
+# 🐻 Tardigrade Tough
 
-> Collaborative gym & beast tracker with delightful pixel art progress dioramas.
+[![CI](https://github.com/spezd/tardigrade-tough/actions/workflows/ci.yml/badge.svg)](https://github.com/spezd/tardigrade-tough/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/Rust-2021_Edition-orange.svg)](https://www.rust-lang.org/)
+[![Axum](https://img.shields.io/badge/Framework-Axum_0.7-blue.svg)](https://github.com/tokio-rs/axum)
+[![Fly.io](https://img.shields.io/badge/Deploy-Fly.io-purple.svg)](https://fly.io)
 
-Work together with your gym crew to lift the colossal underground root system of **Pando (13.2M lbs)**, scale **Mt. Everest (29,031 ft)** with mountain goats, trek the **Caribou Arctic Migration (3,000 mi)**, and celebrate past conquests like **The Blue Whale (418,878 lbs)**.
+> **Collaborative Gym & Beast Tracker with Living Pixel Art Progress Dioramas.**
 
-Built on **`fly-common`** (Rust, Axum, SQLite WAL, WebSockets, Anonymous Device Tokens, Zero-Build Vanilla ES6 & CSS).
+Tardigrade Tough allows fitness squads and solo athletes to band together and hoist legendary organisms and landmarks. Work collaboratively to lift the subterranean root clone of **Pando (13.2M lbs)**, climb the vertical elevation of **Mt. Everest (29,031 ft)** with mountain goats, trek the **Caribou Arctic Migration (3,000 miles)**, and celebrate past conquests in the Trophy Room like **The Blue Whale (418,878 lbs)**.
+
+Built on **`fly-common`** using Rust, Axum, SQLite (WAL mode), WebSockets, anonymous device tokens, zero-build vanilla ES6 modules, and responsive CSS custom properties.
+
+---
+
+## 🏛️ System Architecture
+
+```text
+ ┌─────────────────────────────────────────────────────────────┐
+ │                    Mobile Browser PWA                       │
+ │  ┌───────────────────────┐   ┌───────────────────────────┐  │
+ │  │ 🌲 Living Pixel Canvas│   │ ⚡ 3-in-1 Workout Dock     │  │
+ │  │ (Pando/Everest/Caribou│   │ (Stepper/Session/FastAdd) │  │
+ │  └───────────┬───────────┘   └─────────────┬─────────────┘  │
+ │              │                             │                │
+ │              │      localStorage Queue     │                │
+ │              │  (Offline-First Sync Engine)│                │
+ └──────────────┼─────────────────────────────┼────────────────┘
+                │                             │
+        WebSocket Realtime             REST API JSON
+        Pub/Sub (Live Cheers)          (Batch & Single Logs)
+                │                             │
+ ┌──────────────▼─────────────────────────────▼────────────────┐
+ │                 Rust Backend (Axum 0.7)                     │
+ │  ┌───────────────────────┐   ┌───────────────────────────┐  │
+ │  │ BroadcastHub (tokio)  │   │ Security & Input Filtering│  │
+ │  │ (Room Pub/Sub events) │   │ (XSS/Length/Range Caps)   │  │
+ │  └───────────────────────┘   └─────────────┬─────────────┘  │
+ │                                            │                │
+ │                              FlyDb Connection Pool          │
+ │                                            │                │
+ │  ┌─────────────────────────────────────────▼─────────────┐  │
+ │  │        SQLite Database (Write-Ahead-Logging)          │  │
+ │  │  • rooms   • users   • goals   • activities • wishlist│  │
+ │  └───────────────────────────────────────────────────────┘  │
+ └─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## ✨ Core Features
 
-1. **🌲 Living Pixel Art Dioramas**:
-   - **Pando Aspen Grove**: Dynamic autumn canopy blooming with golden foliage and particle leaves on every lift.
-   - **Mt. Everest**: Mountain goat scaling rocky ledges and snowy crags as elevation climbs.
-   - **Caribou Tundra**: Migrating herd traversing panoramic arctic tundra.
-   - **Blue Whale (Trophy Room)**: Deep ocean diorama honoring conquered benchmarks.
-2. **📱 3-in-1 Mobile-First Logging Dock**:
-   - **⚡ Rapid Stepper**: Rapid set logging with `-45/-10/+10/+45` plate steppers, rep counters, and a single-tap `+1 Same Set` duplicate button.
-   - **📋 Full Workout Session**: Multi-exercise batch routine logger.
-   - **🚀 Fast-Add**: Fast 1-tap tonnage/distance/elevation punch-in.
-3. **🔌 Offline Persistence & Auto-Sync**:
-   - Never lose a set in basement gym dead-zones. Workouts queue locally and auto-flush in batches when connectivity returns.
-4. **⚡ Realtime Social Feed & Cheers**:
-   - WebSockets live updates with floating reaction bursts (`💪`, `🔥`, `🌲`, `🐐`, `🐋`, `🦠`).
-5. **🏆 Crew Leaderboard & Co-op Stats**:
-   - Daily Tonnage Titan MVP 👑, percentage contribution per lifter, and streak indicators.
-6. **👥 Multi-Crew & Solo Rooms with QR Code Pairing**:
-   - Scan with your phone to instantly sync devices or join friend groups.
+1. **🌲 Living Pixel Art Progress Dioramas**:
+   - **Pando Aspen Clone**: Golden canopies flourish, saplings sprout, and autumn leaves drift as cumulative tonnage mounts.
+   - **Mt. Everest Ascent**: High Himalayan ledges with a nimble mountain goat bounding across rock crags.
+   - **Caribou Arctic Migration**: Twilight tundra panoramic landscape with a migrating herd.
+   - **🏛️ The Trophy Room (The Blue Whale)**: Deep ocean diorama with sunbeams, bubbles, and victory wreaths celebrating completed mega-beasts (418,878 lbs).
+
+2. **📱 3-in-1 Mobile-First Workout Logger**:
+   - **⚡ Rapid Stepper**: Plate steppers (`-45 / -10 / +10 / +45`), rep counters, live calculated impact, and a 1-tap `+1 Same Set` repeater.
+   - **📋 Full Workout Session**: Multi-exercise batch routine logger with clean placeholders and quick chips (`+ Squat`, `+ Bench`, `+ Deadlift`, `+ Row`).
+   - **🚀 Fast-Add**: 1-tap tonnage/distance/elevation punch-in.
+
+3. **📥 Google Sheets & CSV Backfill Importer**:
+   - Copy cells directly from Google Sheets (e.g. `Weight` and `Reps` columns) and paste them in.
+   - Live parser preview calculates set counts and total tonnage before 1-click batch import.
+   - Assign historical imports to specific friends (*Sally*, *Samantha*, *Brandon*, etc.).
+
+4. **🔌 Offline-First Persistence & Auto-Sync**:
+   - Workouts queue locally in `localStorage` during basement gym reception blackouts.
+   - Automatically detects connectivity restoration and flushes batches cleanly.
+
+5. **🏆 Crew Leaderboard & Podiums**:
+   - Gold, Silver, and Bronze podiums (🥇 🥈 🥉).
+   - **Daily Tonnage Titan** 👑 MVP badge.
+   - Detailed individual breakdown of tonnage, distance, elevation, sets, and % contribution.
+
+6. **👥 Multi-Crew & Solo Rooms**:
+   - Create custom named groups (e.g. *"Sally's Bio Squad"*) or track solo quests.
+   - Pure-Rust SVG QR code generation for instant camera pairing.
 
 ---
 
 ## 🚀 Quick Start
 
-### Run Locally
+### Prerequisites
+- [Rust & Cargo](https://rustup.rs/) (1.75+)
+- [Node.js](https://nodejs.org/) (for test runner scripts)
+
+### 1. Clone & Run Locally
 ```bash
+git clone https://github.com/spezd/tardigrade-tough.git
+cd tardigrade-tough
+
+# Run server
 cargo run
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open **[http://localhost:3000](http://localhost:3000)** in your browser or connect from your phone on your local Wi-Fi / Tailscale.
 
-### Deploy to Fly.io
+---
+
+## 🧪 Testing & CI Tooling
+
+Tardigrade Tough includes a smart affected test runner and comprehensive integration suite:
+
 ```bash
-# Create Fly app
+# Run affected tests based on git diffs
+npm test
+
+# Run all tests, formatting checks, and linters
+npm run test:all
+
+# Run Rust formatting
+npm run fmt
+
+# Run Clippy linter
+npm run lint
+```
+
+---
+
+## 🚢 Fly.io Deployment
+
+Tardigrade Tough is packaged in a lightweight multi-stage Docker container (< 25MB runtime):
+
+```bash
+# 1. Login to Fly
+fly auth login
+
+# 2. Launch application
 fly launch
 
-# Create persistent storage volume for SQLite
-fly volumes create app_data --size 1
+# 3. Create persistent storage volume for SQLite WAL database
+fly volumes create app_data --size 1 --region ord
 
-# Deploy
+# 4. Deploy
 fly deploy
 ```
+
+---
+
+## 📄 License
+
+Distributed under the [MIT License](LICENSE).

@@ -1,0 +1,13 @@
+{
+  "name": "tardigrade-tough",
+  "version": "0.1.0",
+  "description": "Collaborative gym and fitness tracker with delightful pixel art progress dioramas",
+  "license": "MIT",
+  "scripts": {
+    "test": "node scripts/test-affected.js",
+    "test:all": "cargo test --all-targets && cargo clippy --all-targets",
+    "lint": "cargo clippy --all-targets",
+    "fmt": "cargo fmt --all",
+    "fmt:check": "cargo fmt --all -- --check"
+  }
+}

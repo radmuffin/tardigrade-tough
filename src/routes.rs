@@ -62,17 +62,32 @@ async fn get_room_data(
 
     let room = match get_or_create_room(&conn, &clean_slug) {
         Ok(r) => r,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::err(e.to_string())),
+            )
+        }
     };
 
     let user_profile = match get_or_create_user(&conn, user.as_str(), &clean_slug) {
         Ok(u) => u,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::err(e.to_string())),
+            )
+        }
     };
 
     let (active_goals, completed_goals) = match get_goals_for_room(&conn, &clean_slug) {
         Ok(g) => g,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::err(e.to_string())),
+            )
+        }
     };
 
     let recent_activities = get_recent_activities(&conn, &clean_slug, 50).unwrap_or_default();
@@ -111,7 +126,10 @@ async fn update_profile(
 
             (StatusCode::OK, Json(ApiResponse::ok(profile)))
         }
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
     }
 }
 
@@ -123,7 +141,12 @@ async fn log_activity(
     let mut conn = state.db.lock().unwrap();
     let user_profile = match get_or_create_user(&conn, user.as_str(), "main") {
         Ok(u) => u,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::err(e.to_string())),
+            )
+        }
     };
 
     let room_slug = payload
@@ -150,7 +173,10 @@ async fn log_activity(
 
             (StatusCode::CREATED, Json(ApiResponse::ok(activity)))
         }
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
     }
 }
 
@@ -160,13 +186,21 @@ async fn log_batch_activities(
     Json(payload): Json<BatchLogActivityRequest>,
 ) -> (StatusCode, Json<ApiResponse<Vec<Activity>>>) {
     if payload.activities.is_empty() {
-        return (StatusCode::BAD_REQUEST, Json(ApiResponse::err("No activities in batch")));
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::err("No activities in batch")),
+        );
     }
 
     let mut conn = state.db.lock().unwrap();
     let user_profile = match get_or_create_user(&conn, user.as_str(), "main") {
         Ok(u) => u,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::err(e.to_string())),
+            )
+        }
     };
 
     let room_slug = payload
@@ -219,7 +253,12 @@ async fn delete_activity_handler(
     let mut conn = state.db.lock().unwrap();
     let user_profile = match get_or_create_user(&conn, user.as_str(), "main") {
         Ok(u) => u,
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::err(e.to_string())),
+            )
+        }
     };
 
     match delete_activity(&mut conn, id, user.as_str()) {
@@ -248,7 +287,10 @@ async fn delete_activity_handler(
                 )
             }
         }
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
     }
 }
 
@@ -258,13 +300,16 @@ async fn cheer_handler(
     Json(payload): Json<CheerRequest>,
 ) -> (StatusCode, Json<ApiResponse<bool>>) {
     let conn = state.db.lock().unwrap();
-    let user_profile = get_or_create_user(&conn, user.as_str(), &payload.room_slug).unwrap_or_else(|_| AppUserProfile {
-        user_token: user.as_str().to_string(),
-        nickname: "GymMate".to_string(),
-        avatar_color: "#10b981".to_string(),
-        current_room_slug: payload.room_slug.clone(),
-        updated_at: "".to_string(),
-    });
+    let user_profile =
+        get_or_create_user(&conn, user.as_str(), &payload.room_slug).unwrap_or_else(|_| {
+            AppUserProfile {
+                user_token: user.as_str().to_string(),
+                nickname: "GymMate".to_string(),
+                avatar_color: "#10b981".to_string(),
+                current_room_slug: payload.room_slug.clone(),
+                updated_at: "".to_string(),
+            }
+        });
 
     let _ = state.hub.broadcast(WsMessage {
         room: payload.room_slug,
@@ -296,7 +341,10 @@ async fn create_goal_handler(
             });
             (StatusCode::CREATED, Json(ApiResponse::ok(goal)))
         }
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
     }
 }
 
@@ -316,7 +364,10 @@ async fn create_wishlist_handler(
             });
             (StatusCode::CREATED, Json(ApiResponse::ok(item)))
         }
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
     }
 }
 

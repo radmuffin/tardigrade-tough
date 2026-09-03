@@ -169,7 +169,11 @@ pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
     }
 }
 
-pub fn get_or_create_user(conn: &Connection, token: &str, default_room: &str) -> Result<UserProfile> {
+pub fn get_or_create_user(
+    conn: &Connection,
+    token: &str,
+    default_room: &str,
+) -> Result<UserProfile> {
     let mut stmt = conn.prepare(
         "SELECT user_token, nickname, avatar_color, current_room_slug, updated_at FROM users WHERE user_token = ?",
     )?;
@@ -186,12 +190,24 @@ pub fn get_or_create_user(conn: &Connection, token: &str, default_room: &str) ->
     match found {
         Ok(user) => Ok(user),
         Err(rusqlite::Error::QueryReturnedNoRows) => {
-            let default_names = ["GymBeast", "IronTardigrade", "PandoLifter", "MountainGoat", "CaribouRunner"];
-            let default_colors = ["#10b981", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4"];
-            
+            let default_names = [
+                "GymBeast",
+                "IronTardigrade",
+                "PandoLifter",
+                "MountainGoat",
+                "CaribouRunner",
+            ];
+            let default_colors = [
+                "#10b981", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4",
+            ];
+
             // Derive consistent index from token hash
             let hash: usize = token.bytes().map(|b| b as usize).sum();
-            let nickname = format!("{}_{}", default_names[hash % default_names.len()], &token[..4.min(token.len())]);
+            let nickname = format!(
+                "{}_{}",
+                default_names[hash % default_names.len()],
+                &token[..4.min(token.len())]
+            );
             let avatar_color = default_colors[hash % default_colors.len()].to_string();
             let now = Utc::now().to_rfc3339();
 
@@ -219,9 +235,16 @@ pub fn update_user_profile(
 ) -> Result<UserProfile> {
     let current = get_or_create_user(conn, token, "main")?;
     let nickname = req.nickname.as_deref().unwrap_or(&current.nickname).trim();
-    let nickname = if nickname.is_empty() { current.nickname.as_str() } else { nickname };
+    let nickname = if nickname.is_empty() {
+        current.nickname.as_str()
+    } else {
+        nickname
+    };
     let color = req.avatar_color.as_deref().unwrap_or(&current.avatar_color);
-    let room = req.current_room_slug.as_deref().unwrap_or(&current.current_room_slug);
+    let room = req
+        .current_room_slug
+        .as_deref()
+        .unwrap_or(&current.current_room_slug);
     let now = Utc::now().to_rfc3339();
 
     conn.execute(
@@ -280,6 +303,7 @@ pub fn log_single_activity(
     room_slug: &str,
     req: &LogActivityRequest,
 ) -> Result<Activity> {
+    get_or_create_room(conn, room_slug)?;
     let tx = conn.transaction()?;
 
     let activity_type = req.activity_type.trim().to_lowercase();
@@ -331,8 +355,11 @@ pub fn log_single_activity(
 
         // Check if goal completed
         let is_completed = {
-            let mut check_stmt = tx.prepare("SELECT current_value, target_value FROM goals WHERE id = ?")?;
-            if let Ok((cur, tgt)) = check_stmt.query_row(params![gid], |r| Ok((r.get::<_, f64>(0)?, r.get::<_, f64>(1)?))) {
+            let mut check_stmt =
+                tx.prepare("SELECT current_value, target_value FROM goals WHERE id = ?")?;
+            if let Ok((cur, tgt)) = check_stmt.query_row(params![gid], |r| {
+                Ok((r.get::<_, f64>(0)?, r.get::<_, f64>(1)?))
+            }) {
                 cur >= tgt && tgt > 0.0
             } else {
                 false
@@ -350,7 +377,10 @@ pub fn log_single_activity(
     let now = Utc::now().to_rfc3339();
     let activity_time = req.created_at.as_deref().unwrap_or(&now);
     let nickname = req.user_nickname.as_deref().unwrap_or(&user.nickname);
-    let avatar_color = req.user_avatar_color.as_deref().unwrap_or(&user.avatar_color);
+    let avatar_color = req
+        .user_avatar_color
+        .as_deref()
+        .unwrap_or(&user.avatar_color);
     let notes = req.notes.as_deref().unwrap_or("").trim();
 
     tx.execute(
@@ -403,9 +433,14 @@ pub fn delete_activity(conn: &mut Connection, activity_id: i64, user_token: &str
     let tx = conn.transaction()?;
 
     let found = {
-        let mut stmt = tx.prepare("SELECT goal_id, total_metric, user_token FROM activities WHERE id = ?")?;
+        let mut stmt =
+            tx.prepare("SELECT goal_id, total_metric, user_token FROM activities WHERE id = ?")?;
         stmt.query_row(params![activity_id], |r| {
-            Ok((r.get::<_, Option<i64>>(0)?, r.get::<_, f64>(1)?, r.get::<_, String>(2)?))
+            Ok((
+                r.get::<_, Option<i64>>(0)?,
+                r.get::<_, f64>(1)?,
+                r.get::<_, String>(2)?,
+            ))
         })
     };
 
@@ -430,7 +465,11 @@ pub fn delete_activity(conn: &mut Connection, activity_id: i64, user_token: &str
     }
 }
 
-pub fn get_recent_activities(conn: &Connection, room_slug: &str, limit: i64) -> Result<Vec<Activity>> {
+pub fn get_recent_activities(
+    conn: &Connection,
+    room_slug: &str,
+    limit: i64,
+) -> Result<Vec<Activity>> {
     let mut stmt = conn.prepare(
         r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at
            FROM activities WHERE room_slug = ? ORDER BY id DESC LIMIT ?"#,
@@ -518,7 +557,11 @@ pub fn get_leaderboard(conn: &Connection, room_slug: &str) -> Result<Vec<Leaderb
     Ok(leaderboard)
 }
 
-pub fn create_custom_goal(conn: &Connection, room_slug: &str, req: &CreateGoalRequest) -> Result<Goal> {
+pub fn create_custom_goal(
+    conn: &Connection,
+    room_slug: &str,
+    req: &CreateGoalRequest,
+) -> Result<Goal> {
     let now = Utc::now().to_rfc3339();
     let theme_key = req.theme_key.as_deref().unwrap_or("custom");
     let description = req.description.as_deref().unwrap_or("");
