@@ -1,0 +1,346 @@
+use crate::db::*;
+use crate::models::{
+    Activity, BatchLogActivityRequest, CheerRequest, CreateGoalRequest, CreateGoalWishlistRequest,
+    Goal, GoalWishlistItem, LogActivityRequest, RoomDataResponse, UpdateProfileRequest,
+    UserProfile as AppUserProfile,
+};
+use axum::{
+    extract::{
+        ws::{WebSocket, WebSocketUpgrade},
+        Path, Query, State,
+    },
+    http::{header, HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
+    routing::{delete, get, post},
+    Json, Router,
+};
+use fly_common::prelude::{ApiResponse, DbPool, UserToken};
+use fly_common::qr::generate_qr_svg;
+use fly_common::ws::{BroadcastHub, WsMessage};
+use serde::Deserialize;
+use std::sync::Arc;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub db: DbPool,
+    pub hub: Arc<BroadcastHub>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WsQuery {
+    pub room: Option<String>,
+    pub token: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct QrQuery {
+    pub url: String,
+}
+
+pub fn create_routes(state: AppState) -> Router {
+    Router::new()
+        .route("/room/:slug", get(get_room_data))
+        .route("/users/profile", post(update_profile))
+        .route("/activities", post(log_activity))
+        .route("/activities/batch", post(log_batch_activities))
+        .route("/activities/:id", delete(delete_activity_handler))
+        .route("/cheer", post(cheer_handler))
+        .route("/goals", post(create_goal_handler))
+        .route("/goals/wishlist", post(create_wishlist_handler))
+        .route("/qr", get(qr_handler))
+        .route("/ws", get(ws_handler))
+        .with_state(state)
+}
+
+async fn get_room_data(
+    user: UserToken,
+    Path(slug): Path<String>,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<RoomDataResponse>>) {
+    let clean_slug = slug.trim().to_lowercase();
+    let conn = state.db.lock().unwrap();
+
+    let room = match get_or_create_room(&conn, &clean_slug) {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    };
+
+    let user_profile = match get_or_create_user(&conn, user.as_str(), &clean_slug) {
+        Ok(u) => u,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    };
+
+    let (active_goals, completed_goals) = match get_goals_for_room(&conn, &clean_slug) {
+        Ok(g) => g,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    };
+
+    let recent_activities = get_recent_activities(&conn, &clean_slug, 50).unwrap_or_default();
+    let leaderboard = get_leaderboard(&conn, &clean_slug).unwrap_or_default();
+    let wishlists = get_wishlists(&conn, &clean_slug).unwrap_or_default();
+
+    (
+        StatusCode::OK,
+        Json(ApiResponse::ok(RoomDataResponse {
+            room,
+            user_profile,
+            active_goals,
+            completed_goals,
+            recent_activities,
+            leaderboard,
+            wishlists,
+        })),
+    )
+}
+
+async fn update_profile(
+    user: UserToken,
+    State(state): State<AppState>,
+    Json(payload): Json<UpdateProfileRequest>,
+) -> (StatusCode, Json<ApiResponse<AppUserProfile>>) {
+    let conn = state.db.lock().unwrap();
+    match update_user_profile(&conn, user.as_str(), &payload) {
+        Ok(profile) => {
+            // Broadcast profile update event to current room
+            let _ = state.hub.broadcast(WsMessage {
+                room: profile.current_room_slug.clone(),
+                event: "profile_updated".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::to_value(&profile).unwrap_or_default(),
+            });
+
+            (StatusCode::OK, Json(ApiResponse::ok(profile)))
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    }
+}
+
+async fn log_activity(
+    user: UserToken,
+    State(state): State<AppState>,
+    Json(payload): Json<LogActivityRequest>,
+) -> (StatusCode, Json<ApiResponse<Activity>>) {
+    let mut conn = state.db.lock().unwrap();
+    let user_profile = match get_or_create_user(&conn, user.as_str(), "main") {
+        Ok(u) => u,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    };
+
+    let room_slug = payload
+        .room_slug
+        .clone()
+        .unwrap_or_else(|| user_profile.current_room_slug.clone());
+
+    match log_single_activity(&mut conn, &user_profile, &room_slug, &payload) {
+        Ok(activity) => {
+            // Broadcast activity to room
+            let (active_goals, _) = get_goals_for_room(&conn, &room_slug).unwrap_or_default();
+            let leaderboard = get_leaderboard(&conn, &room_slug).unwrap_or_default();
+
+            let _ = state.hub.broadcast(WsMessage {
+                room: room_slug.clone(),
+                event: "activity_logged".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "activity": activity,
+                    "active_goals": active_goals,
+                    "leaderboard": leaderboard,
+                }),
+            });
+
+            (StatusCode::CREATED, Json(ApiResponse::ok(activity)))
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    }
+}
+
+async fn log_batch_activities(
+    user: UserToken,
+    State(state): State<AppState>,
+    Json(payload): Json<BatchLogActivityRequest>,
+) -> (StatusCode, Json<ApiResponse<Vec<Activity>>>) {
+    if payload.activities.is_empty() {
+        return (StatusCode::BAD_REQUEST, Json(ApiResponse::err("No activities in batch")));
+    }
+
+    let mut conn = state.db.lock().unwrap();
+    let user_profile = match get_or_create_user(&conn, user.as_str(), "main") {
+        Ok(u) => u,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    };
+
+    let room_slug = payload
+        .room_slug
+        .clone()
+        .unwrap_or_else(|| user_profile.current_room_slug.clone());
+
+    let mut created = Vec::new();
+
+    for mut req in payload.activities {
+        if req.user_nickname.is_none() && payload.user_nickname.is_some() {
+            req.user_nickname = payload.user_nickname.clone();
+        }
+        if req.user_avatar_color.is_none() && payload.user_avatar_color.is_some() {
+            req.user_avatar_color = payload.user_avatar_color.clone();
+        }
+        match log_single_activity(&mut conn, &user_profile, &room_slug, &req) {
+            Ok(act) => created.push(act),
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiResponse::err(format!("Batch failed: {}", e))),
+                );
+            }
+        }
+    }
+
+    let (active_goals, _) = get_goals_for_room(&conn, &room_slug).unwrap_or_default();
+    let leaderboard = get_leaderboard(&conn, &room_slug).unwrap_or_default();
+
+    let _ = state.hub.broadcast(WsMessage {
+        room: room_slug.clone(),
+        event: "batch_activities_logged".to_string(),
+        sender_token: Some(user.as_str().to_string()),
+        payload: serde_json::json!({
+            "count": created.len(),
+            "active_goals": active_goals,
+            "leaderboard": leaderboard,
+        }),
+    });
+
+    (StatusCode::CREATED, Json(ApiResponse::ok(created)))
+}
+
+async fn delete_activity_handler(
+    user: UserToken,
+    Path(id): Path<i64>,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<bool>>) {
+    let mut conn = state.db.lock().unwrap();
+    let user_profile = match get_or_create_user(&conn, user.as_str(), "main") {
+        Ok(u) => u,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    };
+
+    match delete_activity(&mut conn, id, user.as_str()) {
+        Ok(deleted) => {
+            if deleted {
+                let room_slug = user_profile.current_room_slug;
+                let (active_goals, _) = get_goals_for_room(&conn, &room_slug).unwrap_or_default();
+                let leaderboard = get_leaderboard(&conn, &room_slug).unwrap_or_default();
+
+                let _ = state.hub.broadcast(WsMessage {
+                    room: room_slug,
+                    event: "activity_deleted".to_string(),
+                    sender_token: Some(user.as_str().to_string()),
+                    payload: serde_json::json!({
+                        "activity_id": id,
+                        "active_goals": active_goals,
+                        "leaderboard": leaderboard,
+                    }),
+                });
+
+                (StatusCode::OK, Json(ApiResponse::ok(true)))
+            } else {
+                (
+                    StatusCode::FORBIDDEN,
+                    Json(ApiResponse::err("Activity not found or unauthorized")),
+                )
+            }
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    }
+}
+
+async fn cheer_handler(
+    user: UserToken,
+    State(state): State<AppState>,
+    Json(payload): Json<CheerRequest>,
+) -> (StatusCode, Json<ApiResponse<bool>>) {
+    let conn = state.db.lock().unwrap();
+    let user_profile = get_or_create_user(&conn, user.as_str(), &payload.room_slug).unwrap_or_else(|_| AppUserProfile {
+        user_token: user.as_str().to_string(),
+        nickname: "GymMate".to_string(),
+        avatar_color: "#10b981".to_string(),
+        current_room_slug: payload.room_slug.clone(),
+        updated_at: "".to_string(),
+    });
+
+    let _ = state.hub.broadcast(WsMessage {
+        room: payload.room_slug,
+        event: "cheer_reaction".to_string(),
+        sender_token: Some(user.as_str().to_string()),
+        payload: serde_json::json!({
+            "emoji": payload.emoji,
+            "user_nickname": user_profile.nickname,
+            "user_avatar_color": user_profile.avatar_color,
+        }),
+    });
+
+    (StatusCode::OK, Json(ApiResponse::ok(true)))
+}
+
+async fn create_goal_handler(
+    _user: UserToken,
+    State(state): State<AppState>,
+    Json(payload): Json<CreateGoalRequest>,
+) -> (StatusCode, Json<ApiResponse<Goal>>) {
+    let conn = state.db.lock().unwrap();
+    match create_custom_goal(&conn, "main", &payload) {
+        Ok(goal) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: goal.room_slug.clone(),
+                event: "goal_created".to_string(),
+                sender_token: None,
+                payload: serde_json::to_value(&goal).unwrap_or_default(),
+            });
+            (StatusCode::CREATED, Json(ApiResponse::ok(goal)))
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    }
+}
+
+async fn create_wishlist_handler(
+    user: UserToken,
+    State(state): State<AppState>,
+    Json(payload): Json<CreateGoalWishlistRequest>,
+) -> (StatusCode, Json<ApiResponse<GoalWishlistItem>>) {
+    let conn = state.db.lock().unwrap();
+    match create_goal_wishlist(&conn, user.as_str(), &payload) {
+        Ok(item) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: item.room_slug.clone(),
+                event: "wishlist_added".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::to_value(&item).unwrap_or_default(),
+            });
+            (StatusCode::CREATED, Json(ApiResponse::ok(item)))
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(ApiResponse::err(e.to_string()))),
+    }
+}
+
+async fn qr_handler(Query(query): Query<QrQuery>) -> Response {
+    let qr_res = generate_qr_svg(&query.url, 256, 4);
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, "image/svg+xml".parse().unwrap());
+    headers.insert(
+        header::CACHE_CONTROL,
+        "public, max-age=86400".parse().unwrap(),
+    );
+    (headers, qr_res.svg).into_response()
+}
+
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    Query(query): Query<WsQuery>,
+    State(state): State<AppState>,
+) -> Response {
+    let room = query.room.unwrap_or_else(|| "main".to_string());
+    let token = query.token;
+    let hub = state.hub.clone();
+
+    ws.on_upgrade(move |socket: WebSocket| async move {
+        hub.handle_socket(socket, room, token).await;
+    })
+}
