@@ -5,6 +5,10 @@ on:
     branches: [ trunk, main ]
   workflow_dispatch:
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check-and-test:
     name: Backend Test & Lint

@@ -33,14 +33,16 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   test('toggles active goal dioramas between Pando, Everest, and Caribou', async ({ page }) => {
     await expect(page.locator('#heroGoalTitle')).toContainText('Pando');
 
-    // Switch to Everest
+    // Switch to Everest — wait for tab to become active before asserting title
     await page.click('#goalTabEverest');
-    await expect(page.locator('#heroGoalTitle')).toContainText('Everest');
+    await page.locator('#goalTabEverest.active, #goalTabEverest[aria-selected="true"]').waitFor({ timeout: 5000 }).catch(() => {});
+    await expect(page.locator('#heroGoalTitle')).toContainText('Everest', { timeout: 10000 });
     await expect(page.locator('#heroGoalTarget')).toContainText('29,031');
 
-    // Switch to Caribou
+    // Switch to Caribou — wait for tab to become active before asserting title
     await page.click('#goalTabCaribou');
-    await expect(page.locator('#heroGoalTitle')).toContainText('Caribou');
+    await page.locator('#goalTabCaribou.active, #goalTabCaribou[aria-selected="true"]').waitFor({ timeout: 5000 }).catch(() => {});
+    await expect(page.locator('#heroGoalTitle')).toContainText('Caribou', { timeout: 10000 });
     await expect(page.locator('#heroGoalTarget')).toContainText('3,000');
   });
 
