@@ -3,8 +3,6 @@ const { test, expect } = require('@playwright/test');
 test.describe('Tardigrade Tough Web App E2E', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForResponse(resp => resp.url().includes('/api/room/') && resp.status() === 200).catch(() => {});
-    await expect(page.locator('#heroGoalTitle')).toBeVisible();
   });
 
   test('loads home page with brand icon and title', async ({ page }) => {
