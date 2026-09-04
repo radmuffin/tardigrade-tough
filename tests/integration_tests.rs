@@ -263,10 +263,10 @@ fn test_activity_deletion_and_rollback() {
         .current_value;
 
     let unauthorized_del = delete_activity(&mut conn, act.id, "wrong_token").expect("delete check");
-    assert!(!unauthorized_del);
+    assert!(unauthorized_del.is_none());
 
     let authorized_del = delete_activity(&mut conn, act.id, "token_del").expect("delete ok");
-    assert!(authorized_del);
+    assert_eq!(authorized_del.as_deref(), Some("main"));
 
     let (active_2, _) = get_goals_for_room(&conn, "main").expect("goals");
     let val_2 = active_2
@@ -502,4 +502,113 @@ async fn test_api_cheer_endpoint() {
     res.assert_status_ok();
     let json_val: serde_json::Value = res.json();
     assert_eq!(json_val["success"], true);
+}
+
+#[test]
+fn test_pwa_configuration_and_assets() {
+    use std::fs;
+    use std::path::Path;
+
+    // 1. Verify static/manifest.json
+    let manifest_path = Path::new("static/manifest.json");
+    assert!(manifest_path.exists(), "static/manifest.json must exist");
+    let manifest_str = fs::read_to_string(manifest_path).expect("read manifest");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&manifest_str).expect("manifest must be valid JSON");
+
+    assert_eq!(
+        manifest["display"], "standalone",
+        "PWA display must be standalone"
+    );
+    assert_eq!(
+        manifest["start_url"], "/",
+        "PWA start_url must point to root"
+    );
+    assert!(
+        manifest["name"].as_str().unwrap().contains("Tardigrade"),
+        "PWA name should contain Tardigrade"
+    );
+    assert_eq!(
+        manifest["short_name"], "Tardigrade",
+        "PWA short_name should be Tardigrade"
+    );
+
+    let icons = manifest["icons"].as_array().expect("manifest icons array");
+    assert!(
+        icons.len() >= 3,
+        "PWA manifest must define at least 3 icon variants"
+    );
+
+    let mut has_192 = false;
+    let mut has_512 = false;
+    let mut has_maskable = false;
+    for icon in icons {
+        let src = icon["src"].as_str().expect("icon src string");
+        let sizes = icon["sizes"].as_str().unwrap_or("");
+        let purpose = icon["purpose"].as_str().unwrap_or("");
+
+        if sizes == "192x192" {
+            has_192 = true;
+        }
+        if sizes == "512x512" && purpose != "maskable" {
+            has_512 = true;
+        }
+        if purpose == "maskable" {
+            has_maskable = true;
+        }
+
+        // Verify each icon file actually exists in static/
+        let rel_path = format!("static{}", src);
+        let icon_file = Path::new(&rel_path);
+        assert!(
+            icon_file.exists(),
+            "Referenced icon file {} must exist",
+            rel_path
+        );
+        let meta = fs::metadata(icon_file).expect("metadata");
+        assert!(meta.len() > 0, "Icon file {} must not be empty", rel_path);
+    }
+    assert!(has_192, "PWA must include a 192x192 icon");
+    assert!(has_512, "PWA must include a 512x512 icon");
+    assert!(has_maskable, "PWA must include a maskable icon");
+
+    // 2. Verify static/sw.js
+    let sw_path = Path::new("static/sw.js");
+    assert!(sw_path.exists(), "Service worker static/sw.js must exist");
+    let sw_content = fs::read_to_string(sw_path).expect("read sw.js");
+    assert!(
+        sw_content.contains("addEventListener('install'"),
+        "sw.js must have install handler"
+    );
+    assert!(
+        sw_content.contains("addEventListener('activate'"),
+        "sw.js must have activate handler"
+    );
+    assert!(
+        sw_content.contains("addEventListener('fetch'"),
+        "sw.js must have fetch handler"
+    );
+    assert!(
+        sw_content.contains("/manifest.json"),
+        "sw.js should precache manifest.json"
+    );
+
+    // 3. Verify static/index.html includes PWA tags
+    let index_html = fs::read_to_string("static/index.html").expect("read index.html");
+    assert!(
+        index_html.contains(r#"rel="manifest""#),
+        "index.html must link manifest.json"
+    );
+    assert!(
+        index_html.contains(r#"name="theme-color""#),
+        "index.html must include theme-color meta tag"
+    );
+    assert!(
+        index_html.contains(r#"name="apple-mobile-web-app-capable""#),
+        "index.html must include apple-mobile-web-app-capable meta tag"
+    );
+    assert!(
+        index_html.contains(r#"rel="apple-touch-icon""#),
+        "index.html must include apple-touch-icon link"
+    );
 }

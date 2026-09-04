@@ -1,7 +1,7 @@
 import { FlyClient } from '/_fly/fly-device-sync.js';
 import { FlyToast, FlyTheme } from '/_fly/fly-ui.js';
-import { PixelDiorama } from './canvas-art.js';
-import { OfflineSyncManager } from './offline-sync.js';
+import { PixelDiorama } from '/canvas-art.js';
+import { OfflineSyncManager } from '/offline-sync.js';
 
 // State
 let roomSlug = getRoomFromUrl() || 'main';
@@ -41,6 +41,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   setupViewNavigation();
   setupGoalSegmentedControl();
+  setupLoggingTabs();
   setupSteppers();
   setupFastAdd();
   setupWorkoutMode();
@@ -48,6 +49,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupModals();
   setupSheetImporter();
   setupActivityFilters();
+  setupPwa();
 
   await loadRoomState();
   initWebSocket();
@@ -78,10 +80,13 @@ function setupViewNavigation() {
     if (target === 'trophy' && trophyDiorama) {
       setTimeout(() => {
         trophyDiorama.resize();
-        trophyDiorama.setTheme('whale', 1.0);
+        renderTrophyRoom();
       }, 50);
     } else if (target === 'quests' && diorama) {
-      setTimeout(() => diorama.resize(), 50);
+      setTimeout(() => {
+        diorama.resize();
+        renderGoalShowcase();
+      }, 50);
     }
   }
 
@@ -197,6 +202,9 @@ function renderAll() {
 
   // Render Live Feed
   renderFeed();
+
+  // Render Trophy Room
+  renderTrophyRoom();
 }
 
 function renderGoalShowcase() {
@@ -206,14 +214,26 @@ function renderGoalShowcase() {
   if (selectedGoalIndex >= activeGoals.length) selectedGoalIndex = 0;
   const currentGoal = activeGoals[selectedGoalIndex];
 
-  // Highlight active segment button
+  // Highlight active segment button & sync ARIA tabs
   const pandoBtn = document.getElementById('goalTabPando');
   const everestBtn = document.getElementById('goalTabEverest');
   const caribouBtn = document.getElementById('goalTabCaribou');
 
-  if (pandoBtn) pandoBtn.classList.toggle('active', currentGoal.theme_key === 'pando');
-  if (everestBtn) everestBtn.classList.toggle('active', currentGoal.theme_key === 'everest');
-  if (caribouBtn) caribouBtn.classList.toggle('active', currentGoal.theme_key === 'caribou');
+  if (pandoBtn) {
+    const isPando = currentGoal.theme_key === 'pando';
+    pandoBtn.classList.toggle('active', isPando);
+    pandoBtn.setAttribute('aria-selected', isPando ? 'true' : 'false');
+  }
+  if (everestBtn) {
+    const isEverest = currentGoal.theme_key === 'everest';
+    everestBtn.classList.toggle('active', isEverest);
+    everestBtn.setAttribute('aria-selected', isEverest ? 'true' : 'false');
+  }
+  if (caribouBtn) {
+    const isCaribou = currentGoal.theme_key === 'caribou';
+    caribouBtn.classList.toggle('active', isCaribou);
+    caribouBtn.setAttribute('aria-selected', isCaribou ? 'true' : 'false');
+  }
 
   // Update Hero Stats
   const pct = currentGoal.target_value > 0 ? (currentGoal.current_value / currentGoal.target_value) : 0;
@@ -226,13 +246,48 @@ function renderGoalShowcase() {
   document.getElementById('heroGoalDesc').textContent = currentGoal.description;
 
   // Update Diorama
-  diorama.setTheme(currentGoal.theme_key, pct);
+  if (diorama) {
+    diorama.setTheme(currentGoal.theme_key, pct);
+  }
 
   // Auto-route category in Fast-Add
   const fastAddCat = document.getElementById('fastAddCategory');
-  if (fastAddCat) {
+  if (fastAddCat && fastAddCat.value !== currentGoal.category) {
     fastAddCat.value = currentGoal.category;
     fastAddCat.dispatchEvent(new Event('change'));
+  }
+
+  // Auto-route Stepper interface for active goal metric
+  updateStepperForGoal(currentGoal);
+}
+
+function renderTrophyRoom() {
+  if (!currentRoomData) return;
+  const completed = currentRoomData.completed_goals || [];
+  const trophyContainer = document.getElementById('viewTrophy');
+  if (!trophyContainer) return;
+
+  if (completed.length > 0) {
+    const trophy = completed[0];
+    const titleEl = trophyContainer.querySelector('.goal-hero-title');
+    const descEl = trophyContainer.querySelector('.goal-hero-desc');
+    const subEl = trophyContainer.querySelector('.goal-progress-sub');
+
+    if (titleEl) {
+      titleEl.textContent = `${trophy.theme_key === 'whale' ? '🐋 ' : '🏆 '}${trophy.title}`;
+    }
+    if (descEl) {
+      descEl.textContent = trophy.description;
+    }
+    if (subEl) {
+      subEl.innerHTML = `
+        <span>${formatNumber(trophy.current_value)} ${trophy.unit} Lifted</span>
+        <span>Target: ${formatNumber(trophy.target_value)} ${trophy.unit}</span>
+      `;
+    }
+    if (trophyDiorama) {
+      trophyDiorama.setTheme(trophy.theme_key, 1.0);
+    }
   }
 }
 
@@ -432,32 +487,143 @@ function setupSteppers() {
   const repsInput = document.getElementById('stepperReps');
   const impactVal = document.getElementById('computedImpactVal');
 
+  window.updateStepperForGoal = function(goal) {
+    const exSelect = document.getElementById('stepperExercise');
+    const exLabel = document.getElementById('stepperExerciseLabel');
+    const metricLabel = document.getElementById('stepperMetricLabel');
+    const countLabel = document.getElementById('stepperCountLabel');
+    const routeLabel = document.getElementById('computedImpactRoute');
+    const metricPresets = document.getElementById('stepperMetricPresets');
+
+    if (!goal || goal.category === 'weight') {
+      if (exLabel) exLabel.textContent = 'Exercise';
+      if (metricLabel) metricLabel.textContent = 'Weight (lbs)';
+      if (countLabel) countLabel.textContent = 'Reps';
+      if (routeLabel) routeLabel.textContent = '→ Auto-Routes to Pando 🌲';
+      if (exSelect) {
+        exSelect.innerHTML = `
+          <option value="Back Squat">🏋️ Back Squat</option>
+          <option value="Deadlift">🏋️ Deadlift</option>
+          <option value="Bench Press">🏋️ Bench Press</option>
+          <option value="Leg Press">🏋️ Leg Press</option>
+          <option value="Overhead Press">🏋️ Overhead Press</option>
+          <option value="Barbell Row">🏋️ Barbell Row</option>
+          <option value="Dumbbell Lunge">🏋️ Dumbbell Lunge</option>
+          <option value="Bicep Curl">🏋️ Bicep Curl</option>
+          <option value="Custom Lift">✨ Custom Lift</option>
+        `;
+      }
+      if (metricPresets) {
+        metricPresets.innerHTML = `
+          <button class="preset-chip" data-delta="-45">-45</button>
+          <button class="preset-chip" data-delta="-5">-5</button>
+          <button class="preset-chip" data-delta="+5">+5</button>
+          <button class="preset-chip" data-delta="+45">+45</button>
+        `;
+        attachMetricPresetListeners();
+      }
+    } else if (goal.category === 'elevation') {
+      if (exLabel) exLabel.textContent = 'Climb / Elevation Exercise';
+      if (metricLabel) metricLabel.textContent = 'Elevation Gain (ft)';
+      if (countLabel) countLabel.textContent = 'Sets / Floors';
+      if (routeLabel) routeLabel.textContent = '→ Auto-Routes to Mt. Everest 🐐';
+      if (exSelect) {
+        exSelect.innerHTML = `
+          <option value="Stair Climber">🧗 Stair Climber</option>
+          <option value="Incline Treadmill">🏔️ Incline Treadmill</option>
+          <option value="Mountain Hike">🥾 Mountain Hike</option>
+          <option value="Box Step-ups">📦 Box Step-ups</option>
+          <option value="Hill Sprints">🏃 Hill Sprints</option>
+          <option value="Custom Climb">✨ Custom Climb</option>
+        `;
+      }
+      if (wtInput.value === '135' || parseFloat(wtInput.value) <= 0) {
+        wtInput.value = '100';
+      }
+      if (metricPresets) {
+        metricPresets.innerHTML = `
+          <button class="preset-chip" data-delta="-100">-100</button>
+          <button class="preset-chip" data-delta="-25">-25</button>
+          <button class="preset-chip" data-delta="+25">+25</button>
+          <button class="preset-chip" data-delta="+100">+100</button>
+        `;
+        attachMetricPresetListeners();
+      }
+    } else if (goal.category === 'distance') {
+      if (exLabel) exLabel.textContent = 'Distance / Cardio Exercise';
+      if (metricLabel) metricLabel.textContent = 'Distance (mi)';
+      if (countLabel) countLabel.textContent = 'Laps / Sets';
+      if (routeLabel) routeLabel.textContent = '→ Auto-Routes to Caribou 🦌';
+      if (exSelect) {
+        exSelect.innerHTML = `
+          <option value="Outdoor Run">🏃 Outdoor Run</option>
+          <option value="Trail Walk">🚶 Trail Walk</option>
+          <option value="Road Cycling">🚴 Road Cycling</option>
+          <option value="Rowing Machine">🚣 Rowing Machine</option>
+          <option value="Treadmill Run">🏃 Treadmill Run</option>
+          <option value="Custom Cardio">✨ Custom Cardio</option>
+        `;
+      }
+      if (wtInput.value === '135' || parseFloat(wtInput.value) <= 0) {
+        wtInput.value = '3';
+      }
+      if (metricPresets) {
+        metricPresets.innerHTML = `
+          <button class="preset-chip" data-delta="-2">-2</button>
+          <button class="preset-chip" data-delta="-0.5">-0.5</button>
+          <button class="preset-chip" data-delta="+0.5">+0.5</button>
+          <button class="preset-chip" data-delta="+2">+2</button>
+        `;
+        attachMetricPresetListeners();
+      }
+    }
+    updateImpact();
+  };
+
   function updateImpact() {
+    const activeGoals = currentRoomData?.active_goals || [];
+    const currentGoal = activeGoals[selectedGoalIndex] || { category: 'weight', unit: 'lbs' };
     const wt = parseFloat(wtInput.value) || 0;
     const reps = parseInt(repsInput.value, 10) || 0;
     const total = wt * reps;
-    impactVal.textContent = `${formatNumber(total)} lbs`;
+
+    if (currentGoal.category === 'distance') {
+      const formatted = (Math.round(total * 100) / 100).toLocaleString('en-US');
+      impactVal.textContent = `${formatted} ${currentGoal.unit || 'mi'}`;
+    } else {
+      impactVal.textContent = `${formatNumber(total)} ${currentGoal.unit || 'lbs'}`;
+    }
+  }
+
+  function attachMetricPresetListeners() {
+    document.querySelectorAll('.preset-chip').forEach(chip => {
+      chip.onclick = () => {
+        const delta = parseFloat(chip.dataset.delta);
+        if (!isNaN(delta)) {
+          wtInput.value = Math.max(0, (parseFloat(wtInput.value) || 0) + delta);
+          updateImpact();
+        }
+      };
+    });
   }
 
   document.getElementById('wtMinusBtn').addEventListener('click', () => {
-    wtInput.value = Math.max(0, (parseFloat(wtInput.value) || 0) - 10);
+    const activeGoals = currentRoomData?.active_goals || [];
+    const currentGoal = activeGoals[selectedGoalIndex] || { category: 'weight' };
+    const step = currentGoal.category === 'distance' ? 1 : 10;
+    wtInput.value = Math.max(0, (parseFloat(wtInput.value) || 0) - step);
     updateImpact();
   });
 
   document.getElementById('wtPlusBtn').addEventListener('click', () => {
-    wtInput.value = (parseFloat(wtInput.value) || 0) + 10;
+    const activeGoals = currentRoomData?.active_goals || [];
+    const currentGoal = activeGoals[selectedGoalIndex] || { category: 'weight' };
+    const step = currentGoal.category === 'distance' ? 1 : 10;
+    wtInput.value = (parseFloat(wtInput.value) || 0) + step;
     updateImpact();
   });
 
-  document.querySelectorAll('.preset-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const delta = parseFloat(chip.dataset.delta);
-      if (!isNaN(delta)) {
-        wtInput.value = Math.max(0, (parseFloat(wtInput.value) || 0) + delta);
-        updateImpact();
-      }
-    });
-  });
+  attachMetricPresetListeners();
 
   document.getElementById('repsMinusBtn').addEventListener('click', () => {
     repsInput.value = Math.max(1, (parseInt(repsInput.value, 10) || 1) - 1);
@@ -481,33 +647,35 @@ function setupSteppers() {
 
   document.getElementById('logSetBtn').addEventListener('click', async () => {
     const exercise = document.getElementById('stepperExercise').value;
-    const weight = parseFloat(wtInput.value) || 0;
+    const metricVal = parseFloat(wtInput.value) || 0;
     const reps = parseInt(repsInput.value, 10) || 1;
+    const activeGoals = currentRoomData?.active_goals || [];
+    const currentGoal = activeGoals[selectedGoalIndex] || { category: 'weight' };
+
+    const totalMetric = currentGoal.category === 'weight' ? metricVal * reps : metricVal * reps;
 
     await executeLogActivity({
       room_slug: roomSlug,
-      activity_type: 'weight',
+      activity_type: currentGoal.category,
       exercise_name: exercise,
       sets: 1,
       reps,
-      weight_per_rep: weight,
+      weight_per_rep: currentGoal.category === 'weight' ? metricVal : 0,
+      distance_val: currentGoal.category === 'distance' ? totalMetric : 0,
+      elevation_val: currentGoal.category === 'elevation' ? totalMetric : 0,
+      total_metric: totalMetric,
     });
   });
 
   document.getElementById('repeatSetBtn').addEventListener('click', async () => {
-    const exercise = document.getElementById('stepperExercise').value;
-    const weight = parseFloat(wtInput.value) || 0;
-    const reps = parseInt(repsInput.value, 10) || 1;
-
-    await executeLogActivity({
-      room_slug: roomSlug,
-      activity_type: 'weight',
-      exercise_name: exercise,
-      sets: 1,
-      reps,
-      weight_per_rep: weight,
-      notes: 'Repeat set',
-    });
+    if (lastLoggedSet) {
+      await executeLogActivity({
+        ...lastLoggedSet,
+        notes: 'Repeat set',
+      });
+      return;
+    }
+    document.getElementById('logSetBtn').click();
   });
 
   updateImpact();
@@ -520,9 +688,10 @@ async function executeLogActivity(req) {
     try {
       const res = await client.post('/activities', req);
       if (res && res.success) {
-        FlyToast.success(`Logged ${formatNumber(res.data.total_metric)} ${res.data.activity_type === 'weight' ? 'lbs' : ''}!`);
+        const unit = res.data.activity_type === 'weight' ? 'lbs' : res.data.activity_type === 'elevation' ? 'ft' : 'mi';
+        FlyToast.success(`Logged ${formatNumber(res.data.total_metric)} ${unit}!`);
         await loadRoomState();
-        diorama.spawnCelebrationBurst(`+${formatNumber(res.data.total_metric)}`);
+        diorama.spawnCelebrationBurst(`+${formatNumber(res.data.total_metric)} ${unit}`);
         return;
       }
     } catch (err) {
@@ -935,3 +1104,89 @@ function setupModals() {
     }
   });
 }
+
+// Progressive Web App (PWA) Registration, Shortcuts & Install Prompt
+function setupPwa() {
+  // 1. Register Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => {
+          console.log('✅ Tardigrade Tough PWA Service Worker active with scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('⚠️ PWA Service Worker registration error:', err);
+        });
+    });
+  }
+
+  // 2. Install Prompt Handling
+  let deferredPrompt = null;
+  const headerInstallBtn = document.getElementById('headerInstallBtn');
+  const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+
+  const showInstallButtons = () => {
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+    if (isStandalone) return;
+
+    if (headerInstallBtn) headerInstallBtn.style.display = 'inline-flex';
+    if (pwaInstallBtn) pwaInstallBtn.style.display = 'inline-flex';
+  };
+
+  const hideInstallButtons = () => {
+    if (headerInstallBtn) headerInstallBtn.style.display = 'none';
+    if (pwaInstallBtn) pwaInstallBtn.style.display = 'none';
+  };
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallButtons();
+  });
+
+  const triggerInstall = async () => {
+    if (!deferredPrompt) {
+      FlyToast.info('To install Tardigrade Tough, tap "Add to Home Screen" or the install icon in your browser address bar.');
+      return;
+    }
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      hideInstallButtons();
+    }
+    deferredPrompt = null;
+  };
+
+  if (headerInstallBtn) {
+    headerInstallBtn.addEventListener('click', triggerInstall);
+  }
+  if (pwaInstallBtn) {
+    pwaInstallBtn.addEventListener('click', triggerInstall);
+  }
+
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    hideInstallButtons();
+    FlyToast.success('Tardigrade Tough installed! Access it directly from your home screen.');
+  });
+
+  // 3. Handle PWA Shortcuts & URL params (?action=log, ?view=leaderboard, etc.)
+  const urlParams = new URLSearchParams(window.location.search);
+  const viewParam = urlParams.get('view');
+  if (viewParam && ['quests', 'leaderboard', 'activity', 'trophy'].includes(viewParam)) {
+    const navBtn = document.getElementById(`nav${viewParam.charAt(0).toUpperCase() + viewParam.slice(1)}Btn`);
+    if (navBtn) navBtn.click();
+  }
+  const actionParam = urlParams.get('action');
+  if (actionParam === 'log') {
+    const stepperInput = document.getElementById('stepperWeight');
+    if (stepperInput) {
+      stepperInput.focus();
+      stepperInput.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+}
+

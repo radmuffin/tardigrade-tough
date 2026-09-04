@@ -4,8 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Tardigrade Tough - Collaborative Gym & Beast Tracker</title>
+  <meta name="description" content="Real-time collaborative gym and fitness progress tracker with living pixel art dioramas.">
+  
+  <!-- PWA & Mobile Capabilities -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Tardigrade Tough">
+
+  <!-- Icons & Favicons -->
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+
   <link rel="stylesheet" href="/_fly/fly-base.css">
-  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="/app.css">
 </head>
 <body>
   <div class="app-container">
@@ -37,6 +55,10 @@
         <span class="brand-title">TARDIGRADE TOUGH</span>
       </div>
       <div class="header-actions">
+        <button id="headerInstallBtn" class="header-chip" title="Install Web App" style="display: none;">
+          <span class="chip-icon">📲</span>
+          <span>Install</span>
+        </button>
         <button id="roomBtn" class="header-chip" title="Switch or Create Group">
           <span class="chip-icon">👥</span>
           <span id="roomNameLabel">Pando Crew</span>
@@ -73,16 +95,16 @@
     <!-- ===================================================================== -->
     <main id="viewQuests" class="app-view active">
       <!-- Goal Selector Segmented Control -->
-      <div class="goal-segmented-control">
-        <button id="goalTabPando" class="goal-segment-btn active" data-theme="pando">
+      <div id="goalSegmentedControl" class="goal-segmented-control" role="tablist" aria-label="Active Quests">
+        <button id="goalTabPando" class="goal-segment-btn active" data-theme="pando" role="tab" aria-selected="true">
           <span class="segment-emoji">🌲</span>
           <span class="segment-title">Pando (Weight)</span>
         </button>
-        <button id="goalTabEverest" class="goal-segment-btn" data-theme="everest">
+        <button id="goalTabEverest" class="goal-segment-btn" data-theme="everest" role="tab" aria-selected="false">
           <span class="segment-emoji">🐐</span>
           <span class="segment-title">Everest (Elevation)</span>
         </button>
-        <button id="goalTabCaribou" class="goal-segment-btn" data-theme="caribou">
+        <button id="goalTabCaribou" class="goal-segment-btn" data-theme="caribou" role="tab" aria-selected="false">
           <span class="segment-emoji">🦌</span>
           <span class="segment-title">Caribou (Distance)</span>
         </button>
@@ -133,7 +155,7 @@
         <!-- Mode 1: Rapid Stepper (Front & Center) -->
         <div id="panelStepper" class="log-panel">
           <div class="form-group">
-            <label class="form-label">Exercise</label>
+            <label id="stepperExerciseLabel" class="form-label">Exercise</label>
             <select id="stepperExercise" class="form-select">
               <option value="Back Squat">🏋️ Back Squat</option>
               <option value="Deadlift">🏋️ Deadlift</option>
@@ -149,13 +171,13 @@
 
           <div class="stepper-row">
             <div class="stepper-box">
-              <label class="form-label">Weight (lbs)</label>
+              <label id="stepperMetricLabel" class="form-label">Weight (lbs)</label>
               <div class="stepper-controls">
                 <button id="wtMinusBtn" class="stepper-btn">-10</button>
                 <input id="stepperWeight" type="number" class="stepper-input" value="135" min="0" step="2.5">
                 <button id="wtPlusBtn" class="stepper-btn">+10</button>
               </div>
-              <div class="quick-presets">
+              <div id="stepperMetricPresets" class="quick-presets">
                 <button class="preset-chip" data-delta="-45">-45</button>
                 <button class="preset-chip" data-delta="-5">-5</button>
                 <button class="preset-chip" data-delta="+5">+5</button>
@@ -164,13 +186,13 @@
             </div>
 
             <div class="stepper-box">
-              <label class="form-label">Reps</label>
+              <label id="stepperCountLabel" class="form-label">Reps</label>
               <div class="stepper-controls">
                 <button id="repsMinusBtn" class="stepper-btn">-1</button>
                 <input id="stepperReps" type="number" class="stepper-input" value="10" min="1">
                 <button id="repsPlusBtn" class="stepper-btn">+1</button>
               </div>
-              <div class="quick-presets">
+              <div id="stepperCountPresets" class="quick-presets">
                 <button class="preset-chip-rep" data-val="5">5</button>
                 <button class="preset-chip-rep" data-val="8">8</button>
                 <button class="preset-chip-rep" data-val="10">10</button>
@@ -181,7 +203,7 @@
 
           <div id="computedImpactBar" class="computed-impact-bar">
             <span>Set Total: <strong id="computedImpactVal">1,350 lbs</strong></span>
-            <span>→ Auto-Routes to Pando 🌲</span>
+            <span id="computedImpactRoute">→ Auto-Routes to Pando 🌲</span>
           </div>
 
           <div class="action-buttons-row">
@@ -411,6 +433,12 @@
           <button id="themeLightBtn" class="btn btn-secondary" style="flex: 1;">☀️ Light Mode</button>
         </div>
       </div>
+      <div id="profilePwaGroup" class="form-group" style="margin-top: 16px;">
+        <label class="form-label">Progressive Web App</label>
+        <button id="pwaInstallBtn" class="btn btn-secondary" style="width: 100%; display: none; align-items: center; justify-content: center; gap: 8px;">
+          <span>📲</span> Install App to Device
+        </button>
+      </div>
       <div class="action-buttons-row" style="margin-top: 18px;">
         <button id="closeProfileBtn" class="btn btn-secondary">Cancel</button>
         <button id="saveProfileBtn" class="btn btn-primary">Save Profile</button>
@@ -458,6 +486,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

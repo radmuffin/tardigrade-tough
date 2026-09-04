@@ -41,9 +41,7 @@ export class PixelDiorama {
   setTheme(theme, progress = 0) {
     this.currentTheme = theme || 'pando';
     this.targetProgress = Math.max(0, Math.min(1, progress));
-    if (Math.abs(this.progress - this.targetProgress) > 0.5) {
-      this.progress = this.targetProgress;
-    }
+    this.progress = this.targetProgress;
   }
 
   setProgress(progress, triggerBurst = false, deltaText = '') {
@@ -311,19 +309,30 @@ export class PixelDiorama {
   renderEverest(ctx, w, h) {
     const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
     skyGrad.addColorStop(0, '#0b132b');
-    skyGrad.addColorStop(0.5, '#1c2541');
-    skyGrad.addColorStop(0.85, '#3a506b');
-    skyGrad.addColorStop(1, '#5bc0be');
+    skyGrad.addColorStop(0.45, '#1c2541');
+    skyGrad.addColorStop(0.8, '#3a506b');
+    skyGrad.addColorStop(1, '#64748b');
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Floating Clouds
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-    const cloudX1 = ((this.time * 10) % (w + 120)) - 60;
-    ctx.fillRect(cloudX1, h * 0.22, 80, 14);
-    ctx.fillRect(cloudX1 + 18, h * 0.18, 45, 10);
+    // High Altitude Stars / Alpine Twinkle
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    for (let i = 0; i < 15; i++) {
+      const sx = ((i * 47 + 13) % w);
+      const sy = ((i * 29 + 7) % Math.floor(h * 0.35));
+      const sSize = (i % 3 === 0) ? 2 : 1;
+      ctx.fillRect(sx, sy, sSize, sSize);
+    }
 
-    // Everest Ridge & Peak
+    // Floating Clouds
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    const cloudX1 = ((this.time * 12) % (w + 140)) - 70;
+    ctx.fillRect(cloudX1, h * 0.22, 90, 16);
+    ctx.fillRect(cloudX1 + 22, h * 0.18, 55, 12);
+    const cloudX2 = (((this.time * 8) + 160) % (w + 140)) - 70;
+    ctx.fillRect(cloudX2, h * 0.38, 70, 12);
+
+    // Everest Ridge & Peak coordinates
     const peakX = w * 0.70;
     const peakY = h * 0.18;
     const baseX1 = -20;
@@ -331,7 +340,12 @@ export class PixelDiorama {
     const baseX2 = w + 40;
     const baseY2 = h * 0.95;
 
-    // Mountain Shadow Side
+    // Distant jagged background peaks
+    ctx.fillStyle = '#111827';
+    this.drawPixelMountain(ctx, -10, h * 0.85, w * 0.45, h * 0.45);
+    this.drawPixelMountain(ctx, w * 0.25, h * 0.88, w * 0.6, h * 0.40);
+
+    // Mountain Shadow Side (East face)
     ctx.fillStyle = '#1e293b';
     ctx.beginPath();
     ctx.moveTo(peakX, peakY);
@@ -340,7 +354,7 @@ export class PixelDiorama {
     ctx.closePath();
     ctx.fill();
 
-    // Mountain Sunny Side
+    // Mountain Sunny Side (West ridge)
     ctx.fillStyle = '#334155';
     ctx.beginPath();
     ctx.moveTo(peakX, peakY);
@@ -349,7 +363,7 @@ export class PixelDiorama {
     ctx.closePath();
     ctx.fill();
 
-    // Snow Cap
+    // Mountain Snow Cap on Peak
     ctx.fillStyle = '#f8fafc';
     ctx.beginPath();
     ctx.moveTo(peakX, peakY);
@@ -360,39 +374,112 @@ export class PixelDiorama {
     ctx.closePath();
     ctx.fill();
 
+    // Snow bands and crags on the ridge face
+    ctx.fillStyle = '#e2e8f0';
+    for (let i = 0; i < 5; i++) {
+      const rx = peakX - 25 - i * 35;
+      const ry = peakY + 55 + i * 26;
+      ctx.fillRect(rx, ry, 18, 4);
+      ctx.fillRect(rx + 6, ry + 4, 12, 3);
+    }
+
+    // Colorful Himalayan Prayer Flags waving along upper ridge
+    const flagColors = ['#ef4444', '#3b82f6', '#f8fafc', '#10b981', '#f59e0b'];
+    for (let i = 0; i < 10; i++) {
+      const fx = peakX - 85 + i * 8;
+      const fy = peakY + 70 - i * 5 + Math.sin(this.time * 4 + i) * 2;
+      ctx.fillStyle = flagColors[i % flagColors.length];
+      ctx.fillRect(fx, fy, 5, 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillRect(fx, fy - 1, 6, 1);
+    }
+
     // Summit Victory Flag
     ctx.fillStyle = '#dc2626';
     ctx.fillRect(peakX, peakY - 14, 12, 8);
     ctx.fillStyle = '#e2e8f0';
     ctx.fillRect(peakX - 1, peakY - 16, 2, 16);
 
-    // Goat Position along Ridge
-    const goatStartX = w * 0.15;
-    const goatStartY = h * 0.85;
-    const goatTargetX = peakX - 12;
-    const goatTargetY = peakY + 10;
+    // Mountain Ridge Slope Equation
+    const slope = (peakY - baseY1) / (peakX - baseX1);
+    const ridgeYAt = (x) => baseY1 + slope * (x - baseX1);
 
+    // Goat Position along Ridge: firmly standing right on the mountain ridge!
+    const goatStartX = w * 0.16;
+    const goatTargetX = peakX - 16;
     const currentGoatX = goatStartX + (goatTargetX - goatStartX) * this.progress;
-    const currentGoatY = goatStartY + (goatTargetY - goatStartY) * this.progress;
+    const currentGoatY = ridgeYAt(currentGoatX);
 
-    const hop = Math.abs(Math.sin(this.time * 6)) * 4;
-    this.drawPixelGoat(ctx, currentGoatX, currentGoatY - hop);
+    // Leaping / Bounding animation
+    const hopCycle = this.time * 5;
+    const hop = Math.abs(Math.sin(hopCycle)) * 7;
+    const hopPhase = Math.sin(hopCycle);
+
+    this.drawPixelGoat(ctx, currentGoatX, currentGoatY - hop, 1.35, hopPhase);
   }
 
-  drawPixelGoat(ctx, x, y) {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x, y - 10, 16, 10);
-    ctx.fillRect(x + 12, y - 16, 8, 8);
-    ctx.fillStyle = '#f1f5f9';
-    ctx.fillRect(x + 16, y - 8, 4, 5);
-    ctx.fillStyle = '#ca8a04';
-    ctx.fillRect(x + 10, y - 20, 4, 5);
-    ctx.fillRect(x + 8, y - 22, 4, 3);
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(x + 2, y, 3, 6);
-    ctx.fillRect(x + 11, y, 3, 6);
+  drawPixelGoat(ctx, x, y, scale = 1.35, hopPhase = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const legOffset = hopPhase > 0.2 ? -2 : 0;
+    // Front Legs
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(10, 0, 3, 7 + legOffset);
+    ctx.fillRect(14, 0, 3, 7 - legOffset);
+    ctx.fillStyle = '#0f172a'; // black cloven hooves
+    ctx.fillRect(10, 7 + legOffset, 3, 2);
+    ctx.fillRect(14, 7 - legOffset, 3, 2);
+
+    // Back Legs
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(0, 0, 3, 7 - legOffset);
+    ctx.fillRect(4, 0, 3, 7 + legOffset);
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(x + 16, y - 14, 2, 2);
+    ctx.fillRect(0, 7 - legOffset, 3, 2);
+    ctx.fillRect(4, 7 + legOffset, 3, 2);
+
+    // Body (Shaggy mountain wool coat)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, -9, 18, 10);
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(2, -11, 14, 3);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(1, 0, 16, 2);
+
+    // Fluffy Short Tail
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(-3, -8, 4, 4);
+
+    // Head & Snout
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(14, -15, 8, 8);
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(18, -12, 6, 5);
+
+    // Nose & Dark Eye
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(23, -11, 2, 2);
+    ctx.fillRect(18, -14, 2, 2);
+
+    // Goatee Beard
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(19, -7, 3, 5);
+    ctx.fillRect(20, -2, 2, 2);
+
+    // Ears
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(13, -16, 2, 4);
+
+    // Backward-Sweeping Alpine Horns
+    ctx.fillStyle = '#ca8a04';
+    ctx.fillRect(13, -20, 3, 6);
+    ctx.fillRect(11, -22, 3, 4);
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(9, -23, 3, 3);
+
+    ctx.restore();
   }
 
   /* ========================================================================= */
@@ -400,72 +487,166 @@ export class PixelDiorama {
   /* ========================================================================= */
   renderCaribou(ctx, w, h) {
     const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-    skyGrad.addColorStop(0, '#064e3b');
-    skyGrad.addColorStop(0.4, '#065f46');
-    skyGrad.addColorStop(0.8, '#0f766e');
-    skyGrad.addColorStop(1, '#115e59');
+    skyGrad.addColorStop(0, '#042f2e');
+    skyGrad.addColorStop(0.35, '#064e3b');
+    skyGrad.addColorStop(0.7, '#0f766e');
+    skyGrad.addColorStop(1, '#134e4a');
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Aurora Ribbon
-    ctx.fillStyle = 'rgba(52, 211, 153, 0.2)';
-    ctx.beginPath();
-    ctx.moveTo(0, h * 0.15 + Math.sin(this.time) * 10);
-    ctx.bezierCurveTo(w * 0.3, h * 0.05, w * 0.7, h * 0.3, w, h * 0.1);
-    ctx.lineTo(w, h * 0.25);
-    ctx.bezierCurveTo(w * 0.7, h * 0.45, w * 0.3, h * 0.2, 0, h * 0.3);
-    ctx.closePath();
-    ctx.fill();
+    // Shimmering Aurora Borealis Waves
+    for (let i = 0; i < 3; i++) {
+      const alpha = 0.18 - i * 0.04;
+      ctx.fillStyle = i === 1 ? `rgba(94, 234, 212, ${alpha})` : `rgba(52, 211, 153, ${alpha})`;
+      ctx.beginPath();
+      const waveOffset = this.time * 0.8 + i * 1.5;
+      ctx.moveTo(0, h * 0.12 + Math.sin(waveOffset) * 12);
+      ctx.bezierCurveTo(
+        w * 0.25, h * 0.05 + Math.cos(waveOffset) * 10,
+        w * 0.65, h * 0.28 + Math.sin(waveOffset * 1.2) * 14,
+        w, h * 0.08 + Math.cos(waveOffset) * 8
+      );
+      ctx.lineTo(w, h * 0.32);
+      ctx.bezierCurveTo(
+        w * 0.65, h * 0.42,
+        w * 0.25, h * 0.22,
+        0, h * 0.30
+      );
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // Distant Snow Peaks
     ctx.fillStyle = '#0f172a';
-    this.drawPixelMountain(ctx, 0, h * 0.6, w * 0.5, h * 0.35);
-    this.drawPixelMountain(ctx, w * 0.4, h * 0.62, w * 0.6, h * 0.32);
+    this.drawPixelMountain(ctx, -10, h * 0.65, w * 0.45, h * 0.36);
+    this.drawPixelMountain(ctx, w * 0.35, h * 0.68, w * 0.65, h * 0.34);
+    ctx.fillStyle = '#1e293b';
+    this.drawPixelMountain(ctx, w * 0.15, h * 0.70, w * 0.4, h * 0.26);
+
+    // Snow caps on distant peaks
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(w * 0.11, h * 0.32, 10, 4);
+    ctx.fillRect(w * 0.66, h * 0.36, 12, 4);
 
     // Tundra Ground
     const groundY = h * 0.75;
-    ctx.fillStyle = '#3f3f46';
+    ctx.fillStyle = '#27272a';
     ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.fillStyle = '#52525b';
+    ctx.fillStyle = '#3f3f46';
     ctx.fillRect(0, groundY, w, 6);
 
-    // Snow patches
+    // Arctic moss & Snow patches
     ctx.fillStyle = '#e2e8f0';
+    for (let i = 0; i < 8; i++) {
+      const sx = ((i * 73 + 17) % (w - 30));
+      const sy = groundY + 4 + ((i * 19) % (h - groundY - 8));
+      const sw = 20 + (i % 3) * 10;
+      ctx.fillRect(sx, sy, sw, 3);
+    }
+    ctx.fillStyle = '#065f46';
     for (let i = 0; i < 6; i++) {
-      const sx = ((i * 89) % w);
-      ctx.fillRect(sx, groundY + 8 + (i % 3) * 6, 25, 4);
+      const mx = ((i * 91 + 45) % (w - 20));
+      ctx.fillRect(mx, groundY + 2, 14, 2);
     }
 
-    // Herd Progress
-    const herdStartX = w * 0.08;
-    const herdEndX = w * 0.85;
+    // Herd Progress across the Arctic Tundra
+    // Prominently placed so all 3 caribou are fully visible even at 0 progress!
+    const herdStartX = w * 0.22;
+    const herdEndX = w * 0.82;
     const herdX = herdStartX + (herdEndX - herdStartX) * this.progress;
-    const trot = Math.sin(this.time * 5) * 3;
 
-    this.drawPixelCaribou(ctx, herdX, groundY - 14 + trot, 1.1);
-    this.drawPixelCaribou(ctx, herdX - 26, groundY - 10 - trot * 0.8, 0.85);
-    this.drawPixelCaribou(ctx, herdX - 48, groundY - 12 + trot * 0.6, 0.95);
+    // 1. Lead Bull (Large antlers, dominant lead)
+    const trotLead = Math.sin(this.time * 5.2) * 3.5;
+    this.drawPixelCaribou(ctx, herdX, groundY - 15 + trotLead, 1.2, this.time * 5.2, true);
+
+    // 2. Cow Caribou (Follows closely behind)
+    const trotCow = Math.sin(this.time * 5.2 + 1.6) * 3;
+    this.drawPixelCaribou(ctx, herdX - 36, groundY - 12 + trotCow, 0.96, this.time * 5.2 + 1.6, false);
+
+    // 3. Yearling / Calf Caribou
+    const trotCalf = Math.sin(this.time * 5.2 + 3.0) * 2.5;
+    this.drawPixelCaribou(ctx, herdX - 66, groundY - 9 + trotCalf, 0.80, this.time * 5.2 + 3.0, false);
   }
 
-  drawPixelCaribou(ctx, x, y, scale = 1.0) {
+  drawPixelCaribou(ctx, x, y, scale = 1.0, trotPhase = 0, isLead = false) {
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(scale, scale);
 
+    const legStep = Math.sin(trotPhase) * 4;
+
+    // Trotting Legs
+    ctx.fillStyle = '#451a03';
+    // Back legs
+    ctx.fillRect(2, 6, 3, 8 - legStep);
+    ctx.fillRect(6, 6, 3, 8 + legStep);
+    // Front legs
+    ctx.fillRect(15, 6, 3, 8 + legStep);
+    ctx.fillRect(19, 6, 3, 8 - legStep);
+
+    // Black hooves kicking
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(2, 14 - legStep, 3, 2);
+    ctx.fillRect(6, 14 + legStep, 3, 2);
+    ctx.fillRect(15, 14 + legStep, 3, 2);
+    ctx.fillRect(19, 14 - legStep, 3, 2);
+
+    // Body (Rich brown tundra coat)
     ctx.fillStyle = '#78350f';
-    ctx.fillRect(0, 0, 20, 10);
+    ctx.fillRect(0, -4, 22, 11);
+    ctx.fillStyle = '#542307';
+    ctx.fillRect(2, 4, 18, 3);
+
+    // White Rump Patch & Short Tail
     ctx.fillStyle = '#fef3c7';
-    ctx.fillRect(14, 2, 7, 7);
+    ctx.fillRect(-2, -3, 3, 6);
     ctx.fillStyle = '#78350f';
-    ctx.fillRect(18, -6, 8, 7);
+    ctx.fillRect(-4, -4, 3, 3);
+
+    // White Neck Ruff / Mane
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillRect(14, -6, 8, 9);
+    ctx.fillStyle = '#fde68a';
+    ctx.fillRect(17, -3, 4, 6);
+
+    // Head
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(19, -11, 9, 8);
     ctx.fillStyle = '#451a03';
-    ctx.fillRect(19, -14, 2, 9);
-    ctx.fillRect(17, -12, 6, 2);
-    ctx.fillRect(15, -16, 8, 2);
-    ctx.fillRect(23, -17, 2, 4);
+    ctx.fillRect(25, -8, 4, 5);
+
+    // Nostril with frost breath puff
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(27, -7, 2, 2);
+    if (Math.sin(this.time * 3) > 0.2) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillRect(30, -8, 3, 2);
+      ctx.fillRect(32, -9, 4, 2);
+    }
+
+    // Eye
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(23, -10, 2, 2);
+
+    // Ears
+    ctx.fillStyle = '#542307';
+    ctx.fillRect(18, -13, 3, 3);
+
+    // Majestic Branching Antlers
     ctx.fillStyle = '#451a03';
-    ctx.fillRect(3, 10, 3, 8);
-    ctx.fillRect(14, 10, 3, 8);
+    ctx.fillRect(19, -18, 3, 8);
+    ctx.fillRect(17, -23, 3, 6);
+    ctx.fillRect(15, -28, 3, 6);
+
+    ctx.fillRect(18, -27, 4, 2);
+    ctx.fillRect(13, -29, 3, 2);
+    ctx.fillRect(20, -25, 5, 2);
+
+    if (isLead) {
+      ctx.fillRect(22, -17, 6, 2);
+      ctx.fillRect(27, -19, 2, 4);
+      ctx.fillRect(16, -21, 5, 2);
+    }
 
     ctx.restore();
   }

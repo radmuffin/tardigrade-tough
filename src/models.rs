@@ -41,6 +41,7 @@ pub struct Goal {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateGoalRequest {
+    pub room_slug: Option<String>,
     pub title: String,
     pub category: String,
     pub target_value: f64,

@@ -251,42 +251,29 @@ async fn delete_activity_handler(
     State(state): State<AppState>,
 ) -> (StatusCode, Json<ApiResponse<bool>>) {
     let mut conn = state.db.lock().unwrap();
-    let user_profile = match get_or_create_user(&conn, user.as_str(), "main") {
-        Ok(u) => u,
-        Err(e) => {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::err(e.to_string())),
-            )
-        }
-    };
 
     match delete_activity(&mut conn, id, user.as_str()) {
-        Ok(deleted) => {
-            if deleted {
-                let room_slug = user_profile.current_room_slug;
-                let (active_goals, _) = get_goals_for_room(&conn, &room_slug).unwrap_or_default();
-                let leaderboard = get_leaderboard(&conn, &room_slug).unwrap_or_default();
+        Ok(Some(room_slug)) => {
+            let (active_goals, _) = get_goals_for_room(&conn, &room_slug).unwrap_or_default();
+            let leaderboard = get_leaderboard(&conn, &room_slug).unwrap_or_default();
 
-                let _ = state.hub.broadcast(WsMessage {
-                    room: room_slug,
-                    event: "activity_deleted".to_string(),
-                    sender_token: Some(user.as_str().to_string()),
-                    payload: serde_json::json!({
-                        "activity_id": id,
-                        "active_goals": active_goals,
-                        "leaderboard": leaderboard,
-                    }),
-                });
+            let _ = state.hub.broadcast(WsMessage {
+                room: room_slug,
+                event: "activity_deleted".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "activity_id": id,
+                    "active_goals": active_goals,
+                    "leaderboard": leaderboard,
+                }),
+            });
 
-                (StatusCode::OK, Json(ApiResponse::ok(true)))
-            } else {
-                (
-                    StatusCode::FORBIDDEN,
-                    Json(ApiResponse::err("Activity not found or unauthorized")),
-                )
-            }
+            (StatusCode::OK, Json(ApiResponse::ok(true)))
         }
+        Ok(None) => (
+            StatusCode::FORBIDDEN,
+            Json(ApiResponse::err("Activity not found or unauthorized")),
+        ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ApiResponse::err(e.to_string())),
@@ -331,7 +318,8 @@ async fn create_goal_handler(
     Json(payload): Json<CreateGoalRequest>,
 ) -> (StatusCode, Json<ApiResponse<Goal>>) {
     let conn = state.db.lock().unwrap();
-    match create_custom_goal(&conn, "main", &payload) {
+    let room_slug = payload.room_slug.as_deref().unwrap_or("main");
+    match create_custom_goal(&conn, room_slug, &payload) {
         Ok(goal) => {
             let _ = state.hub.broadcast(WsMessage {
                 room: goal.room_slug.clone(),

@@ -111,4 +111,49 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     // Verify cheer button responds
     await expect(cheerBtn).toBeEnabled();
   });
+
+  test('switches between logging modes (Rapid Stepper, Full Workout, Fast-Add)', async ({ page }) => {
+    // 1. Rapid Stepper is active by default
+    await expect(page.locator('#panelStepper')).toBeVisible();
+    await expect(page.locator('#panelWorkout')).not.toBeVisible();
+    await expect(page.locator('#panelFastAdd')).not.toBeVisible();
+
+    // 2. Switch to Full Workout
+    await page.click('#modeWorkoutBtn');
+    await expect(page.locator('#panelWorkout')).toBeVisible();
+    await expect(page.locator('#panelStepper')).not.toBeVisible();
+    await expect(page.locator('#submitWorkoutBtn')).toBeVisible();
+
+    // 3. Switch to Fast-Add
+    await page.click('#modeFastAddBtn');
+    await expect(page.locator('#panelFastAdd')).toBeVisible();
+    await expect(page.locator('#panelWorkout')).not.toBeVisible();
+    await expect(page.locator('#submitFastAddBtn')).toBeVisible();
+
+    // 4. Switch back to Rapid Stepper
+    await page.click('#modeStepperBtn');
+    await expect(page.locator('#panelStepper')).toBeVisible();
+  });
+
+  test('supports room-based URL navigation and loads squad data', async ({ page }) => {
+    await page.goto('/r/main');
+    await expect(page.locator('.brand-title')).toHaveText('TARDIGRADE TOUGH');
+    await expect(page.locator('#dioramaCanvas')).toBeVisible();
+    await expect(page.locator('#heroGoalTitle')).toBeVisible();
+  });
+
+  test('configures PWA manifest, meta tags, and mobile capabilities', async ({ page }) => {
+    const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
+    expect(manifestHref).toBe('/manifest.json');
+
+    const themeColor = await page.locator('meta[name="theme-color"]').getAttribute('content');
+    expect(themeColor).toBe('#0b1120');
+
+    const appleMobile = await page.locator('meta[name="apple-mobile-web-app-capable"]').getAttribute('content');
+    expect(appleMobile).toBe('yes');
+
+    const appleIcon = await page.locator('link[rel="apple-touch-icon"]').first().getAttribute('href');
+    expect(appleIcon).toBe('/icon-192.png');
+  });
 });
+

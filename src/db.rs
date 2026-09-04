@@ -429,25 +429,31 @@ pub fn log_single_activity(
     })
 }
 
-pub fn delete_activity(conn: &mut Connection, activity_id: i64, user_token: &str) -> Result<bool> {
+pub fn delete_activity(
+    conn: &mut Connection,
+    activity_id: i64,
+    user_token: &str,
+) -> Result<Option<String>> {
     let tx = conn.transaction()?;
 
     let found = {
-        let mut stmt =
-            tx.prepare("SELECT goal_id, total_metric, user_token FROM activities WHERE id = ?")?;
+        let mut stmt = tx.prepare(
+            "SELECT goal_id, total_metric, user_token, room_slug FROM activities WHERE id = ?",
+        )?;
         stmt.query_row(params![activity_id], |r| {
             Ok((
                 r.get::<_, Option<i64>>(0)?,
                 r.get::<_, f64>(1)?,
                 r.get::<_, String>(2)?,
+                r.get::<_, String>(3)?,
             ))
         })
     };
 
-    if let Ok((goal_id, total_metric, owner_token)) = found {
+    if let Ok((goal_id, total_metric, owner_token, room_slug)) = found {
         // Only owner can delete
         if owner_token != user_token {
-            return Ok(false);
+            return Ok(None);
         }
 
         if let Some(gid) = goal_id {
@@ -459,9 +465,9 @@ pub fn delete_activity(conn: &mut Connection, activity_id: i64, user_token: &str
 
         tx.execute("DELETE FROM activities WHERE id = ?", params![activity_id])?;
         tx.commit()?;
-        Ok(true)
+        Ok(Some(room_slug))
     } else {
-        Ok(false)
+        Ok(None)
     }
 }
 
