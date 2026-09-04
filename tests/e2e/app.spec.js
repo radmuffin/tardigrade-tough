@@ -281,6 +281,26 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#aboutModal')).not.toBeVisible();
   });
 
+  test('displays contact section, GitHub repo, and Sally dedication in modal', async ({ page }) => {
+    await page.click('#footerContactBtn');
+    await expect(page.locator('#aboutModal')).toBeVisible();
+    await expect(page.locator('#aboutStorySection')).toBeVisible();
+    await expect(page.locator('#aboutStorySection')).toContainText('Made for Sally');
+    await expect(page.locator('#aboutStorySection')).toContainText('collaborative workout companion for Sally');
+    await expect(page.locator('#aboutContactSection')).toBeVisible();
+    await expect(page.locator('#aboutContactSection')).toContainText('danielspiesman@gmail.com');
+    await expect(page.locator('#aboutContactSection')).toContainText('github.com/radmuffin/tardigrade-tough');
+
+    const emailLink = page.locator('a[href^="mailto:danielspiesman@gmail.com"]');
+    await expect(emailLink).toBeVisible();
+
+    const ghLink = page.locator('a[href="https://github.com/radmuffin/tardigrade-tough"]');
+    await expect(ghLink).toBeVisible();
+
+    await page.click('#closeAboutBtn');
+    await expect(page.locator('#aboutModal')).not.toBeVisible();
+  });
+
   test('configures PWA manifest, meta tags, and mobile capabilities', async ({ page }) => {
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(manifestHref).toBe('/manifest.json');

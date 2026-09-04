@@ -438,6 +438,8 @@
         <span class="footer-sep">•</span>
         <button id="footerAboutBtn" class="footer-text-link" type="button">About & Lore</button>
         <span class="footer-sep">•</span>
+        <button id="footerContactBtn" class="footer-text-link" type="button">Contact & Story</button>
+        <span class="footer-sep">•</span>
         <button id="footerShareBtn" class="footer-text-link" type="button">Share Squad</button>
       </div>
     </footer>
@@ -679,6 +681,42 @@
         <p>
           Working out in a basement gym with zero cell reception? The built-in offline engine stores your sets locally and automatically syncs in batches the instant connection returns.
         </p>
+
+        <!-- Made for Sally Dedication -->
+        <div id="aboutStorySection" class="about-card story-card" style="margin-top: 14px; background: rgba(236, 72, 153, 0.08); border: 1px solid rgba(236, 72, 153, 0.3); border-left: 3px solid #ec4899; border-radius: var(--radius-md); padding: 14px;">
+          <h4 style="color: #f472b6; margin-top: 0; display: flex; align-items: center; gap: 6px;">
+            <span>💝</span> Made for Sally
+          </h4>
+          <p style="margin: 0; font-size: 0.85rem; line-height: 1.55; color: var(--text-secondary);">
+            I built <strong>Tardigrade Tough</strong> as a heartfelt gift and collaborative workout companion for Sally. We wanted a workout tracker that wasn't a drab spreadsheet or an isolated log — something playful, enduring, and delightfully weird where every squat, press, and mile contributes to lifting nature's most colossal wonders side-by-side as an unstoppable team.
+          </p>
+        </div>
+
+        <!-- Contact & GitHub Section -->
+        <div id="aboutContactSection" class="about-card contact-card" style="margin-top: 12px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-left: 3px solid #3b82f6; border-radius: var(--radius-md); padding: 14px;">
+          <h4 style="margin-top: 0; display: flex; align-items: center; gap: 6px;">
+            <span>📬</span> Contact & Project
+          </h4>
+          <p style="margin: 0 0 10px 0; font-size: 0.83rem; color: var(--text-secondary);">
+            Built with care by <strong>Daniel Spiesman</strong>. Have feedback, gym quest suggestions, or want to say hello? Reach out directly:
+          </p>
+          <div class="contact-links-grid" style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="mailto:danielspiesman@gmail.com" class="contact-link-row" style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); font-size: 0.84rem;">
+              <span style="font-size: 1.15rem;">✉️</span>
+              <div style="display: flex; flex-direction: column; overflow: hidden;">
+                <span style="font-weight: 700; font-size: 0.74rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Email</span>
+                <span style="font-family: var(--font-mono); color: #60a5fa; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">danielspiesman@gmail.com</span>
+              </div>
+            </a>
+            <a href="https://github.com/radmuffin/tardigrade-tough" target="_blank" rel="noopener noreferrer" class="contact-link-row" style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); font-size: 0.84rem;">
+              <span style="font-size: 1.15rem;">🐙</span>
+              <div style="display: flex; flex-direction: column; overflow: hidden;">
+                <span style="font-weight: 700; font-size: 0.74rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">GitHub Repository</span>
+                <span style="font-family: var(--font-mono); color: #34d399; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">github.com/radmuffin/tardigrade-tough</span>
+              </div>
+            </a>
+          </div>
+        </div>
       </div>
 
       <div class="action-buttons-row" style="margin-top: 16px;">
@@ -687,6 +725,6 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=3.0"></script>
+  <script type="module" src="/app.js?v=3.1"></script>
 </body>
 </html>

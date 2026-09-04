@@ -1,6 +1,6 @@
 # 🐻 Tardigrade Tough
 
-[![CI](https://github.com/spezd/tardigrade-tough/actions/workflows/ci.yml/badge.svg)](https://github.com/spezd/tardigrade-tough/actions/workflows/ci.yml)
+[![CI](https://github.com/radmuffin/tardigrade-tough/actions/workflows/ci.yml/badge.svg)](https://github.com/radmuffin/tardigrade-tough/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-2021_Edition-orange.svg)](https://www.rust-lang.org/)
 [![Axum](https://img.shields.io/badge/Framework-Axum_0.7-blue.svg)](https://github.com/tokio-rs/axum)
@@ -100,13 +100,27 @@ Built on **`fly-common`** using Rust, Axum, SQLite (WAL mode), WebSockets, anony
 
 ### 1. Clone & Run Locally
 ```bash
-git clone https://github.com/spezd/tardigrade-tough.git
+git clone https://github.com/radmuffin/tardigrade-tough.git
 cd tardigrade-tough
 
 # Run server
 cargo run
 ```
 Open **[http://localhost:3000](http://localhost:3000)** in your browser or connect from your phone on your local Wi-Fi / Tailscale.
+
+---
+
+## 💝 Made for Sally
+
+Tardigrade Tough was originally designed and built with love as a personal workout companion for Sally. The goal was simple: replace tedious, sterile spreadsheets with an inspiring, lighthearted fitness quest where every gym session, trail run, and elevation climb moves a shared needle against colossal wonders of the natural world.
+
+---
+
+## 📬 Contact & Connect
+
+- **Creator**: Daniel Spiesman ([@radmuffin](https://github.com/radmuffin))
+- **Email**: [danielspiesman@gmail.com](mailto:danielspiesman@gmail.com)
+- **GitHub Repository**: [github.com/radmuffin/tardigrade-tough](https://github.com/radmuffin/tardigrade-tough)
 
 ---
 

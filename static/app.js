@@ -1552,6 +1552,19 @@ function setupModals() {
       if (aboutModal) aboutModal.classList.remove('hidden');
       return;
     }
+    if (e.target.closest('#footerContactBtn')) {
+      e.preventDefault();
+      if (aboutModal) {
+        aboutModal.classList.remove('hidden');
+        const contactSec = document.getElementById('aboutStorySection') || document.getElementById('aboutContactSection');
+        if (contactSec) {
+          setTimeout(() => {
+            contactSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 80);
+        }
+      }
+      return;
+    }
     if (e.target.closest('#closeAboutBtn')) {
       e.preventDefault();
       if (aboutModal) aboutModal.classList.add('hidden');

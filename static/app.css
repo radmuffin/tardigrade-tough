@@ -1436,3 +1436,23 @@ body {
   color: var(--text-muted);
   line-height: 1.4;
 }
+
+/* Story & Contact Sections inside About Modal */
+.about-card.story-card {
+  border-left: 3px solid #ec4899;
+  background: rgba(236, 72, 153, 0.08);
+}
+
+.about-card.contact-card {
+  border-left: 3px solid #3b82f6;
+}
+
+.contact-link-row {
+  transition: border-color var(--transition-fast), transform var(--transition-fast), background var(--transition-fast);
+}
+
+.contact-link-row:hover {
+  border-color: var(--accent-green) !important;
+  background: var(--bg-elevated) !important;
+  transform: translateY(-1px);
+}
