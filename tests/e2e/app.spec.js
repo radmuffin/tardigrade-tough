@@ -3,6 +3,7 @@ const { test, expect } = require('@playwright/test');
 test.describe('Tardigrade Tough Web App E2E', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await page.waitForSelector('body[data-state="ready"]');
   });
 
   test('loads home page with brand icon and title', async ({ page }) => {
@@ -135,6 +136,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
   test('supports room-based URL navigation and loads squad data', async ({ page }) => {
     await page.goto('/r/main');
+    await page.waitForSelector('body[data-state="ready"]');
     await expect(page.locator('.brand-title')).toHaveText('TARDIGRADE TOUGH');
     await expect(page.locator('#dioramaCanvas')).toBeVisible();
     await expect(page.locator('#heroGoalTitle')).toBeVisible();

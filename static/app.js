@@ -5,7 +5,10 @@ import { OfflineSyncManager } from '/offline-sync.js';
 
 // State
 let roomSlug = getRoomFromUrl() || 'main';
-let client = new FlyClient({ baseUrl: '/api' });
+const apiBase = (typeof window !== 'undefined' && window.location && window.location.origin)
+  ? `${window.location.origin}/api`
+  : '/api';
+let client = new FlyClient({ baseUrl: apiBase });
 let diorama = null;
 let trophyDiorama = null;
 let offlineSync = null;
@@ -185,6 +188,8 @@ async function loadRoomState() {
   } catch (err) {
     console.warn('Failed to load room data (possibly offline):', err);
     FlyToast.info('Working offline: your logs will sync when reconnected.');
+  } finally {
+    document.body.dataset.state = 'ready';
   }
 }
 
