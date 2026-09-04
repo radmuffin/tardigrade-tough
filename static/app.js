@@ -509,6 +509,22 @@ function renderWishlists() {
     const catEmoji = cat === 'weight' ? '🏋️' : cat === 'distance' ? '🏃' : '🧗';
     const safeTitle = FlyToast.escape(item.title);
     const safeNotes = item.notes ? FlyToast.escape(item.notes) : '';
+    const safeUnit = FlyToast.escape(item.unit);
+
+    const ghTitle = encodeURIComponent(`[Quest Proposal] ${item.title} (${cat})`);
+    const ghBody = encodeURIComponent(
+      `### 🌲 New Quest Proposal from Tardigrade Tough\n\n` +
+      `- **Quest Title**: ${item.title}\n` +
+      `- **Category**: \`${cat}\` (${item.unit})\n` +
+      `- **Target Metric**: ${formatNumber(item.target_value)} ${item.unit}\n` +
+      `- **Squad Room**: \`${item.room_slug || roomSlug}\`\n\n` +
+      `#### 📝 Notes & Lore\n` +
+      `> ${item.notes || 'No extra notes provided.'}\n\n` +
+      `---\n` +
+      `*Submitted via Tardigrade Tough app.*`
+    );
+    const ghIssueUrl = `https://github.com/radmuffin/tardigrade-tough/issues/new?title=${ghTitle}&body=${ghBody}&labels=quest-proposal,${cat}`;
+
     return `
       <div class="wishlist-card">
         <div class="wishlist-header-row">
@@ -516,9 +532,17 @@ function renderWishlists() {
           <span class="wishlist-cat-badge ${cat}">${catEmoji} ${cat}</span>
         </div>
         <div class="wishlist-meta-row">
-          <span>Target: <span class="wishlist-target-num">${formatNumber(item.target_value)} ${item.unit}</span></span>
+          <span>Target: <span class="wishlist-target-num">${formatNumber(item.target_value)} ${safeUnit}</span></span>
         </div>
         ${safeNotes ? `<div class="wishlist-notes-text">“${safeNotes}”</div>` : ''}
+        <div class="wishlist-actions-row">
+          <a href="${ghIssueUrl}" target="_blank" rel="noopener noreferrer" class="wishlist-action-btn gh-issue-link" title="Open formatted GitHub Issue in new tab">
+            <span>🐙</span> GitHub Issue
+          </a>
+          <button type="button" class="wishlist-action-btn activate-quest-btn" data-title="${safeTitle}" data-cat="${cat}" data-val="${item.target_value}" data-unit="${safeUnit}" data-notes="${safeNotes}" title="Promote this proposal to an active live quest">
+            <span>🚀</span> Activate Quest
+          </button>
+        </div>
       </div>
     `;
   }).join('');
@@ -790,6 +814,11 @@ function handleWsEvent(msg) {
     loadRoomState();
     if (msg.payload && msg.payload.item && msg.sender_token !== client.token) {
       FlyToast.info(`✨ New quest proposed: "${msg.payload.item.title}"`);
+    }
+  } else if (msg.event === 'goal_created') {
+    loadRoomState();
+    if (msg.payload && msg.sender_token !== client.token) {
+      FlyToast.success(`🚀 New quest activated: "${msg.payload.title}"!`);
     }
   }
 }
@@ -1722,6 +1751,43 @@ function setupModals() {
     if (e.target.closest('#closeRoomBtn')) {
       e.preventDefault();
       closeHub();
+      return;
+    }
+    const actBtn = e.target.closest('.activate-quest-btn');
+    if (actBtn) {
+      e.preventDefault();
+      const title = actBtn.dataset.title;
+      const category = actBtn.dataset.cat;
+      const targetVal = parseFloat(actBtn.dataset.val);
+      const unit = actBtn.dataset.unit;
+      const notes = actBtn.dataset.notes || '';
+
+      const confirmMsg = `Promote "${title}" (${formatNumber(targetVal)} ${unit}) to an active mega-quest for this squad?`;
+      if (!window.confirm(confirmMsg)) return;
+
+      actBtn.disabled = true;
+      const themeKey = category === 'weight' ? 'pando' : category === 'distance' ? 'caribou' : 'everest';
+      client.post('/goals', {
+        room_slug: roomSlug,
+        title,
+        category,
+        target_value: targetVal,
+        unit,
+        theme_key: themeKey,
+        description: notes || title,
+      }).then(res => {
+        if (res && res.success) {
+          FlyToast.success(`🚀 "${title}" is now an active mega-quest!`);
+          loadRoomState().then(() => switchView('quests'));
+        } else {
+          FlyToast.error(res?.error || 'Failed to activate quest');
+          actBtn.disabled = false;
+        }
+      }).catch(err => {
+        console.error('Failed to activate quest:', err);
+        FlyToast.error('Failed to activate quest');
+        actBtn.disabled = false;
+      });
       return;
     }
   });

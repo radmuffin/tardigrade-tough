@@ -1526,6 +1526,7 @@ dependencies = [
  "fly_common",
  "futures-util",
  "http-body-util",
+ "reqwest",
  "rusqlite",
  "serde",
  "serde_json",

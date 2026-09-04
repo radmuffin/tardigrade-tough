@@ -393,12 +393,89 @@ async fn create_wishlist_handler(
                 sender_token: Some(user.as_str().to_string()),
                 payload: serde_json::to_value(&item).unwrap_or_default(),
             });
+
+            // If GITHUB_TOKEN is configured in environment, dispatch automated GitHub issue
+            let item_clone = item.clone();
+            tokio::spawn(async move {
+                dispatch_github_issue_if_configured(&item_clone).await;
+            });
+
             (StatusCode::CREATED, Json(ApiResponse::ok(item)))
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ApiResponse::err(e.to_string())),
         ),
+    }
+}
+
+async fn dispatch_github_issue_if_configured(item: &GoalWishlistItem) {
+    let token = match std::env::var("GITHUB_TOKEN").or_else(|_| std::env::var("GH_TOKEN")) {
+        Ok(t) if !t.trim().is_empty() => t,
+        _ => return,
+    };
+
+    let repo =
+        std::env::var("GITHUB_REPO").unwrap_or_else(|_| "radmuffin/tardigrade-tough".to_string());
+    let url = format!("https://api.github.com/repos/{repo}/issues");
+
+    let title = format!("[Quest Proposal] {} ({})", item.title, item.category);
+    let notes_formatted = if item.notes.trim().is_empty() {
+        "*(No additional notes provided)*".to_string()
+    } else {
+        format!("> {}", item.notes.trim())
+    };
+
+    let body = format!(
+        "### 🌲 New Quest Proposal from Tardigrade Tough\n\n\
+         - **Quest Title**: {}\n\
+         - **Category**: `{}`\n\
+         - **Target Metric**: {} {}\n\
+         - **Squad Room**: `{}`\n\
+         - **Proposed by**: `{}`\n\n\
+         #### 📝 Notes & Lore\n\
+         {}\n\n\
+         ---\n\
+         *Automated proposal submitted via Tardigrade Tough app.*",
+        item.title,
+        item.category,
+        item.target_value,
+        item.unit,
+        item.room_slug,
+        item.user_token,
+        notes_formatted
+    );
+
+    let client = reqwest::Client::new();
+    let payload = serde_json::json!({
+        "title": title,
+        "body": body,
+        "labels": ["quest-proposal", &item.category]
+    });
+
+    match client
+        .post(&url)
+        .header("Authorization", format!("Bearer {token}"))
+        .header("User-Agent", "tardigrade-tough-app")
+        .header("Accept", "application/vnd.github+json")
+        .json(&payload)
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            println!(
+                "Successfully created GitHub issue for quest: {}",
+                item.title
+            );
+        }
+        Ok(resp) => {
+            let status = resp.status();
+            let err_body = resp.text().await.unwrap_or_default();
+            eprintln!("GitHub API returned {status} when creating issue: {err_body}");
+        }
+        Err(e) => {
+            eprintln!("Failed to dispatch GitHub issue for quest proposal: {e}");
+        }
     }
 }
 

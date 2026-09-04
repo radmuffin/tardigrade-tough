@@ -261,7 +261,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#viewActivity')).not.toBeVisible();
 
     // 4. From Quests, navigate to Trophy Room
-    await page.locator('#viewQuests .connective-btn[data-target="trophy"]').click();
+    await page.locator('#viewQuests .connective-pill-card[data-target="trophy"]').click();
     await expect(page.locator('#viewTrophy')).toBeVisible();
     await expect(page.locator('#viewQuests')).not.toBeVisible();
 
@@ -326,6 +326,8 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(card).toBeVisible();
     await expect(card).toContainText('887,000,000 lbs');
     await expect(card).toContainText('San Francisco suspension landmark');
+    await expect(card.locator('.gh-issue-link')).toBeVisible();
+    await expect(card.locator('.activate-quest-btn')).toBeVisible();
   });
 
   test('navigates directly from Quests view to Trophy Room wishlist using Squad Wishlist button', async ({ page }) => {
