@@ -165,10 +165,15 @@ function main() {
     if (!passed) process.exit(1);
   }
 
-  if (plan.e2eSpecs.size > 0 && process.env.RUN_E2E) {
+  if (plan.e2eSpecs.size > 0) {
     const specs = Array.from(plan.e2eSpecs).join(' ');
-    passed = passed && runCommand(`npx playwright test ${specs}`, `Targeted Playwright E2E (${specs})`);
-    if (!passed) process.exit(1);
+    if (process.env.RUN_E2E || args.includes('--e2e')) {
+      passed = passed && runCommand(`npx playwright test ${specs}`, `Targeted Playwright E2E (${specs})`);
+      if (!passed) process.exit(1);
+    } else {
+      console.log(`\n\x1b[33mℹ [Notice] Frontend/E2E changes detected: ${specs}`);
+      console.log(`  E2E browser tests are deferred to GitHub Actions CI (or run locally via: npm run test:affected -- --e2e).\x1b[0m`);
+    }
   }
 
   console.log('\n\x1b[32m✔ All affected tests and checks passed cleanly! Safe to commit & push.\x1b[0m\n');

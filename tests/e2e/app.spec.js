@@ -8,7 +8,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
   test('loads home page with brand icon and title', async ({ page }) => {
     await expect(page.locator('.brand-title')).toHaveText('TARDIGRADE TOUGH');
-    await expect(page.locator('.brand-chip .brand-icon-svg')).toBeVisible();
+    await expect(page.locator('.brand .brand-icon-svg')).toBeVisible();
     await expect(page.locator('#roomNameLabel')).toBeVisible();
   });
 
