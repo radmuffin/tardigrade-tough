@@ -42,32 +42,20 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#heroGoalCurrent')).toContainText('0 lbs');
   });
 
-  test('supports all workout categories on the leaderboard (All, Weight, Distance, Elevation)', async ({ page }) => {
+  test('supports all workout categories on the leaderboard displayed vertically', async ({ page }) => {
     await page.click('#navLeaderboardBtn');
     await expect(page.locator('#viewLeaderboard')).toBeVisible();
 
-    // Default: All Categories
-    await expect(page.locator('#lbTabAll')).toHaveClass(/active/);
+    // Summary Hero Grid is visible
     await expect(page.locator('#lbSummaryAll')).toBeVisible();
     await expect(page.locator('#lbHeroWeight')).toBeVisible();
     await expect(page.locator('#lbHeroDistance')).toBeVisible();
     await expect(page.locator('#lbHeroElevation')).toBeVisible();
 
-    // Switch to Weight
-    await page.click('#lbTabWeight');
-    await expect(page.locator('#lbTabWeight')).toHaveClass(/active/);
-    await expect(page.locator('#lbSummarySingle')).toBeVisible();
-    await expect(page.locator('#lbSingleMetricLabel')).toContainText('Tonnage');
-
-    // Switch to Distance
-    await page.click('#lbTabDistance');
-    await expect(page.locator('#lbTabDistance')).toHaveClass(/active/);
-    await expect(page.locator('#lbSingleMetricLabel')).toContainText('Distance');
-
-    // Switch to Elevation
-    await page.click('#lbTabElevation');
-    await expect(page.locator('#lbTabElevation')).toHaveClass(/active/);
-    await expect(page.locator('#lbSingleMetricLabel')).toContainText('Elevation');
+    // All three workout category sections are displayed vertically
+    await expect(page.locator('.lb-category-section[data-category="weight"]')).toBeVisible();
+    await expect(page.locator('.lb-category-section[data-category="distance"]')).toBeVisible();
+    await expect(page.locator('.lb-category-section[data-category="elevation"]')).toBeVisible();
   });
 
   test('toggles active goal dioramas between Pando, Everest, and Caribou', async ({ page }) => {
@@ -211,9 +199,10 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.goto('/r/test-squad-rename');
     await page.waitForSelector('body[data-state="ready"]');
 
-    // Open Crew Hub modal
-    await page.click('#roomBtn');
-    await expect(page.locator('#roomModal')).toBeVisible();
+    // Open Crew Hub via profile button and switch to Squad tab
+    await page.click('#profileBtn');
+    await expect(page.locator('#profileModal')).toBeVisible();
+    await page.click('#tabBtnSquad');
 
     // Verify current squad name input is pre-populated
     const nameInput = page.locator('#editRoomNameInput');
@@ -227,14 +216,14 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#roomNameLabel')).toHaveText('Iron Tardigrades');
 
     // Close modal
-    await page.click('#closeRoomBtn');
-    await expect(page.locator('#roomModal')).not.toBeVisible();
+    await page.click('#closeProfileBtn');
+    await expect(page.locator('#profileModal')).not.toBeVisible();
   });
 
   test('provides squad invite link and QR code in share section', async ({ page }) => {
     // Open room modal via footer share button
     await page.click('#footerShareBtn');
-    await expect(page.locator('#roomModal')).toBeVisible();
+    await expect(page.locator('#profileModal')).toBeVisible();
 
     // Check share link and QR code
     const shareInput = page.locator('#shareRoomUrlInput');
@@ -250,8 +239,8 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     // Copy button is clickable
     await page.click('#copyRoomUrlBtn');
 
-    await page.click('#closeRoomBtn');
-    await expect(page.locator('#roomModal')).not.toBeVisible();
+    await page.click('#closeProfileBtn');
+    await expect(page.locator('#profileModal')).not.toBeVisible();
   });
 
   test('navigates seamlessly using connective action cards across screens', async ({ page }) => {
@@ -304,6 +293,34 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     const appleIcon = await page.locator('link[rel="apple-touch-icon"]').first().getAttribute('href');
     expect(appleIcon).toBe('/icon-192.png');
+  });
+
+  test('supports touch swipe gestures between views', async ({ page }) => {
+    await expect(page.locator('#viewQuests')).toBeVisible();
+
+    // Swipe left: Quests -> Leaderboard
+    await page.evaluate(() => {
+      window.dispatchEvent(new TouchEvent('touchstart', {
+        touches: [{ clientX: 300, clientY: 300 }]
+      }));
+      window.dispatchEvent(new TouchEvent('touchend', {
+        changedTouches: [{ clientX: 100, clientY: 300 }]
+      }));
+    });
+    await expect(page.locator('#viewLeaderboard')).toBeVisible();
+    await expect(page.locator('#navLeaderboardBtn')).toHaveClass(/active/);
+
+    // Swipe right: Leaderboard -> Quests
+    await page.evaluate(() => {
+      window.dispatchEvent(new TouchEvent('touchstart', {
+        touches: [{ clientX: 100, clientY: 300 }]
+      }));
+      window.dispatchEvent(new TouchEvent('touchend', {
+        changedTouches: [{ clientX: 300, clientY: 300 }]
+      }));
+    });
+    await expect(page.locator('#viewQuests')).toBeVisible();
+    await expect(page.locator('#navQuestsBtn')).toHaveClass(/active/);
   });
 });
 

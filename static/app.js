@@ -61,7 +61,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   initWebSocket();
 });
 
-// Primary View Navigation
+// Primary View Navigation with Touch Swipe Gestures
+const VIEW_ORDER = ['quests', 'leaderboard', 'activity', 'trophy'];
+let currentView = 'quests';
+
 function setupViewNavigation() {
   const navBtns = {
     quests: document.getElementById('navQuestsBtn'),
@@ -78,9 +81,18 @@ function setupViewNavigation() {
   };
 
   function switchView(target) {
+    if (!views[target]) return;
+    currentView = target;
+
     Object.keys(navBtns).forEach(k => {
-      navBtns[k].classList.toggle('active', k === target);
-      views[k].style.display = k === target ? 'block' : 'none';
+      if (navBtns[k]) {
+        const isActive = k === target;
+        navBtns[k].classList.toggle('active', isActive);
+        navBtns[k].setAttribute('aria-selected', isActive ? 'true' : 'false');
+      }
+      if (views[k]) {
+        views[k].style.display = k === target ? 'block' : 'none';
+      }
     });
 
     if (target === 'trophy' && trophyDiorama) {
@@ -116,9 +128,100 @@ function setupViewNavigation() {
       }
     }
   });
+
+  // Touch Swipe Navigation between 4 main views
+  setupSwipeNavigation(switchView);
 }
 
-// Goal Segmented Control & Arrow Cycling
+function setupSwipeNavigation(switchView) {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+
+  window.addEventListener('touchstart', (e) => {
+    // Ignore interactive elements, diorama canvas, modals, form fields, buttons
+    if (e.target.closest('canvas, input, select, textarea, button, .modal-backdrop, .modal-box, .color-option, .stepper-btn')) {
+      touchStartX = 0;
+      touchStartY = 0;
+      return;
+    }
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', (e) => {
+    if (!touchStartX || !touchStartY) return;
+    if (e.changedTouches.length !== 1) return;
+
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+    const deltaTime = Date.now() - touchStartTime;
+
+    touchStartX = 0;
+    touchStartY = 0;
+
+    // Fast horizontal swipe (< 500ms, > 45px distance, primarily horizontal)
+    if (deltaTime < 500 && Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+      const curIdx = VIEW_ORDER.indexOf(currentView);
+      if (curIdx === -1) return;
+
+      if (deltaX < 0) {
+        // Swiped LEFT -> Next view (e.g. Quests -> Leaderboard)
+        if (curIdx < VIEW_ORDER.length - 1) {
+          switchView(VIEW_ORDER[curIdx + 1]);
+        }
+      } else {
+        // Swiped RIGHT -> Previous view (e.g. Leaderboard -> Quests)
+        if (curIdx > 0) {
+          switchView(VIEW_ORDER[curIdx - 1]);
+        }
+      }
+    }
+  }, { passive: true });
+}
+
+// Canonical goal order matching visual tab layout: [Pando, Everest, Caribou]
+const CANONICAL_THEME_ORDER = ['pando', 'everest', 'caribou'];
+
+function cycleGoal(direction) {
+  if (!currentRoomData || !currentRoomData.active_goals || currentRoomData.active_goals.length === 0) return;
+  const currentGoal = currentRoomData.active_goals[selectedGoalIndex] || currentRoomData.active_goals[0];
+  const curTheme = currentGoal.theme_key;
+
+  // Active themes in exact visual tab order
+  const activeThemes = CANONICAL_THEME_ORDER.filter(t => 
+    currentRoomData.active_goals.some(g => g.theme_key === t)
+  );
+  currentRoomData.active_goals.forEach(g => {
+    if (!activeThemes.includes(g.theme_key)) activeThemes.push(g.theme_key);
+  });
+
+  if (activeThemes.length <= 1) return;
+
+  let curIdx = activeThemes.indexOf(curTheme);
+  if (curIdx === -1) curIdx = 0;
+
+  let nextIdx;
+  if (direction > 0) {
+    // Right arrow (›) or swipe left: advance to next tab on the right
+    nextIdx = (curIdx + 1) % activeThemes.length;
+  } else {
+    // Left arrow (‹) or swipe right: move to previous tab on the left
+    nextIdx = (curIdx - 1 + activeThemes.length) % activeThemes.length;
+  }
+
+  const targetTheme = activeThemes[nextIdx];
+  const targetGoalIndex = currentRoomData.active_goals.findIndex(g => g.theme_key === targetTheme);
+  if (targetGoalIndex !== -1) {
+    selectedGoalIndex = targetGoalIndex;
+    renderGoalShowcase();
+  }
+}
+
+// Goal Segmented Control & Arrow / Diorama Swipe Cycling
 function setupGoalSegmentedControl() {
   const pandoBtn = document.getElementById('goalTabPando');
   const everestBtn = document.getElementById('goalTabEverest');
@@ -140,50 +243,55 @@ function setupGoalSegmentedControl() {
   if (everestBtn) everestBtn.addEventListener('click', () => selectGoalByTheme('everest'));
   if (caribouBtn) caribouBtn.addEventListener('click', () => selectGoalByTheme('caribou'));
 
+  // Left arrow (‹): previous goal to the left
   if (prevBtn) {
-    prevBtn.addEventListener('click', () => {
-      if (!currentRoomData || !currentRoomData.active_goals) return;
-      const count = currentRoomData.active_goals.length;
-      selectedGoalIndex = (selectedGoalIndex - 1 + count) % count;
-      renderGoalShowcase();
+    prevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cycleGoal(-1);
     });
   }
 
+  // Right arrow (›): next goal to the right
   if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-      if (!currentRoomData || !currentRoomData.active_goals) return;
-      const count = currentRoomData.active_goals.length;
-      selectedGoalIndex = (selectedGoalIndex + 1) % count;
-      renderGoalShowcase();
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cycleGoal(1);
     });
+  }
+
+  // Touch Swipe Gestures directly on Diorama Canvas
+  const canvasWrapper = document.querySelector('.canvas-wrapper');
+  if (canvasWrapper) {
+    let canvasStartX = 0;
+    let canvasStartY = 0;
+
+    canvasWrapper.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        canvasStartX = e.touches[0].clientX;
+        canvasStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    canvasWrapper.addEventListener('touchend', (e) => {
+      if (!canvasStartX) return;
+      const deltaX = e.changedTouches[0].clientX - canvasStartX;
+      const deltaY = e.changedTouches[0].clientY - canvasStartY;
+      canvasStartX = 0;
+
+      if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (deltaX < 0) {
+          cycleGoal(1); // swipe left -> next goal to the right
+        } else {
+          cycleGoal(-1); // swipe right -> previous goal to the left
+        }
+      }
+    }, { passive: true });
   }
 }
 
-// Leaderboard Category Filter Tabs
+// Leaderboard Category Filter Tabs (Safe fallback)
 function setupLeaderboardTabs() {
-  const tabs = {
-    all: document.getElementById('lbTabAll'),
-    weight: document.getElementById('lbTabWeight'),
-    distance: document.getElementById('lbTabDistance'),
-    elevation: document.getElementById('lbTabElevation'),
-  };
-
-  Object.keys(tabs).forEach(cat => {
-    const btn = tabs[cat];
-    if (btn) {
-      btn.addEventListener('click', () => {
-        leaderboardCategory = cat;
-        Object.keys(tabs).forEach(k => {
-          if (tabs[k]) {
-            const isActive = k === cat;
-            tabs[k].classList.toggle('active', isActive);
-            tabs[k].setAttribute('aria-selected', isActive ? 'true' : 'false');
-          }
-        });
-        renderLeaderboard();
-      });
-    }
-  });
+  // Leaderboard displays all categories vertically
 }
 
 // Activity Filter Tabs
@@ -397,114 +505,106 @@ function renderLeaderboard() {
   if (heroDist) heroDist.textContent = `${totalDistance.toFixed(1)} ${distUnit}`;
   if (heroElev) heroElev.textContent = `${formatNumber(totalElevation)} ${elevUnit}`;
 
-  // Toggle multi-metric grid vs single-metric display
-  const summaryAll = document.getElementById('lbSummaryAll');
-  const summarySingle = document.getElementById('lbSummarySingle');
-  const singleVal = document.getElementById('leaderboardTotalTonnage');
-  const singleLabel = document.getElementById('lbSingleMetricLabel');
+  const currentUserId = currentRoomData.user_profile?.user_token;
 
-  if (leaderboardCategory === 'all') {
-    if (summaryAll) summaryAll.style.display = 'grid';
-    if (summarySingle) summarySingle.style.display = 'none';
-  } else {
-    if (summaryAll) summaryAll.style.display = 'none';
-    if (summarySingle) summarySingle.style.display = 'flex';
-    if (leaderboardCategory === 'weight') {
-      if (singleVal) singleVal.textContent = `${formatNumber(totalWeight)} ${wtUnit}`;
-      if (singleLabel) singleLabel.textContent = 'Total Crew Tonnage Lifted';
-    } else if (leaderboardCategory === 'distance') {
-      if (singleVal) singleVal.textContent = `${totalDistance.toFixed(1)} ${distUnit}`;
-      if (singleLabel) singleLabel.textContent = 'Total Crew Distance Traveled';
-    } else if (leaderboardCategory === 'elevation') {
-      if (singleVal) singleVal.textContent = `${formatNumber(totalElevation)} ${elevUnit}`;
-      if (singleLabel) singleLabel.textContent = 'Total Crew Elevation Climbed';
-    }
-  }
+  // Render 3 Vertical Category Sections (Weight, Distance, Elevation)
+  const categorySections = [
+    {
+      category: 'weight',
+      title: '🌲 Weight Hoisted — Pando Clone Quest',
+      unit: wtUnit,
+      metricKey: 'total_weight',
+      totalVal: totalWeight,
+      formatter: (v) => `${formatNumber(v)} ${wtUnit}`,
+      emptyMsg: 'No weight hoisted yet. Be the first to lift!',
+    },
+    {
+      category: 'distance',
+      title: '🦌 Distance Traveled — Caribou Migration',
+      unit: distUnit,
+      metricKey: 'total_distance',
+      totalVal: totalDistance,
+      formatter: (v) => `${v.toFixed(1)} ${distUnit}`,
+      emptyMsg: 'No distance recorded yet. Log your run or walk!',
+    },
+    {
+      category: 'elevation',
+      title: '🐐 Elevation Climbed — Mt. Everest Ascent',
+      unit: elevUnit,
+      metricKey: 'total_elevation',
+      totalVal: totalElevation,
+      formatter: (v) => `${formatNumber(v)} ${elevUnit}`,
+      emptyMsg: 'No elevation logged yet. Climb some stairs or hills!',
+    },
+  ];
 
-  // Filter and sort members
-  let members = [...rawMembers];
-  if (leaderboardCategory === 'all') {
-    members.sort((a, b) => (b.total_sets - a.total_sets) || (b.total_weight - a.total_weight) || (b.total_distance - a.total_distance) || (b.total_elevation - a.total_elevation));
-    members = members.filter(m => (m.total_sets > 0 || m.total_weight > 0 || m.total_distance > 0 || m.total_elevation > 0));
-  } else if (leaderboardCategory === 'weight') {
-    members.sort((a, b) => b.total_weight - a.total_weight);
-    members = members.filter(m => m.total_weight > 0);
-  } else if (leaderboardCategory === 'distance') {
-    members.sort((a, b) => b.total_distance - a.total_distance);
-    members = members.filter(m => m.total_distance > 0);
-  } else if (leaderboardCategory === 'elevation') {
-    members.sort((a, b) => b.total_elevation - a.total_elevation);
-    members = members.filter(m => m.total_elevation > 0);
-  }
+  categorySections.forEach(sec => {
+    const sectionEl = document.createElement('section');
+    sectionEl.className = 'lb-category-section';
+    sectionEl.dataset.category = sec.category;
 
-  if (members.length === 0) {
-    const emptyCategory = leaderboardCategory === 'all' ? 'workouts' : leaderboardCategory;
-    container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 24px;">No ${emptyCategory} logged yet. Be the first to log!</div>`;
-    return;
-  }
-
-  members.forEach((member, idx) => {
-    const card = document.createElement('div');
-    card.className = 'leaderboard-card';
-
-    const isMe = member.user_token === currentRoomData.user_profile?.user_token;
-    let rankBadge = '';
-    if (idx === 0) rankBadge = '🥇';
-    else if (idx === 1) rankBadge = '🥈';
-    else if (idx === 2) rankBadge = '🥉';
-
-    let rightScoreHtml = '';
-    let categoryPillsHtml = '';
-
-    if (leaderboardCategory === 'all') {
-      rightScoreHtml = `
-        <div class="score-main">${member.total_sets} sets</div>
-        <div class="score-pct">All Quests</div>
-      `;
-      categoryPillsHtml = `
-        <div class="member-pills">
-          ${member.total_weight > 0 ? `<span class="cat-chip wt">🏋️ ${formatNumber(member.total_weight)} ${wtUnit}</span>` : ''}
-          ${member.total_distance > 0 ? `<span class="cat-chip dist">🏃 ${member.total_distance.toFixed(1)} ${distUnit}</span>` : ''}
-          ${member.total_elevation > 0 ? `<span class="cat-chip elev">🧗 ${formatNumber(member.total_elevation)} ${elevUnit}</span>` : ''}
-          <span class="cat-chip sets">⚡ ${member.total_sets} sets</span>
-        </div>
-      `;
-    } else if (leaderboardCategory === 'weight') {
-      rightScoreHtml = `
-        <div class="score-main">${formatNumber(member.total_weight)} ${wtUnit}</div>
-        <div class="score-pct">${member.weight_percentage}% of Crew</div>
-      `;
-    } else if (leaderboardCategory === 'distance') {
-      rightScoreHtml = `
-        <div class="score-main">${member.total_distance.toFixed(1)} ${distUnit}</div>
-        <div class="score-pct">${member.distance_percentage || 0}% of Crew</div>
-      `;
-    } else if (leaderboardCategory === 'elevation') {
-      rightScoreHtml = `
-        <div class="score-main">${formatNumber(member.total_elevation)} ${elevUnit}</div>
-        <div class="score-pct">${member.elevation_percentage || 0}% of Crew</div>
-      `;
-    }
-
-    card.innerHTML = `
-      <div class="leaderboard-user">
-        <div class="user-avatar" style="background-color: ${member.avatar_color}">
-          ${(member.nickname || 'L').substring(0, 1).toUpperCase()}
-        </div>
-        <div class="user-details">
-          <div class="user-name-row">
-            <span>${rankBadge} ${FlyToast.escape(member.nickname)} ${isMe ? '(You)' : ''}</span>
-            ${member.is_daily_mvp ? '<span class="mvp-crown" title="Daily Titan">👑</span>' : ''}
-          </div>
-          ${leaderboardCategory !== 'all' ? `<span class="user-stats-sub">${member.total_sets} sets logged</span>` : ''}
-          ${categoryPillsHtml}
-        </div>
-      </div>
-      <div class="leaderboard-score">
-        ${rightScoreHtml}
-      </div>
+    const headerEl = document.createElement('div');
+    headerEl.className = 'lb-category-header';
+    headerEl.innerHTML = `
+      <h3 class="lb-category-title">${sec.title}</h3>
+      <span class="badge-pill">${sec.formatter(sec.totalVal)}</span>
     `;
-    container.appendChild(card);
+    sectionEl.appendChild(headerEl);
+
+    // Filter members with contributions in this category, sorted descending
+    const catMembers = [...rawMembers]
+      .filter(m => (m[sec.metricKey] || 0) > 0)
+      .sort((a, b) => (b[sec.metricKey] || 0) - (a[sec.metricKey] || 0));
+
+    if (catMembers.length === 0) {
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'lb-category-empty';
+      emptyEl.textContent = sec.emptyMsg;
+      sectionEl.appendChild(emptyEl);
+    } else {
+      const listEl = document.createElement('div');
+      listEl.className = 'lb-category-list';
+
+      catMembers.forEach((member, idx) => {
+        const card = document.createElement('div');
+        card.className = 'leaderboard-card';
+
+        const isMe = member.user_token === currentUserId;
+        let rankBadge = '';
+        if (idx === 0) rankBadge = '🥇';
+        else if (idx === 1) rankBadge = '🥈';
+        else if (idx === 2) rankBadge = '🥉';
+        else rankBadge = `${idx + 1}.`;
+
+        const val = member[sec.metricKey] || 0;
+        const pct = sec.totalVal > 0 ? ((val / sec.totalVal) * 100).toFixed(1) : '0.0';
+
+        card.innerHTML = `
+          <div class="leaderboard-user">
+            <div class="user-avatar" style="background-color: ${member.avatar_color || '#10b981'}">
+              ${(member.nickname || 'L').substring(0, 1).toUpperCase()}
+            </div>
+            <div class="user-details">
+              <div class="user-name-row">
+                <span>${rankBadge} ${FlyToast.escape(member.nickname)}</span>
+                ${isMe ? '<span class="badge-me">YOU</span>' : ''}
+                ${member.is_daily_mvp ? '<span class="mvp-crown" title="Daily Titan">👑</span>' : ''}
+              </div>
+              <span class="user-stats-sub">${member.total_sets || 0} sets logged</span>
+            </div>
+          </div>
+          <div class="leaderboard-score">
+            <div class="score-main">${sec.formatter(val)}</div>
+            <div class="score-pct">${pct}% of Crew</div>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+
+      sectionEl.appendChild(listEl);
+    }
+
+    container.appendChild(sectionEl);
   });
 }
 
@@ -1198,62 +1298,19 @@ function setupSheetImporter() {
   });
 }
 
-// 11. Modals (Profile, Room Hub, Solo Creation)
+// 11. Unified User Profile & Squad Hub Modal
 function setupModals() {
   const profileModal = document.getElementById('profileModal');
+  const roomModal = document.getElementById('roomModal');
+  const aboutModal = document.getElementById('aboutModal');
   const nickInput = document.getElementById('nickInput');
   let selectedColor = '#10b981';
 
-  document.getElementById('profileBtn').addEventListener('click', () => {
-    if (currentRoomData) {
-      nickInput.value = currentRoomData.user_profile.nickname;
-      selectedColor = currentRoomData.user_profile.avatar_color;
-    }
-    profileModal.classList.remove('hidden');
-  });
+  const tabBtnProfile = document.getElementById('tabBtnProfile');
+  const tabBtnSquad = document.getElementById('tabBtnSquad');
+  const hubPaneProfile = document.getElementById('hubPaneProfile');
+  const hubPaneSquad = document.getElementById('hubPaneSquad');
 
-  document.getElementById('closeProfileBtn').addEventListener('click', () => {
-    profileModal.classList.add('hidden');
-  });
-
-  // Dark / Light Mode inside profile
-  document.getElementById('themeDarkBtn').addEventListener('click', () => {
-    FlyTheme.apply('dark');
-    FlyToast.info('Dark mode enabled');
-  });
-
-  document.getElementById('themeLightBtn').addEventListener('click', () => {
-    FlyTheme.apply('light');
-    FlyToast.info('Light mode enabled');
-  });
-
-  document.querySelectorAll('.color-option').forEach(opt => {
-    opt.addEventListener('click', () => {
-      document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
-      opt.classList.add('selected');
-      selectedColor = opt.dataset.color;
-    });
-  });
-
-  document.getElementById('saveProfileBtn').addEventListener('click', async () => {
-    const nick = nickInput.value.trim();
-    try {
-      const res = await client.post('/users/profile', {
-        nickname: nick,
-        avatar_color: selectedColor,
-      });
-      if (res && res.success) {
-        profileModal.classList.add('hidden');
-        FlyToast.success('Profile updated!');
-        await loadRoomState();
-      }
-    } catch (e) {
-      FlyToast.error('Failed to save profile');
-    }
-  });
-
-  // Crew Hub, Squad Rename, Share & Solo Creation Modal
-  const roomModal = document.getElementById('roomModal');
   const roomSlugInput = document.getElementById('roomSlugInput');
   const newRoomNameInput = document.getElementById('newRoomNameInput');
   const qrImg = document.getElementById('roomQrImage');
@@ -1264,8 +1321,8 @@ function setupModals() {
   const nativeShareBtn = document.getElementById('nativeShareBtn');
   const currentRoomSlugLabel = document.getElementById('currentRoomSlugLabel');
 
-  function openRoomModal() {
-    roomSlugInput.value = roomSlug;
+  function populateSquadHubFields() {
+    if (roomSlugInput) roomSlugInput.value = roomSlug;
     if (currentRoomSlugLabel) {
       currentRoomSlugLabel.textContent = `slug: ${roomSlug}`;
     }
@@ -1282,14 +1339,114 @@ function setupModals() {
     if (nativeShareBtn && typeof navigator.share === 'function') {
       nativeShareBtn.style.display = 'block';
     }
-    roomModal.classList.remove('hidden');
   }
 
-  document.getElementById('roomBtn').addEventListener('click', openRoomModal);
+  function selectHubTab(tabName) {
+    if (tabName === 'squad') {
+      if (tabBtnSquad) {
+        tabBtnSquad.classList.add('active');
+        tabBtnSquad.setAttribute('aria-selected', 'true');
+      }
+      if (tabBtnProfile) {
+        tabBtnProfile.classList.remove('active');
+        tabBtnProfile.setAttribute('aria-selected', 'false');
+      }
+      if (hubPaneSquad) hubPaneSquad.style.display = 'block';
+      if (hubPaneProfile) hubPaneProfile.style.display = 'none';
+      populateSquadHubFields();
+    } else {
+      if (tabBtnProfile) {
+        tabBtnProfile.classList.add('active');
+        tabBtnProfile.setAttribute('aria-selected', 'true');
+      }
+      if (tabBtnSquad) {
+        tabBtnSquad.classList.remove('active');
+        tabBtnSquad.setAttribute('aria-selected', 'false');
+      }
+      if (hubPaneProfile) hubPaneProfile.style.display = 'block';
+      if (hubPaneSquad) hubPaneSquad.style.display = 'none';
+    }
+  }
 
-  document.getElementById('closeRoomBtn').addEventListener('click', () => {
-    roomModal.classList.add('hidden');
+  if (tabBtnProfile) tabBtnProfile.addEventListener('click', () => selectHubTab('profile'));
+  if (tabBtnSquad) tabBtnSquad.addEventListener('click', () => selectHubTab('squad'));
+
+  function openHub(tab = 'profile') {
+    if (currentRoomData && currentRoomData.user_profile) {
+      if (nickInput) nickInput.value = currentRoomData.user_profile.nickname;
+      selectedColor = currentRoomData.user_profile.avatar_color;
+      document.querySelectorAll('.color-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.color === selectedColor);
+      });
+    }
+    selectHubTab(tab);
+    if (profileModal) profileModal.classList.remove('hidden');
+    if (roomModal) roomModal.classList.remove('hidden');
+  }
+
+  function closeHub() {
+    if (profileModal) profileModal.classList.add('hidden');
+    if (roomModal) roomModal.classList.add('hidden');
+  }
+
+  window.openRoomModal = () => openHub('squad');
+
+  const profileBtn = document.getElementById('profileBtn');
+  if (profileBtn) profileBtn.addEventListener('click', () => openHub('profile'));
+
+  const roomBtn = document.getElementById('roomBtn');
+  if (roomBtn) roomBtn.addEventListener('click', () => openHub('squad'));
+
+  const closeProfileBtn = document.getElementById('closeProfileBtn');
+  if (closeProfileBtn) closeProfileBtn.addEventListener('click', closeHub);
+
+  const closeRoomBtn = document.getElementById('closeRoomBtn');
+  if (closeRoomBtn) closeRoomBtn.addEventListener('click', closeHub);
+
+  // Dark / Light Mode inside profile
+  const darkBtn = document.getElementById('themeDarkBtn');
+  if (darkBtn) {
+    darkBtn.addEventListener('click', () => {
+      FlyTheme.apply('dark');
+      FlyToast.info('Dark mode enabled');
+    });
+  }
+
+  const lightBtn = document.getElementById('themeLightBtn');
+  if (lightBtn) {
+    lightBtn.addEventListener('click', () => {
+      FlyTheme.apply('light');
+      FlyToast.info('Light mode enabled');
+    });
+  }
+
+  document.querySelectorAll('.color-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      selectedColor = opt.dataset.color;
+    });
   });
+
+  const saveProfileBtn = document.getElementById('saveProfileBtn');
+  if (saveProfileBtn) {
+    saveProfileBtn.addEventListener('click', async () => {
+      const nick = nickInput.value.trim();
+      try {
+        const res = await client.post('/users/profile', {
+          nickname: nick,
+          avatar_color: selectedColor,
+        });
+        if (res && res.success) {
+          closeHub();
+          FlyToast.success('Profile updated!');
+          await loadRoomState();
+        }
+      } catch (e) {
+        FlyToast.error('Failed to save profile');
+      }
+    });
+  }
 
   // Rename Squad
   if (saveRoomNameBtn && editRoomNameInput) {
@@ -1363,26 +1520,30 @@ function setupModals() {
   }
 
   // Create New Group or Solo Quest
-  document.getElementById('createNewRoomBtn').addEventListener('click', () => {
-    const name = newRoomNameInput.value.trim();
-    if (!name) {
-      FlyToast.error('Please enter a group or solo name');
-      return;
-    }
+  const createNewRoomBtn = document.getElementById('createNewRoomBtn');
+  if (createNewRoomBtn) {
+    createNewRoomBtn.addEventListener('click', () => {
+      const name = newRoomNameInput.value.trim();
+      if (!name) {
+        FlyToast.error('Please enter a group or solo name');
+        return;
+      }
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `squad-${Date.now().toString(36)}`;
-    window.location.href = `/r/${slug}`;
-  });
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `squad-${Date.now().toString(36)}`;
+      window.location.href = `/r/${slug}`;
+    });
+  }
 
   // Join Existing
-  document.getElementById('switchRoomBtn').addEventListener('click', () => {
-    const targetSlug = roomSlugInput.value.trim().toLowerCase();
-    if (targetSlug && targetSlug !== roomSlug) {
-      window.location.href = `/r/${targetSlug}`;
-    }
-  });
-
-  window.openRoomModal = openRoomModal;
+  const switchRoomBtn = document.getElementById('switchRoomBtn');
+  if (switchRoomBtn) {
+    switchRoomBtn.addEventListener('click', () => {
+      const targetSlug = roomSlugInput.value.trim().toLowerCase();
+      if (targetSlug && targetSlug !== roomSlug) {
+        window.location.href = `/r/${targetSlug}`;
+      }
+    });
+  }
 
   // Document-level delegation for modal buttons & footer triggers
   document.addEventListener('click', (e) => {
@@ -1398,12 +1559,12 @@ function setupModals() {
     }
     if (e.target.closest('#footerShareBtn')) {
       e.preventDefault();
-      openRoomModal();
+      openHub('squad');
       return;
     }
     if (e.target.closest('#closeRoomBtn')) {
       e.preventDefault();
-      if (roomModal) roomModal.classList.add('hidden');
+      closeHub();
       return;
     }
   });
@@ -1413,7 +1574,8 @@ function setupModals() {
     if (!modal) return;
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
-        modal.classList.add('hidden');
+        closeHub();
+        if (aboutModal) aboutModal.classList.add('hidden');
       }
     });
   });
@@ -1421,13 +1583,24 @@ function setupModals() {
 
 // Progressive Web App (PWA) Registration, Shortcuts & Install Prompt
 function setupPwa() {
-  // 1. Register Service Worker
+  // 1. Register Service Worker with live update reload
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('/sw.js')
         .then((reg) => {
           console.log('✅ Tardigrade Tough PWA Service Worker active with scope:', reg.scope);
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  FlyToast.info('Updated to latest version! Reloading...', 2000);
+                  setTimeout(() => window.location.reload(), 1200);
+                }
+              });
+            }
+          });
         })
         .catch((err) => {
           console.warn('⚠️ PWA Service Worker registration error:', err);

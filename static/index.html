@@ -23,7 +23,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
 
   <link rel="stylesheet" href="/_fly/fly-base.css?v=2">
-  <link rel="stylesheet" href="/app.css?v=2.2">
+  <link rel="stylesheet" href="/app.css?v=3.0">
 </head>
 <body>
   <div class="app-container">
@@ -52,41 +52,42 @@
           <rect x="21" y="21" width="1.5" height="2" fill="#F59E0B"/>
           <rect x="23.5" y="21" width="1.5" height="2" fill="#F59E0B"/>
         </svg>
-        <span class="brand-title">TARDIGRADE TOUGH</span>
+        <div class="brand-text-col">
+          <span class="brand-title">TARDIGRADE TOUGH</span>
+          <span id="roomNameLabel" class="brand-room-sub">Pando Squad</span>
+        </div>
       </div>
       <div class="header-actions">
         <button id="headerInstallBtn" class="header-chip install-chip" title="Install Web App" style="display: none;">
           <span class="chip-icon">📲</span>
           <span class="chip-text">Install</span>
         </button>
-        <button id="roomBtn" class="header-chip room-chip" title="Switch or Create Squad">
-          <span class="chip-icon">👥</span>
-          <span id="roomNameLabel" class="chip-text">Pando Squad</span>
-        </button>
-        <button id="profileBtn" class="header-chip profile-chip" title="Profile & Settings">
+        <!-- Single Combined User & Squad Hub Button -->
+        <button id="profileBtn" class="header-chip profile-chip" title="Profile & Squad Hub">
           <span id="profileDot" class="profile-dot"></span>
           <span id="profileNick" class="chip-text">Me</span>
         </button>
+        <button id="roomBtn" style="display: none;" aria-hidden="true" title="Squad Hub"></button>
       </div>
     </header>
 
-    <!-- Primary Navigation Tabs -->
-    <nav class="main-nav-bar" role="tablist" aria-label="Main Views">
-      <button id="navQuestsBtn" class="main-nav-btn active" data-view="quests" role="tab" aria-selected="true">
-        <span class="nav-icon">🌲</span>
-        <span class="nav-label">Quests</span>
+    <!-- Sleek Swipe Navigation Screen Indicators (Replaces bulky toggle bar) -->
+    <nav class="swipe-indicator-bar" role="tablist" aria-label="Screen Indicators">
+      <button id="navQuestsBtn" class="swipe-indicator-dot active" data-view="quests" role="tab" aria-selected="true" title="Quests View">
+        <span class="swipe-dot-pill"></span>
+        <span class="swipe-dot-label">Quests</span>
       </button>
-      <button id="navLeaderboardBtn" class="main-nav-btn" data-view="leaderboard" role="tab" aria-selected="false">
-        <span class="nav-icon">🏆</span>
-        <span class="nav-label">Leaderboard</span>
+      <button id="navLeaderboardBtn" class="swipe-indicator-dot" data-view="leaderboard" role="tab" aria-selected="false" title="Leaderboard View">
+        <span class="swipe-dot-pill"></span>
+        <span class="swipe-dot-label">Podiums</span>
       </button>
-      <button id="navActivityBtn" class="main-nav-btn" data-view="activity" role="tab" aria-selected="false">
-        <span class="nav-icon">📈</span>
-        <span class="nav-label">Activity</span>
+      <button id="navActivityBtn" class="swipe-indicator-dot" data-view="activity" role="tab" aria-selected="false" title="Activity View">
+        <span class="swipe-dot-pill"></span>
+        <span class="swipe-dot-label">Activity</span>
       </button>
-      <button id="navTrophyBtn" class="main-nav-btn" data-view="trophy" role="tab" aria-selected="false">
-        <span class="nav-icon">🏛️</span>
-        <span class="nav-label">Trophies</span>
+      <button id="navTrophyBtn" class="swipe-indicator-dot" data-view="trophy" role="tab" aria-selected="false" title="Trophies View">
+        <span class="swipe-dot-pill"></span>
+        <span class="swipe-dot-label">Trophies</span>
       </button>
     </nav>
 
@@ -131,9 +132,8 @@
         </div>
       </section>
 
-      <!-- Real-time Tap-to-Cheer Bar -->
+      <!-- Real-time Tap-to-Cheer Bar (Label removed for clean horizontal layout) -->
       <section class="cheer-bar">
-        <span class="cheer-label">Cheer:</span>
         <div class="cheer-buttons">
           <button class="cheer-btn" data-emoji="💪" title="Beast Mode">💪</button>
           <button class="cheer-btn" data-emoji="🔥" title="On Fire">🔥</button>
@@ -301,26 +301,6 @@
         </div>
         <p class="view-subtitle">Squad milestones and friendly competition across all workout categories.</p>
 
-        <!-- Category Filter Tabs -->
-        <div id="lbCategoryControl" class="goal-segmented-control lb-segmented-control" role="tablist" aria-label="Leaderboard Category">
-          <button id="lbTabAll" class="goal-segment-btn active" data-cat="all" role="tab" aria-selected="true">
-            <span class="segment-emoji">⭐</span>
-            <span class="segment-title">All</span>
-          </button>
-          <button id="lbTabWeight" class="goal-segment-btn" data-cat="weight" role="tab" aria-selected="false">
-            <span class="segment-emoji">🌲</span>
-            <span class="segment-title">Weight</span>
-          </button>
-          <button id="lbTabDistance" class="goal-segment-btn" data-cat="distance" role="tab" aria-selected="false">
-            <span class="segment-emoji">🦌</span>
-            <span class="segment-title">Distance</span>
-          </button>
-          <button id="lbTabElevation" class="goal-segment-btn" data-cat="elevation" role="tab" aria-selected="false">
-            <span class="segment-emoji">🐐</span>
-            <span class="segment-title">Elevation</span>
-          </button>
-        </div>
-
         <!-- All-Categories Multi-Metric Hero Grid -->
         <div id="lbSummaryAll" class="lb-metrics-grid">
           <div class="lb-metric-tile">
@@ -339,15 +319,10 @@
             <div class="lb-tile-label">Elevation Climbed</div>
           </div>
         </div>
-
-        <!-- Single-Category Hero Metric (shown when a specific category tab is active) -->
-        <div id="lbSummarySingle" class="crew-hero-metric" style="display: none;">
-          <span id="leaderboardTotalTonnage" class="hero-metric-val">0 lbs</span>
-          <span id="lbSingleMetricLabel" class="hero-metric-label">Total Crew Tonnage Lifted</span>
-        </div>
       </div>
 
-      <div id="leaderboardList" class="leaderboard-list">
+      <!-- Vertical Category Leaderboard Sections (All visible vertically without sliding) -->
+      <div id="leaderboardList" class="leaderboard-vertical-sections">
         <!-- Injected dynamically -->
       </div>
 
@@ -455,23 +430,15 @@
       </div>
     </main>
 
-    <!-- Persistent Global Footer -->
+    <!-- Persistent Pinned Global Footer with Understated Status & Underlined Links -->
     <footer class="app-footer">
-      <div class="footer-links-cluster">
-        <button id="footerAboutBtn" class="footer-pill-btn footer-link-btn" type="button" title="Learn about Tardigrade Tough">
-          <span class="pill-dot">ℹ️</span>
-          <span>About & Lore</span>
-        </button>
-        <button id="footerShareBtn" class="footer-pill-btn footer-link-btn" type="button" title="Share Squad">
-          <span class="pill-dot">🔗</span>
-          <span>Share Squad</span>
-        </button>
-      </div>
-      <div class="footer-meta-row">
+      <div class="footer-status-row">
         <span id="footerStatusDot" class="status-dot-small">●</span>
         <span id="footerStatusText">Online & Syncing</span>
-        <span class="footer-meta-sep">•</span>
-        <span class="footer-meta-tag">v1.2</span>
+        <span class="footer-sep">•</span>
+        <button id="footerAboutBtn" class="footer-text-link" type="button">About & Lore</button>
+        <span class="footer-sep">•</span>
+        <button id="footerShareBtn" class="footer-text-link" type="button">Share Squad</button>
       </div>
     </footer>
   </div>
@@ -519,110 +486,120 @@
     </div>
   </div>
 
-  <!-- Profile & Settings Modal -->
+  <!-- Unified User Profile & Squad Hub Modal -->
   <div id="profileModal" class="modal-backdrop hidden">
-    <div class="modal-box">
-      <h3 class="modal-title">👤 Your Gym Profile & Preferences</h3>
-      <div class="form-group">
-        <label class="form-label">Display Nickname</label>
-        <input id="nickInput" type="text" class="form-input" placeholder="Your Name or Call-sign" maxlength="24">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Avatar Accent Color</label>
-        <div id="colorPickerRow" class="color-picker-row">
-          <div class="color-option selected" data-color="#10b981" style="background: #10b981;"></div>
-          <div class="color-option" data-color="#3b82f6" style="background: #3b82f6;"></div>
-          <div class="color-option" data-color="#f59e0b" style="background: #f59e0b;"></div>
-          <div class="color-option" data-color="#ec4899" style="background: #ec4899;"></div>
-          <div class="color-option" data-color="#8b5cf6" style="background: #8b5cf6;"></div>
-          <div class="color-option" data-color="#06b6d4" style="background: #06b6d4;"></div>
-        </div>
-      </div>
-      <div class="form-group" style="margin-top: 16px;">
-        <label class="form-label">Appearance Theme</label>
-        <div style="display: flex; gap: 8px;">
-          <button id="themeDarkBtn" class="btn btn-secondary" style="flex: 1;">🌙 Dark Mode</button>
-          <button id="themeLightBtn" class="btn btn-secondary" style="flex: 1;">☀️ Light Mode</button>
-        </div>
-      </div>
-      <div id="profilePwaGroup" class="form-group" style="margin-top: 16px;">
-        <label class="form-label">Progressive Web App</label>
-        <button id="pwaInstallBtn" class="btn btn-secondary" style="width: 100%; display: none; align-items: center; justify-content: center; gap: 8px;">
-          <span>📲</span> Install App to Device
+    <div class="modal-box hub-modal-box">
+      <!-- Top Modal Tab Bar -->
+      <div class="modal-tab-bar" role="tablist" aria-label="Settings Tabs">
+        <button id="tabBtnProfile" class="modal-tab-btn active" role="tab" aria-selected="true">
+          <span>👤</span>
+          <span>My Profile</span>
+        </button>
+        <button id="tabBtnSquad" class="modal-tab-btn" role="tab" aria-selected="false">
+          <span>👥</span>
+          <span>Squad & Rooms</span>
         </button>
       </div>
-      <div class="action-buttons-row" style="margin-top: 18px;">
-        <button id="closeProfileBtn" class="btn btn-secondary">Cancel</button>
-        <button id="saveProfileBtn" class="btn btn-primary">Save Profile</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- Crew Hub / Create Group / Solo Modal -->
-  <div id="roomModal" class="modal-backdrop hidden">
-    <div class="modal-box">
-      <h3 class="modal-title">👥 Crew & Group Hub</h3>
-      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
-        Collaborate with friends, rename your squad, invite workout partners, or track solo!
-      </p>
-
-      <!-- Section 1: Rename Current Squad -->
-      <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
-        <label class="form-label" style="color: var(--accent-green); display: flex; justify-content: space-between;">
-          <span>✏️ Current Squad Name</span>
-          <small id="currentRoomSlugLabel" style="color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem;">slug: main</small>
-        </label>
-        <div style="display: flex; gap: 6px;">
-          <input id="editRoomNameInput" type="text" class="form-input" placeholder="Squad Name" maxlength="50">
-          <button id="saveRoomNameBtn" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;">
-            Save Name
-          </button>
+      <!-- Tab Pane 1: User Profile -->
+      <div id="hubPaneProfile" class="hub-tab-pane active">
+        <div class="form-group">
+          <label class="form-label">Display Nickname</label>
+          <input id="nickInput" type="text" class="form-input" placeholder="Your Name or Call-sign" maxlength="24">
         </div>
-      </div>
-
-      <!-- Section 2: Share Current Squad -->
-      <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
-        <label class="form-label" style="color: #60a5fa;">🔗 Share Squad Invite Link</label>
-        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-          <input id="shareRoomUrlInput" type="text" class="form-input" readonly style="font-size: 0.78rem; font-family: var(--font-mono); background: var(--bg-surface);">
-          <button id="copyRoomUrlBtn" class="btn btn-secondary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;">
-            📋 Copy
-          </button>
-        </div>
-        <button id="nativeShareBtn" class="btn btn-secondary" style="width: 100%; display: none; margin-bottom: 8px; font-size: 0.82rem;">
-          📲 Share via Apps / Messages
-        </button>
-        <div style="text-align: center; margin-top: 8px;">
-          <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Scan with Phone to Join:</span>
-          <div style="display: flex; justify-content: center;">
-            <img id="roomQrImage" src="" alt="Room QR Code" style="width: 130px; height: 130px; background: #fff; border-radius: var(--radius-md); padding: 6px;">
+        <div class="form-group">
+          <label class="form-label">Avatar Accent Color</label>
+          <div id="colorPickerRow" class="color-picker-row">
+            <div class="color-option selected" data-color="#10b981" style="background: #10b981;"></div>
+            <div class="color-option" data-color="#3b82f6" style="background: #3b82f6;"></div>
+            <div class="color-option" data-color="#f59e0b" style="background: #f59e0b;"></div>
+            <div class="color-option" data-color="#ec4899" style="background: #ec4899;"></div>
+            <div class="color-option" data-color="#8b5cf6" style="background: #8b5cf6;"></div>
+            <div class="color-option" data-color="#06b6d4" style="background: #06b6d4;"></div>
           </div>
         </div>
-      </div>
-
-      <!-- Section 3: Start New Crew or Solo Quest -->
-      <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
-        <label class="form-label" style="color: var(--accent-amber);">✨ Start New Crew or Solo Quest</label>
-        <input id="newRoomNameInput" type="text" class="form-input" placeholder="e.g. Sally's Bio Squad or Solo Tonnage">
-        <button id="createNewRoomBtn" class="btn btn-secondary" style="width: 100%; margin-top: 8px; font-size: 0.85rem;">
-          Create New Group
-        </button>
-      </div>
-
-      <!-- Section 4: Join by Slug -->
-      <div class="form-group">
-        <label class="form-label">Join Existing Group by Code / Slug</label>
-        <div style="display: flex; gap: 6px;">
-          <input id="roomSlugInput" type="text" class="form-input" placeholder="e.g. main or aspen-crew">
-          <button id="switchRoomBtn" class="btn btn-secondary" style="white-space: nowrap;">Join</button>
+        <div class="form-group" style="margin-top: 16px;">
+          <label class="form-label">Appearance Theme</label>
+          <div style="display: flex; gap: 8px;">
+            <button id="themeDarkBtn" class="btn btn-secondary" style="flex: 1;">🌙 Dark Mode</button>
+            <button id="themeLightBtn" class="btn btn-secondary" style="flex: 1;">☀️ Light Mode</button>
+          </div>
+        </div>
+        <div id="profilePwaGroup" class="form-group" style="margin-top: 16px;">
+          <label class="form-label">Progressive Web App</label>
+          <button id="pwaInstallBtn" class="btn btn-secondary" style="width: 100%; display: none; align-items: center; justify-content: center; gap: 8px;">
+            <span>📲</span> Install App to Device
+          </button>
+        </div>
+        <div class="action-buttons-row" style="margin-top: 18px;">
+          <button id="closeProfileBtn" class="btn btn-secondary">Close</button>
+          <button id="saveProfileBtn" class="btn btn-primary">Save Profile</button>
         </div>
       </div>
 
-      <div class="action-buttons-row" style="margin-top: 14px;">
-        <button id="closeRoomBtn" class="btn btn-secondary" style="width: 100%;">Close</button>
+      <!-- Tab Pane 2: Squad Settings & Sharing -->
+      <div id="hubPaneSquad" class="hub-tab-pane" style="display: none;">
+        <!-- Section 1: Rename Current Squad -->
+        <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
+          <label class="form-label" style="color: var(--accent-green); display: flex; justify-content: space-between;">
+            <span>✏️ Current Squad Name</span>
+            <small id="currentRoomSlugLabel" style="color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem;">slug: main</small>
+          </label>
+          <div style="display: flex; gap: 6px;">
+            <input id="editRoomNameInput" type="text" class="form-input" placeholder="Squad Name" maxlength="50">
+            <button id="saveRoomNameBtn" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;">
+              Save Name
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 2: Share Current Squad -->
+        <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
+          <label class="form-label" style="color: #60a5fa;">🔗 Share Squad Invite Link</label>
+          <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+            <input id="shareRoomUrlInput" type="text" class="form-input" readonly style="font-size: 0.78rem; font-family: var(--font-mono); background: var(--bg-surface);">
+            <button id="copyRoomUrlBtn" class="btn btn-secondary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;">
+              📋 Copy
+            </button>
+          </div>
+          <button id="nativeShareBtn" class="btn btn-secondary" style="width: 100%; display: none; margin-bottom: 8px; font-size: 0.82rem;">
+            📲 Share via Apps / Messages
+          </button>
+          <div style="text-align: center; margin-top: 8px;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Scan with Phone to Join:</span>
+            <div style="display: flex; justify-content: center;">
+              <img id="roomQrImage" src="" alt="Room QR Code" style="width: 130px; height: 130px; background: #fff; border-radius: var(--radius-md); padding: 6px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Start New Crew or Solo Quest -->
+        <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
+          <label class="form-label" style="color: var(--accent-amber);">✨ Start New Crew or Solo Quest</label>
+          <input id="newRoomNameInput" type="text" class="form-input" placeholder="e.g. Sally's Bio Squad or Solo Tonnage">
+          <button id="createNewRoomBtn" class="btn btn-secondary" style="width: 100%; margin-top: 8px; font-size: 0.85rem;">
+            Create New Group
+          </button>
+        </div>
+
+        <!-- Section 4: Join by Slug -->
+        <div class="form-group">
+          <label class="form-label">Join Existing Group by Code / Slug</label>
+          <div style="display: flex; gap: 6px;">
+            <input id="roomSlugInput" type="text" class="form-input" placeholder="e.g. main or aspen-crew">
+            <button id="switchRoomBtn" class="btn btn-secondary" style="white-space: nowrap;">Join</button>
+          </div>
+        </div>
+
+        <div class="action-buttons-row" style="margin-top: 14px;">
+          <button id="closeRoomBtn" class="btn btn-secondary" style="width: 100%;">Close</button>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Backward-compatible invisible roomModal container -->
+  <div id="roomModal" class="modal-backdrop hidden" style="display: none;" aria-hidden="true"></div>
 
   <!-- About & Lore Modal -->
   <div id="aboutModal" class="modal-backdrop hidden">
@@ -710,6 +687,6 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=2.2"></script>
+  <script type="module" src="/app.js?v=3.0"></script>
 </body>
 </html>
