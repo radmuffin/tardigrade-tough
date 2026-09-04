@@ -328,6 +328,14 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(card).toContainText('San Francisco suspension landmark');
   });
 
+  test('navigates directly from Quests view to Trophy Room wishlist using Squad Wishlist button', async ({ page }) => {
+    await expect(page.locator('#viewQuests')).toBeVisible();
+    await expect(page.locator('#viewWishlistFromQuestsBtn')).toBeVisible();
+    await page.click('#viewWishlistFromQuestsBtn');
+    await expect(page.locator('#viewTrophy')).toBeVisible();
+    await expect(page.locator('#wishlistSection')).toBeVisible();
+  });
+
   test('configures PWA manifest, meta tags, and mobile capabilities', async ({ page }) => {
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(manifestHref).toBe('/manifest.json');

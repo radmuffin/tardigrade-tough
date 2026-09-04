@@ -124,7 +124,18 @@ function setupViewNavigation() {
       if (views[target]) {
         e.preventDefault();
         switchView(target);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (connBtn.dataset.scrollto) {
+          setTimeout(() => {
+            const el = document.getElementById(connBtn.dataset.scrollto);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.classList.add('highlight-pulse');
+              setTimeout(() => el.classList.remove('highlight-pulse'), 1600);
+            }
+          }, 80);
+        } else {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       }
     }
   });
@@ -478,6 +489,11 @@ function renderWishlists() {
   const container = document.getElementById('wishlistCardsContainer');
   if (!container || !currentRoomData) return;
   const list = currentRoomData.wishlists || [];
+
+  const countLabel = document.getElementById('questsWishlistCountLabel');
+  if (countLabel) {
+    countLabel.textContent = `Squad Wishlist (${list.length})`;
+  }
 
   if (list.length === 0) {
     container.innerHTML = `
@@ -1650,7 +1666,7 @@ function setupModals() {
         });
 
         if (res && res.success) {
-          FlyToast.success(`✨ Proposed "${title}" for squad wishlist!`);
+          FlyToast.success(`✨ Proposed "${title}"! View it on the Squad Wishlist in Trophy Room.`);
           closeWishlistModal();
           await loadRoomState();
         } else {
