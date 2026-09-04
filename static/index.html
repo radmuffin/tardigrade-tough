@@ -22,8 +22,8 @@
   <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
 
-  <link rel="stylesheet" href="/_fly/fly-base.css">
-  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/_fly/fly-base.css?v=2">
+  <link rel="stylesheet" href="/app.css?v=2.2">
 </head>
 <body>
   <div class="app-container">
@@ -269,22 +269,22 @@
 
       <!-- Connective Navigation Strip -->
       <section class="connective-nav-card">
-        <span class="connective-nav-title">🧭 Crew Navigation</span>
-        <div class="connective-nav-grid">
-          <button class="connective-btn" data-target="leaderboard">
-            <span class="conn-icon">🏆</span>
-            <span class="conn-text"><strong>Leaderboard Podiums</strong><small>Rankings & category breakdowns</small></span>
-            <span class="conn-arrow">›</span>
+        <span class="connective-nav-title">⚡ Squad Hubs</span>
+        <div class="connective-pills-grid">
+          <button class="connective-pill-card connective-btn" data-target="leaderboard">
+            <span class="pill-card-icon">🏆</span>
+            <span class="pill-card-title">Podiums</span>
+            <span class="pill-card-sub">Rankings</span>
           </button>
-          <button class="connective-btn" data-target="activity">
-            <span class="conn-icon">📈</span>
-            <span class="conn-text"><strong>Live Activity Feed</strong><small>Recent sets & personal logs</small></span>
-            <span class="conn-arrow">›</span>
+          <button class="connective-pill-card connective-btn" data-target="activity">
+            <span class="pill-card-icon">⚡</span>
+            <span class="pill-card-title">Live Feed</span>
+            <span class="pill-card-sub">Recent Sets</span>
           </button>
-          <button class="connective-btn" data-target="trophy">
-            <span class="conn-icon">🏛️</span>
-            <span class="conn-text"><strong>Trophy Hall</strong><small>Conquered Blue Whale & milestones</small></span>
-            <span class="conn-arrow">›</span>
+          <button class="connective-pill-card connective-btn" data-target="trophy">
+            <span class="pill-card-icon">🏛️</span>
+            <span class="pill-card-title">Trophies</span>
+            <span class="pill-card-sub">Conquests</span>
           </button>
         </div>
       </section>
@@ -305,7 +305,7 @@
         <div id="lbCategoryControl" class="goal-segmented-control lb-segmented-control" role="tablist" aria-label="Leaderboard Category">
           <button id="lbTabAll" class="goal-segment-btn active" data-cat="all" role="tab" aria-selected="true">
             <span class="segment-emoji">⭐</span>
-            <span class="segment-title">All Categories</span>
+            <span class="segment-title">All</span>
           </button>
           <button id="lbTabWeight" class="goal-segment-btn" data-cat="weight" role="tab" aria-selected="false">
             <span class="segment-emoji">🌲</span>
@@ -356,11 +356,11 @@
         <div class="connective-action-content">
           <h4>⚡ Ready to Move Up the Podiums?</h4>
           <p>Every rep, mile, and flight of stairs elevates your crew position.</p>
-          <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
-            <button class="btn btn-primary connective-btn" data-target="quests" style="flex: 1; min-width: 140px; justify-content: center; font-size: 0.85rem;">
+          <div class="connective-action-buttons">
+            <button class="btn btn-primary connective-btn" data-target="quests">
               🏋️ Log a Workout Set
             </button>
-            <button class="btn btn-secondary connective-btn" data-target="activity" style="flex: 1; min-width: 140px; justify-content: center; font-size: 0.85rem;">
+            <button class="btn btn-secondary connective-btn" data-target="activity">
               📈 View Activity Feed
             </button>
           </div>
@@ -455,15 +455,23 @@
       </div>
     </main>
 
-    <!-- Minimal Subtle Footer Status with Connective Links -->
+    <!-- Persistent Global Footer -->
     <footer class="app-footer">
-      <div class="footer-status-row">
+      <div class="footer-links-cluster">
+        <button id="footerAboutBtn" class="footer-pill-btn footer-link-btn" type="button" title="Learn about Tardigrade Tough">
+          <span class="pill-dot">ℹ️</span>
+          <span>About & Lore</span>
+        </button>
+        <button id="footerShareBtn" class="footer-pill-btn footer-link-btn" type="button" title="Share Squad">
+          <span class="pill-dot">🔗</span>
+          <span>Share Squad</span>
+        </button>
+      </div>
+      <div class="footer-meta-row">
         <span id="footerStatusDot" class="status-dot-small">●</span>
         <span id="footerStatusText">Online & Syncing</span>
-        <span class="footer-sep">•</span>
-        <button id="footerAboutBtn" class="footer-link-btn" title="Learn about Tardigrade Tough">ℹ️ About & Quests</button>
-        <span class="footer-sep">•</span>
-        <button id="footerShareBtn" class="footer-link-btn" title="Share Squad">🔗 Share Squad</button>
+        <span class="footer-meta-sep">•</span>
+        <span class="footer-meta-tag">v1.2</span>
       </div>
     </footer>
   </div>
@@ -702,6 +710,6 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="/app.js?v=2.2"></script>
 </body>
 </html>

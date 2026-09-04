@@ -96,19 +96,25 @@ function setupViewNavigation() {
     }
   }
 
+  window.switchView = switchView;
+
   Object.keys(navBtns).forEach(k => {
-    navBtns[k].addEventListener('click', () => switchView(k));
+    if (navBtns[k]) {
+      navBtns[k].addEventListener('click', () => switchView(k));
+    }
   });
 
-  // Connective navigation across screens
-  document.querySelectorAll('.connective-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const target = e.currentTarget.dataset.target;
-      if (target && views[target]) {
+  // Connective navigation across screens with robust delegation
+  document.addEventListener('click', (e) => {
+    const connBtn = e.target.closest('.connective-btn, .connective-pill-card, [data-target]');
+    if (connBtn && connBtn.dataset && connBtn.dataset.target) {
+      const target = connBtn.dataset.target;
+      if (views[target]) {
+        e.preventDefault();
         switchView(target);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
-    });
+    }
   });
 }
 
@@ -223,6 +229,17 @@ async function loadRoomState() {
     const res = await client.get(`/room/${roomSlug}`);
     if (res && res.success) {
       currentRoomData = res.data;
+
+      // Ensure active_goals are in the exact order as the visual tabs: Pando -> Everest -> Caribou
+      if (currentRoomData && currentRoomData.active_goals) {
+        const themeOrder = ['pando', 'everest', 'caribou'];
+        currentRoomData.active_goals.sort((a, b) => {
+          const ia = themeOrder.indexOf(a.theme_key);
+          const ib = themeOrder.indexOf(b.theme_key);
+          return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        });
+      }
+
       renderAll();
     }
   } catch (err) {
@@ -1365,27 +1382,31 @@ function setupModals() {
     }
   });
 
-  // About Modal & Footer Actions
-  const aboutModal = document.getElementById('aboutModal');
-  const closeAboutBtn = document.getElementById('closeAboutBtn');
-  const footerAboutBtn = document.getElementById('footerAboutBtn');
-  const footerShareBtn = document.getElementById('footerShareBtn');
+  window.openRoomModal = openRoomModal;
 
-  if (footerAboutBtn && aboutModal) {
-    footerAboutBtn.addEventListener('click', () => {
-      aboutModal.classList.remove('hidden');
-    });
-  }
-
-  if (closeAboutBtn && aboutModal) {
-    closeAboutBtn.addEventListener('click', () => {
-      aboutModal.classList.add('hidden');
-    });
-  }
-
-  if (footerShareBtn) {
-    footerShareBtn.addEventListener('click', openRoomModal);
-  }
+  // Document-level delegation for modal buttons & footer triggers
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#footerAboutBtn')) {
+      e.preventDefault();
+      if (aboutModal) aboutModal.classList.remove('hidden');
+      return;
+    }
+    if (e.target.closest('#closeAboutBtn')) {
+      e.preventDefault();
+      if (aboutModal) aboutModal.classList.add('hidden');
+      return;
+    }
+    if (e.target.closest('#footerShareBtn')) {
+      e.preventDefault();
+      openRoomModal();
+      return;
+    }
+    if (e.target.closest('#closeRoomBtn')) {
+      e.preventDefault();
+      if (roomModal) roomModal.classList.add('hidden');
+      return;
+    }
+  });
 
   // Close modals when clicking backdrop outside modal-box
   [profileModal, roomModal, aboutModal].forEach(modal => {

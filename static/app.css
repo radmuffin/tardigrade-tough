@@ -413,6 +413,12 @@ body {
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.cheer-buttons::-webkit-scrollbar {
+  display: none;
 }
 
 .cheer-btn {
@@ -1086,116 +1092,186 @@ body {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 14px 16px;
+  padding: 14px 14px;
   margin-top: 16px;
   box-shadow: var(--shadow-card);
 }
 
 .connective-nav-title {
   display: block;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-muted);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
-.connective-nav-grid {
-  display: flex;
-  flex-direction: column;
+.connective-pills-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
-.connective-btn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.connective-pill-card {
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 10px 14px;
-  color: var(--text-primary);
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   cursor: pointer;
-  text-align: left;
   transition: all 0.15s ease;
+  user-select: none;
   width: 100%;
 }
 
-.connective-btn:active {
-  transform: scale(0.98);
+.connective-pill-card:active {
+  background: var(--bg-surface);
+  border-color: var(--accent-green);
+  transform: scale(0.96);
 }
 
-.connective-btn .conn-icon {
-  font-size: 1.25rem;
-  margin-right: 12px;
-  flex-shrink: 0;
-}
-
-.connective-btn .conn-text {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.connective-btn .conn-text strong {
-  font-size: 0.88rem;
-  color: var(--text-primary);
-}
-
-.connective-btn .conn-text small {
-  font-size: 0.74rem;
-  color: var(--text-muted);
-}
-
-.connective-btn .conn-arrow {
+.pill-card-icon {
   font-size: 1.2rem;
+  margin-bottom: 2px;
+}
+
+.pill-card-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.pill-card-sub {
+  font-size: 0.64rem;
   color: var(--text-muted);
-  font-weight: 700;
+  margin-top: 2px;
 }
 
 .connective-action-card {
-  background: var(--bg-surface);
+  background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-elevated) 100%);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 14px 16px;
   margin-top: 16px;
   text-align: center;
   box-shadow: var(--shadow-card);
 }
 
 .connective-action-content h4 {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   color: var(--text-primary);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .connective-action-content p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.connective-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.connective-action-buttons .btn {
+  flex: 1;
+  min-height: 42px;
+  min-width: 130px;
   font-size: 0.82rem;
+  padding: 8px 12px;
+  justify-content: center;
+}
+
+/* Category segmented control responsive tuning */
+.lb-segmented-control {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.lb-segmented-control::-webkit-scrollbar {
+  display: none;
+}
+
+.lb-segmented-control .goal-segment-btn {
+  padding: 7px 6px;
+  font-size: 0.75rem;
+  gap: 4px;
+}
+
+/* App Footer Styling */
+.app-footer {
+  margin-top: 28px;
+  padding: 16px 16px max(24px, env(safe-area-inset-bottom, 24px));
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+}
+
+.footer-links-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.footer-pill-btn,
+.footer-link-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  user-select: none;
+  text-decoration: none;
+}
+
+.footer-pill-btn:hover,
+.footer-link-btn:hover,
+.footer-pill-btn:active,
+.footer-link-btn:active {
+  background: var(--bg-elevated);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+  transform: translateY(-1px);
+}
+
+.footer-meta-row,
+.footer-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.72rem;
   color: var(--text-muted);
 }
 
-/* Footer Link Buttons */
-.footer-link-btn {
-  background: transparent;
-  border: none;
-  color: var(--accent-green);
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 2px 4px;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.footer-link-btn:hover {
-  color: #34d399;
-}
-
+.footer-meta-sep,
 .footer-sep {
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
 }
 
 /* About Modal Styling */

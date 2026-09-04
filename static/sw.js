@@ -4,7 +4,7 @@
  * and offline fallback for SPA routing.
  */
 
-const CACHE_NAME = 'tardigrade-tough-v1';
+const CACHE_NAME = 'tardigrade-tough-v2';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -109,7 +109,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Static Assets (CSS, JS, images, SVG, icons)
+  // 4. Critical App Scripts & Styles (.css, .js)
+  // Network-First with cache fallback so fresh updates apply immediately without stale locks
+  if (url.pathname.endsWith('.css') || url.pathname.endsWith('.js')) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          return caches.match(url.pathname);
+        })
+    );
+    return;
+  }
+
+  // 5. Static Media Assets (Images, SVG, Icons, Fonts)
   // Stale-While-Revalidate strategy
   event.respondWith(
     caches.match(request).then((cachedResponse) => {

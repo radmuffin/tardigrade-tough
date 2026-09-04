@@ -84,6 +84,31 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#heroGoalTarget')).toContainText('3,000');
   });
 
+  test('cycles through active goals with arrow navigators in correct direction', async ({ page }) => {
+    await page.click('#goalTabPando');
+    await expect(page.locator('#heroGoalTitle')).toContainText('Pando');
+
+    // Click right arrow (next) -> moves right to Everest
+    await page.click('#nextGoalBtn');
+    await expect(page.locator('#heroGoalTitle')).toContainText('Everest');
+    await expect(page.locator('#goalTabEverest')).toHaveClass(/active/);
+
+    // Click right arrow (next) -> moves right to Caribou
+    await page.click('#nextGoalBtn');
+    await expect(page.locator('#heroGoalTitle')).toContainText('Caribou');
+    await expect(page.locator('#goalTabCaribou')).toHaveClass(/active/);
+
+    // Click left arrow (prev) -> moves left back to Everest
+    await page.click('#prevGoalBtn');
+    await expect(page.locator('#heroGoalTitle')).toContainText('Everest');
+    await expect(page.locator('#goalTabEverest')).toHaveClass(/active/);
+
+    // Click left arrow (prev) -> moves left back to Pando
+    await page.click('#prevGoalBtn');
+    await expect(page.locator('#heroGoalTitle')).toContainText('Pando');
+    await expect(page.locator('#goalTabPando')).toHaveClass(/active/);
+  });
+
   test('updates impact value when adjusting stepper weight and reps', async ({ page }) => {
     const weightInput = page.locator('#stepperWeight');
     const repsInput = page.locator('#stepperReps');
