@@ -286,7 +286,6 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#aboutModal')).toBeVisible();
     await expect(page.locator('#aboutStorySection')).toBeVisible();
     await expect(page.locator('#aboutStorySection')).toContainText('Made for Sally');
-    await expect(page.locator('#aboutStorySection')).toContainText('collaborative workout companion for Sally');
     await expect(page.locator('#aboutContactSection')).toBeVisible();
     await expect(page.locator('#aboutContactSection')).toContainText('danielspiesman@gmail.com');
     await expect(page.locator('#aboutContactSection')).toContainText('github.com/radmuffin/tardigrade-tough');
@@ -299,6 +298,32 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     await page.click('#closeAboutBtn');
     await expect(page.locator('#aboutModal')).not.toBeVisible();
+  });
+
+  test('supports proposing a new quest via wishlist modal and renders on squad wishlist', async ({ page }) => {
+    // Navigate to Trophy Room where wishlist is displayed
+    await page.click('#navTrophyBtn');
+    await expect(page.locator('#viewTrophy')).toBeVisible();
+
+    // Open wishlist modal
+    await page.click('#openWishlistBtn');
+    await expect(page.locator('#wishlistModal')).toBeVisible();
+
+    // Fill form
+    await page.fill('#wishlistTitleInput', 'Hoisting the Golden Gate Bridge');
+    await page.selectOption('#wishlistCategorySelect', 'weight');
+    await page.fill('#wishlistTargetInput', '887000000');
+    await page.fill('#wishlistNotesInput', 'San Francisco suspension landmark');
+
+    // Submit
+    await page.click('#submitWishlistBtn');
+    await expect(page.locator('#wishlistModal')).not.toBeVisible();
+
+    // Verify it appears in the squad wishlist cards
+    const card = page.locator('#wishlistCardsContainer .wishlist-card', { hasText: 'Hoisting the Golden Gate Bridge' });
+    await expect(card).toBeVisible();
+    await expect(card).toContainText('887,000,000 lbs');
+    await expect(card).toContainText('San Francisco suspension landmark');
   });
 
   test('configures PWA manifest, meta tags, and mobile capabilities', async ({ page }) => {

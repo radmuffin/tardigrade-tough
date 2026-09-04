@@ -377,6 +377,9 @@ function renderAll() {
 
   // Render Trophy Room
   renderTrophyRoom();
+
+  // Render Squad Wishlist Proposals
+  renderWishlists();
 }
 
 function renderGoalShowcase() {
@@ -469,6 +472,40 @@ function renderTrophyRoom() {
       trophyDiorama.setTheme(trophy.theme_key, 1.0);
     }
   }
+}
+
+function renderWishlists() {
+  const container = document.getElementById('wishlistCardsContainer');
+  if (!container || !currentRoomData) return;
+  const list = currentRoomData.wishlists || [];
+
+  if (list.length === 0) {
+    container.innerHTML = `
+      <div class="wishlist-empty-box">
+        No quest proposals yet! Tap <strong>+ Propose Goal</strong> to suggest the crew's next colossal benchmark.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = list.map(item => {
+    const cat = item.category || 'weight';
+    const catEmoji = cat === 'weight' ? '🏋️' : cat === 'distance' ? '🏃' : '🧗';
+    const safeTitle = FlyToast.escape(item.title);
+    const safeNotes = item.notes ? FlyToast.escape(item.notes) : '';
+    return `
+      <div class="wishlist-card">
+        <div class="wishlist-header-row">
+          <span class="wishlist-card-title">${safeTitle}</span>
+          <span class="wishlist-cat-badge ${cat}">${catEmoji} ${cat}</span>
+        </div>
+        <div class="wishlist-meta-row">
+          <span>Target: <span class="wishlist-target-num">${formatNumber(item.target_value)} ${item.unit}</span></span>
+        </div>
+        ${safeNotes ? `<div class="wishlist-notes-text">“${safeNotes}”</div>` : ''}
+      </div>
+    `;
+  }).join('');
 }
 
 function renderLeaderboard() {
@@ -732,6 +769,11 @@ function handleWsEvent(msg) {
       if (msg.sender_token !== client.token) {
         FlyToast.success(`${act.user_nickname} hoisted ${metricLabel}!`);
       }
+    }
+  } else if (msg.event === 'wishlist_added') {
+    loadRoomState();
+    if (msg.payload && msg.payload.item && msg.sender_token !== client.token) {
+      FlyToast.info(`✨ New quest proposed: "${msg.payload.item.title}"`);
     }
   }
 }
@@ -1545,8 +1587,94 @@ function setupModals() {
     });
   }
 
+  // Wishlist Modal Handling
+  const wishlistModal = document.getElementById('wishlistModal');
+  const wishlistCatSelect = document.getElementById('wishlistCategorySelect');
+  const wishlistUnitSelect = document.getElementById('wishlistUnitSelect');
+  const wishlistForm = document.getElementById('wishlistForm');
+
+  function openWishlistModal() {
+    if (wishlistModal) {
+      wishlistModal.classList.remove('hidden');
+      const titleInput = document.getElementById('wishlistTitleInput');
+      if (titleInput) {
+        titleInput.value = '';
+        setTimeout(() => titleInput.focus(), 80);
+      }
+      const targetInput = document.getElementById('wishlistTargetInput');
+      if (targetInput) targetInput.value = '';
+      const notesInput = document.getElementById('wishlistNotesInput');
+      if (notesInput) notesInput.value = '';
+    }
+  }
+
+  function closeWishlistModal() {
+    if (wishlistModal) wishlistModal.classList.add('hidden');
+  }
+
+  if (wishlistCatSelect && wishlistUnitSelect) {
+    wishlistCatSelect.addEventListener('change', () => {
+      const cat = wishlistCatSelect.value;
+      if (cat === 'weight') wishlistUnitSelect.value = 'lbs';
+      else if (cat === 'distance') wishlistUnitSelect.value = 'mi';
+      else if (cat === 'elevation') wishlistUnitSelect.value = 'ft';
+    });
+  }
+
+  if (wishlistForm) {
+    wishlistForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('wishlistTitleInput')?.value?.trim();
+      const category = wishlistCatSelect?.value || 'weight';
+      const unit = wishlistUnitSelect?.value || 'lbs';
+      const targetVal = parseFloat(document.getElementById('wishlistTargetInput')?.value);
+      const notes = document.getElementById('wishlistNotesInput')?.value?.trim() || '';
+
+      if (!title) {
+        FlyToast.error('Please enter a quest title');
+        return;
+      }
+      if (isNaN(targetVal) || targetVal <= 0) {
+        FlyToast.error('Target value must be greater than 0');
+        return;
+      }
+
+      try {
+        const res = await client.post('/goals/wishlist', {
+          room_slug: roomSlug,
+          title,
+          category,
+          target_value: targetVal,
+          unit,
+          notes,
+        });
+
+        if (res && res.success) {
+          FlyToast.success(`✨ Proposed "${title}" for squad wishlist!`);
+          closeWishlistModal();
+          await loadRoomState();
+        } else {
+          FlyToast.error(res?.error || 'Failed to submit proposal');
+        }
+      } catch (err) {
+        console.error('Wishlist error:', err);
+        FlyToast.error('Failed to submit proposal');
+      }
+    });
+  }
+
   // Document-level delegation for modal buttons & footer triggers
   document.addEventListener('click', (e) => {
+    if (e.target.closest('#openWishlistBtn') || e.target.closest('#openWishlistFromQuestsBtn')) {
+      e.preventDefault();
+      openWishlistModal();
+      return;
+    }
+    if (e.target.closest('#closeWishlistBtn')) {
+      e.preventDefault();
+      closeWishlistModal();
+      return;
+    }
     if (e.target.closest('#footerAboutBtn')) {
       e.preventDefault();
       if (aboutModal) aboutModal.classList.remove('hidden');
@@ -1583,12 +1711,13 @@ function setupModals() {
   });
 
   // Close modals when clicking backdrop outside modal-box
-  [profileModal, roomModal, aboutModal].forEach(modal => {
+  [profileModal, roomModal, aboutModal, wishlistModal].forEach(modal => {
     if (!modal) return;
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         closeHub();
         if (aboutModal) aboutModal.classList.add('hidden');
+        if (wishlistModal) wishlistModal.classList.add('hidden');
       }
     });
   });

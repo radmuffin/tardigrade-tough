@@ -132,6 +132,12 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         [],
     )?;
 
+    // Self-heal any goals marked completed where current_value is actually below target_value (e.g. after activity deletions)
+    conn.execute(
+        "UPDATE goals SET status = 'active' WHERE current_value < target_value AND status = 'completed'",
+        [],
+    )?;
+
     Ok(())
 }
 
@@ -302,6 +308,12 @@ pub fn update_user_profile(
 }
 
 pub fn get_goals_for_room(conn: &Connection, room_slug: &str) -> Result<(Vec<Goal>, Vec<Goal>)> {
+    // Ensure any goal whose current_value is below target is active
+    let _ = conn.execute(
+        "UPDATE goals SET status = 'active' WHERE room_slug = ? AND current_value < target_value AND status = 'completed'",
+        params![room_slug],
+    );
+
     let mut stmt = conn.prepare(
         "SELECT id, room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at
          FROM goals WHERE room_slug = ? ORDER BY id ASC",
@@ -500,6 +512,12 @@ pub fn delete_activity(
             tx.execute(
                 "UPDATE goals SET current_value = MAX(0, current_value - ?) WHERE id = ?",
                 params![total_metric, gid],
+            )?;
+
+            // Re-evaluate goal status: if current_value dropped below target_value, revert to 'active'
+            tx.execute(
+                "UPDATE goals SET status = 'active' WHERE id = ? AND current_value < target_value AND status = 'completed'",
+                params![gid],
             )?;
         }
 

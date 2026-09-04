@@ -1310,8 +1310,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 8px 10px;
   font-size: 0.75rem;
   color: var(--text-muted);
 }
@@ -1455,4 +1456,92 @@ body {
   border-color: var(--accent-green) !important;
   background: var(--bg-elevated) !important;
   transform: translateY(-1px);
+}
+
+/* Wishlist & Quest Proposals */
+.wishlist-section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+}
+
+.wishlist-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color var(--transition-fast);
+}
+
+.wishlist-card:hover {
+  border-color: var(--accent-green);
+}
+
+.wishlist-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wishlist-card-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.wishlist-cat-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.5px;
+}
+
+.wishlist-cat-badge.weight {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+}
+
+.wishlist-cat-badge.distance {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.wishlist-cat-badge.elevation {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-amber);
+}
+
+.wishlist-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.wishlist-target-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wishlist-notes-text {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.wishlist-empty-box {
+  text-align: center;
+  padding: 16px 10px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }

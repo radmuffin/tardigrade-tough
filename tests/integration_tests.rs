@@ -338,7 +338,7 @@ fn test_goal_completion_transition() {
     let mut conn = setup_test_db();
     let user = get_or_create_user(&conn, "token_mega_lifter", "solo_quest").expect("user");
 
-    log_single_activity(
+    let act = log_single_activity(
         &mut conn,
         &user,
         "solo_quest",
@@ -366,6 +366,22 @@ fn test_goal_completion_transition() {
     assert!(finished_caribou.is_some());
     assert_eq!(finished_caribou.unwrap().status, "completed");
     assert_eq!(finished_caribou.unwrap().current_value, 3050.0);
+
+    // Rollback: Deleting the activity must revert the goal back to 'active'
+    let deleted_room =
+        delete_activity(&mut conn, act.id, &user.user_token).expect("delete activity");
+    assert_eq!(deleted_room, Some("solo_quest".to_string()));
+
+    let (active_after, completed_after) =
+        get_goals_for_room(&conn, "solo_quest").expect("goals after delete");
+    let caribou_active = active_after.iter().find(|g| g.theme_key == "caribou");
+    assert!(
+        caribou_active.is_some(),
+        "Caribou must revert back to active goals"
+    );
+    assert_eq!(caribou_active.unwrap().status, "active");
+    assert_eq!(caribou_active.unwrap().current_value, 0.0);
+    assert!(!completed_after.iter().any(|g| g.theme_key == "caribou"));
 }
 
 // =========================================================================
