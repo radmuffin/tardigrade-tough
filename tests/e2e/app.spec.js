@@ -309,8 +309,10 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('#openWishlistBtn');
     await expect(page.locator('#wishlistModal')).toBeVisible();
 
+    const uniqueTitle = `Hoisting the Golden Gate Bridge ${Date.now()}`;
+
     // Fill form
-    await page.fill('#wishlistTitleInput', 'Hoisting the Golden Gate Bridge');
+    await page.fill('#wishlistTitleInput', uniqueTitle);
     await page.selectOption('#wishlistCategorySelect', 'weight');
     await page.fill('#wishlistTargetInput', '887000000');
     await page.fill('#wishlistNotesInput', 'San Francisco suspension landmark');
@@ -320,7 +322,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#wishlistModal')).not.toBeVisible();
 
     // Verify it appears in the squad wishlist cards
-    const card = page.locator('#wishlistCardsContainer .wishlist-card', { hasText: 'Hoisting the Golden Gate Bridge' });
+    const card = page.locator('#wishlistCardsContainer .wishlist-card', { hasText: uniqueTitle }).first();
     await expect(card).toBeVisible();
     await expect(card).toContainText('887,000,000 lbs');
     await expect(card).toContainText('San Francisco suspension landmark');
