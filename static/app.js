@@ -18,6 +18,7 @@ let pendingGoalTheme = null;
 let ws = null;
 let lastLoggedSet = null;
 let activityFilter = 'all';
+let leaderboardCategory = 'all';
 
 function getRoomFromUrl() {
   const match = window.location.pathname.match(/\/r\/([a-zA-Z0-9_-]+)/);
@@ -45,6 +46,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   setupViewNavigation();
   setupGoalSegmentedControl();
+  setupLeaderboardTabs();
   setupLoggingTabs();
   setupSteppers();
   setupFastAdd();
@@ -138,6 +140,33 @@ function setupGoalSegmentedControl() {
       renderGoalShowcase();
     });
   }
+}
+
+// Leaderboard Category Filter Tabs
+function setupLeaderboardTabs() {
+  const tabs = {
+    all: document.getElementById('lbTabAll'),
+    weight: document.getElementById('lbTabWeight'),
+    distance: document.getElementById('lbTabDistance'),
+    elevation: document.getElementById('lbTabElevation'),
+  };
+
+  Object.keys(tabs).forEach(cat => {
+    const btn = tabs[cat];
+    if (btn) {
+      btn.addEventListener('click', () => {
+        leaderboardCategory = cat;
+        Object.keys(tabs).forEach(k => {
+          if (tabs[k]) {
+            const isActive = k === cat;
+            tabs[k].classList.toggle('active', isActive);
+            tabs[k].setAttribute('aria-selected', isActive ? 'true' : 'false');
+          }
+        });
+        renderLeaderboard();
+      });
+    }
+  });
 }
 
 // Activity Filter Tabs
@@ -308,43 +337,143 @@ function renderTrophyRoom() {
 
 function renderLeaderboard() {
   const container = document.getElementById('leaderboardList');
+  if (!container || !currentRoomData) return;
   container.innerHTML = '';
 
-  let totalTonnage = 0;
-  currentRoomData.leaderboard.forEach(m => totalTonnage += m.total_weight);
-  document.getElementById('leaderboardTotalTonnage').textContent = `${formatNumber(totalTonnage)} lbs`;
+  const activeGoals = currentRoomData.active_goals || [];
+  const wtUnit = activeGoals.find(g => g.category === 'weight')?.unit || 'lbs';
+  const distUnit = activeGoals.find(g => g.category === 'distance')?.unit || 'mi';
+  const elevUnit = activeGoals.find(g => g.category === 'elevation')?.unit || 'ft';
 
-  if (currentRoomData.leaderboard.length === 0) {
-    container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px;">No workouts logged yet. Be the first to lift!</div>`;
+  let totalWeight = 0;
+  let totalDistance = 0;
+  let totalElevation = 0;
+  let totalSets = 0;
+
+  const rawMembers = currentRoomData.leaderboard || [];
+  rawMembers.forEach(m => {
+    totalWeight += m.total_weight || 0;
+    totalDistance += m.total_distance || 0;
+    totalElevation += m.total_elevation || 0;
+    totalSets += m.total_sets || 0;
+  });
+
+  // Update badge & multi-metric hero grid
+  const setsBadge = document.getElementById('lbTotalSetsBadge');
+  if (setsBadge) setsBadge.textContent = `${totalSets} sets logged`;
+
+  const heroWt = document.getElementById('lbHeroWeight');
+  const heroDist = document.getElementById('lbHeroDistance');
+  const heroElev = document.getElementById('lbHeroElevation');
+  if (heroWt) heroWt.textContent = `${formatNumber(totalWeight)} ${wtUnit}`;
+  if (heroDist) heroDist.textContent = `${totalDistance.toFixed(1)} ${distUnit}`;
+  if (heroElev) heroElev.textContent = `${formatNumber(totalElevation)} ${elevUnit}`;
+
+  // Toggle multi-metric grid vs single-metric display
+  const summaryAll = document.getElementById('lbSummaryAll');
+  const summarySingle = document.getElementById('lbSummarySingle');
+  const singleVal = document.getElementById('leaderboardTotalTonnage');
+  const singleLabel = document.getElementById('lbSingleMetricLabel');
+
+  if (leaderboardCategory === 'all') {
+    if (summaryAll) summaryAll.style.display = 'grid';
+    if (summarySingle) summarySingle.style.display = 'none';
+  } else {
+    if (summaryAll) summaryAll.style.display = 'none';
+    if (summarySingle) summarySingle.style.display = 'flex';
+    if (leaderboardCategory === 'weight') {
+      if (singleVal) singleVal.textContent = `${formatNumber(totalWeight)} ${wtUnit}`;
+      if (singleLabel) singleLabel.textContent = 'Total Crew Tonnage Lifted';
+    } else if (leaderboardCategory === 'distance') {
+      if (singleVal) singleVal.textContent = `${totalDistance.toFixed(1)} ${distUnit}`;
+      if (singleLabel) singleLabel.textContent = 'Total Crew Distance Traveled';
+    } else if (leaderboardCategory === 'elevation') {
+      if (singleVal) singleVal.textContent = `${formatNumber(totalElevation)} ${elevUnit}`;
+      if (singleLabel) singleLabel.textContent = 'Total Crew Elevation Climbed';
+    }
+  }
+
+  // Filter and sort members
+  let members = [...rawMembers];
+  if (leaderboardCategory === 'all') {
+    members.sort((a, b) => (b.total_sets - a.total_sets) || (b.total_weight - a.total_weight) || (b.total_distance - a.total_distance) || (b.total_elevation - a.total_elevation));
+    members = members.filter(m => (m.total_sets > 0 || m.total_weight > 0 || m.total_distance > 0 || m.total_elevation > 0));
+  } else if (leaderboardCategory === 'weight') {
+    members.sort((a, b) => b.total_weight - a.total_weight);
+    members = members.filter(m => m.total_weight > 0);
+  } else if (leaderboardCategory === 'distance') {
+    members.sort((a, b) => b.total_distance - a.total_distance);
+    members = members.filter(m => m.total_distance > 0);
+  } else if (leaderboardCategory === 'elevation') {
+    members.sort((a, b) => b.total_elevation - a.total_elevation);
+    members = members.filter(m => m.total_elevation > 0);
+  }
+
+  if (members.length === 0) {
+    const emptyCategory = leaderboardCategory === 'all' ? 'workouts' : leaderboardCategory;
+    container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 24px;">No ${emptyCategory} logged yet. Be the first to log!</div>`;
     return;
   }
 
-  currentRoomData.leaderboard.forEach((member, idx) => {
+  members.forEach((member, idx) => {
     const card = document.createElement('div');
     card.className = 'leaderboard-card';
 
-    const isMe = member.user_token === currentRoomData.user_profile.user_token;
+    const isMe = member.user_token === currentRoomData.user_profile?.user_token;
     let rankBadge = '';
     if (idx === 0) rankBadge = '🥇';
     else if (idx === 1) rankBadge = '🥈';
     else if (idx === 2) rankBadge = '🥉';
 
+    let rightScoreHtml = '';
+    let categoryPillsHtml = '';
+
+    if (leaderboardCategory === 'all') {
+      rightScoreHtml = `
+        <div class="score-main">${member.total_sets} sets</div>
+        <div class="score-pct">All Quests</div>
+      `;
+      categoryPillsHtml = `
+        <div class="member-pills">
+          ${member.total_weight > 0 ? `<span class="cat-chip wt">🏋️ ${formatNumber(member.total_weight)} ${wtUnit}</span>` : ''}
+          ${member.total_distance > 0 ? `<span class="cat-chip dist">🏃 ${member.total_distance.toFixed(1)} ${distUnit}</span>` : ''}
+          ${member.total_elevation > 0 ? `<span class="cat-chip elev">🧗 ${formatNumber(member.total_elevation)} ${elevUnit}</span>` : ''}
+          <span class="cat-chip sets">⚡ ${member.total_sets} sets</span>
+        </div>
+      `;
+    } else if (leaderboardCategory === 'weight') {
+      rightScoreHtml = `
+        <div class="score-main">${formatNumber(member.total_weight)} ${wtUnit}</div>
+        <div class="score-pct">${member.weight_percentage}% of Crew</div>
+      `;
+    } else if (leaderboardCategory === 'distance') {
+      rightScoreHtml = `
+        <div class="score-main">${member.total_distance.toFixed(1)} ${distUnit}</div>
+        <div class="score-pct">${member.distance_percentage || 0}% of Crew</div>
+      `;
+    } else if (leaderboardCategory === 'elevation') {
+      rightScoreHtml = `
+        <div class="score-main">${formatNumber(member.total_elevation)} ${elevUnit}</div>
+        <div class="score-pct">${member.elevation_percentage || 0}% of Crew</div>
+      `;
+    }
+
     card.innerHTML = `
       <div class="leaderboard-user">
         <div class="user-avatar" style="background-color: ${member.avatar_color}">
-          ${member.nickname.substring(0, 1).toUpperCase()}
+          ${(member.nickname || 'L').substring(0, 1).toUpperCase()}
         </div>
         <div class="user-details">
           <div class="user-name-row">
             <span>${rankBadge} ${FlyToast.escape(member.nickname)} ${isMe ? '(You)' : ''}</span>
-            ${member.is_daily_mvp ? '<span class="mvp-crown" title="Daily Tonnage Titan">👑</span>' : ''}
+            ${member.is_daily_mvp ? '<span class="mvp-crown" title="Daily Titan">👑</span>' : ''}
           </div>
-          <span class="user-stats-sub">${member.total_sets} sets logged</span>
+          ${leaderboardCategory !== 'all' ? `<span class="user-stats-sub">${member.total_sets} sets logged</span>` : ''}
+          ${categoryPillsHtml}
         </div>
       </div>
       <div class="leaderboard-score">
-        <div class="score-main">${formatNumber(member.total_weight)} lbs</div>
-        <div class="score-pct">${member.weight_percentage}% of Crew</div>
+        ${rightScoreHtml}
       </div>
     `;
     container.appendChild(card);

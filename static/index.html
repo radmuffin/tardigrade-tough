@@ -55,38 +55,38 @@
         <span class="brand-title">TARDIGRADE TOUGH</span>
       </div>
       <div class="header-actions">
-        <button id="headerInstallBtn" class="header-chip" title="Install Web App" style="display: none;">
+        <button id="headerInstallBtn" class="header-chip install-chip" title="Install Web App" style="display: none;">
           <span class="chip-icon">📲</span>
-          <span>Install</span>
+          <span class="chip-text">Install</span>
         </button>
-        <button id="roomBtn" class="header-chip" title="Switch or Create Group">
+        <button id="roomBtn" class="header-chip room-chip" title="Switch or Create Squad">
           <span class="chip-icon">👥</span>
-          <span id="roomNameLabel">Pando Crew</span>
+          <span id="roomNameLabel" class="chip-text">Pando Squad</span>
         </button>
-        <button id="profileBtn" class="header-chip" title="Profile & Settings">
+        <button id="profileBtn" class="header-chip profile-chip" title="Profile & Settings">
           <span id="profileDot" class="profile-dot"></span>
-          <span id="profileNick">Me</span>
+          <span id="profileNick" class="chip-text">Me</span>
         </button>
       </div>
     </header>
 
     <!-- Primary Navigation Tabs -->
-    <nav class="main-nav-bar">
-      <button id="navQuestsBtn" class="main-nav-btn active" data-view="quests">
+    <nav class="main-nav-bar" role="tablist" aria-label="Main Views">
+      <button id="navQuestsBtn" class="main-nav-btn active" data-view="quests" role="tab" aria-selected="true">
         <span class="nav-icon">🌲</span>
-        <span class="nav-label">Quests & Log</span>
+        <span class="nav-label">Quests</span>
       </button>
-      <button id="navLeaderboardBtn" class="main-nav-btn" data-view="leaderboard">
+      <button id="navLeaderboardBtn" class="main-nav-btn" data-view="leaderboard" role="tab" aria-selected="false">
         <span class="nav-icon">🏆</span>
         <span class="nav-label">Leaderboard</span>
       </button>
-      <button id="navActivityBtn" class="main-nav-btn" data-view="activity">
+      <button id="navActivityBtn" class="main-nav-btn" data-view="activity" role="tab" aria-selected="false">
         <span class="nav-icon">📈</span>
-        <span class="nav-label">Activity & Feed</span>
+        <span class="nav-label">Activity</span>
       </button>
-      <button id="navTrophyBtn" class="main-nav-btn" data-view="trophy">
+      <button id="navTrophyBtn" class="main-nav-btn" data-view="trophy" role="tab" aria-selected="false">
         <span class="nav-icon">🏛️</span>
-        <span class="nav-label">Trophy Room</span>
+        <span class="nav-label">Trophies</span>
       </button>
     </nav>
 
@@ -273,11 +273,55 @@
     <!-- ===================================================================== -->
     <main id="viewLeaderboard" class="app-view" style="display: none;">
       <div class="view-header-card">
-        <h2 class="view-title">🏆 Crew Leaderboard</h2>
-        <p class="view-subtitle">Collective tonnage and friendly competition across active quests.</p>
-        <div class="crew-hero-metric">
+        <div class="leaderboard-header-top">
+          <h2 class="view-title">🏆 Crew Leaderboard</h2>
+          <span id="lbTotalSetsBadge" class="badge-pill">0 sets logged</span>
+        </div>
+        <p class="view-subtitle">Squad milestones and friendly competition across all workout categories.</p>
+
+        <!-- Category Filter Tabs -->
+        <div id="lbCategoryControl" class="goal-segmented-control lb-segmented-control" role="tablist" aria-label="Leaderboard Category">
+          <button id="lbTabAll" class="goal-segment-btn active" data-cat="all" role="tab" aria-selected="true">
+            <span class="segment-emoji">⭐</span>
+            <span class="segment-title">All Categories</span>
+          </button>
+          <button id="lbTabWeight" class="goal-segment-btn" data-cat="weight" role="tab" aria-selected="false">
+            <span class="segment-emoji">🌲</span>
+            <span class="segment-title">Weight</span>
+          </button>
+          <button id="lbTabDistance" class="goal-segment-btn" data-cat="distance" role="tab" aria-selected="false">
+            <span class="segment-emoji">🦌</span>
+            <span class="segment-title">Distance</span>
+          </button>
+          <button id="lbTabElevation" class="goal-segment-btn" data-cat="elevation" role="tab" aria-selected="false">
+            <span class="segment-emoji">🐐</span>
+            <span class="segment-title">Elevation</span>
+          </button>
+        </div>
+
+        <!-- All-Categories Multi-Metric Hero Grid -->
+        <div id="lbSummaryAll" class="lb-metrics-grid">
+          <div class="lb-metric-tile">
+            <div class="lb-tile-icon">🏋️‍♂️</div>
+            <div class="lb-tile-val" id="lbHeroWeight">0 lbs</div>
+            <div class="lb-tile-label">Tonnage Lifted</div>
+          </div>
+          <div class="lb-metric-tile">
+            <div class="lb-tile-icon">🏃</div>
+            <div class="lb-tile-val" id="lbHeroDistance">0.0 mi</div>
+            <div class="lb-tile-label">Distance Traveled</div>
+          </div>
+          <div class="lb-metric-tile">
+            <div class="lb-tile-icon">🧗</div>
+            <div class="lb-tile-val" id="lbHeroElevation">0 ft</div>
+            <div class="lb-tile-label">Elevation Climbed</div>
+          </div>
+        </div>
+
+        <!-- Single-Category Hero Metric (shown when a specific category tab is active) -->
+        <div id="lbSummarySingle" class="crew-hero-metric" style="display: none;">
           <span id="leaderboardTotalTonnage" class="hero-metric-val">0 lbs</span>
-          <span class="hero-metric-label">Total Crew Tonnage Lifted</span>
+          <span id="lbSingleMetricLabel" class="hero-metric-label">Total Crew Tonnage Lifted</span>
         </div>
       </div>
 

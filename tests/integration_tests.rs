@@ -19,7 +19,7 @@ fn test_db_initialization_and_default_seeds() {
 
     let room = get_or_create_room(&conn, "main").expect("room");
     assert_eq!(room.slug, "main");
-    assert_eq!(room.name, "Pando & Friends Gym Crew");
+    assert_eq!(room.name, "Pando Squad");
 
     let (active, completed) = get_goals_for_room(&conn, "main").expect("goals");
     assert_eq!(active.len(), 3);
@@ -172,9 +172,19 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
     let caribou = active.iter().find(|g| g.theme_key == "caribou").unwrap();
     let everest = active.iter().find(|g| g.theme_key == "everest").unwrap();
 
-    assert_eq!(pando.current_value, 1850.0 + 2000.0);
-    assert_eq!(caribou.current_value, 42.5 + 15.5);
-    assert_eq!(everest.current_value, 1450.0 + 1250.0);
+    assert_eq!(pando.current_value, 2000.0);
+    assert_eq!(caribou.current_value, 15.5);
+    assert_eq!(everest.current_value, 1250.0);
+
+    let lb = get_leaderboard(&conn, "main").expect("lb");
+    assert_eq!(lb.len(), 1);
+    assert_eq!(lb[0].total_weight, 2000.0);
+    assert_eq!(lb[0].total_distance, 15.5);
+    assert_eq!(lb[0].total_elevation, 1250.0);
+    assert_eq!(lb[0].weight_percentage, 100.0);
+    assert_eq!(lb[0].distance_percentage, 100.0);
+    assert_eq!(lb[0].elevation_percentage, 100.0);
+    assert!(lb[0].is_daily_mvp);
 }
 
 #[test]

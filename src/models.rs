@@ -135,6 +135,10 @@ pub struct LeaderboardMember {
     pub total_elevation: f64,
     pub total_sets: i32,
     pub weight_percentage: f64,
+    #[serde(default)]
+    pub distance_percentage: f64,
+    #[serde(default)]
+    pub elevation_percentage: f64,
     pub is_daily_mvp: bool,
 }
 

@@ -31,6 +31,45 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#trophyCanvas')).toBeVisible();
   });
 
+  test('renders organized, clean header with squad and user profile chips', async ({ page }) => {
+    await expect(page.locator('#roomNameLabel')).toContainText('Pando Squad');
+    await expect(page.locator('#profileNick')).toBeVisible();
+    await expect(page.locator('.brand-title')).toHaveText('TARDIGRADE TOUGH');
+  });
+
+  test('initial active goals report clean zero progress until workouts are logged', async ({ page }) => {
+    await expect(page.locator('#heroGoalPct')).toContainText('0.0%');
+    await expect(page.locator('#heroGoalCurrent')).toContainText('0 lbs');
+  });
+
+  test('supports all workout categories on the leaderboard (All, Weight, Distance, Elevation)', async ({ page }) => {
+    await page.click('#navLeaderboardBtn');
+    await expect(page.locator('#viewLeaderboard')).toBeVisible();
+
+    // Default: All Categories
+    await expect(page.locator('#lbTabAll')).toHaveClass(/active/);
+    await expect(page.locator('#lbSummaryAll')).toBeVisible();
+    await expect(page.locator('#lbHeroWeight')).toBeVisible();
+    await expect(page.locator('#lbHeroDistance')).toBeVisible();
+    await expect(page.locator('#lbHeroElevation')).toBeVisible();
+
+    // Switch to Weight
+    await page.click('#lbTabWeight');
+    await expect(page.locator('#lbTabWeight')).toHaveClass(/active/);
+    await expect(page.locator('#lbSummarySingle')).toBeVisible();
+    await expect(page.locator('#lbSingleMetricLabel')).toContainText('Tonnage');
+
+    // Switch to Distance
+    await page.click('#lbTabDistance');
+    await expect(page.locator('#lbTabDistance')).toHaveClass(/active/);
+    await expect(page.locator('#lbSingleMetricLabel')).toContainText('Distance');
+
+    // Switch to Elevation
+    await page.click('#lbTabElevation');
+    await expect(page.locator('#lbTabElevation')).toHaveClass(/active/);
+    await expect(page.locator('#lbSingleMetricLabel')).toContainText('Elevation');
+  });
+
   test('toggles active goal dioramas between Pando, Everest, and Caribou', async ({ page }) => {
     await expect(page.locator('#heroGoalTitle')).toContainText('Pando');
 

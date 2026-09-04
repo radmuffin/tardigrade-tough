@@ -72,11 +72,15 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
     "#,
     )?;
 
-    // Ensure default main room exists
+    // Ensure default main room exists with a concise, clean squad name
     let now = Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT OR IGNORE INTO rooms (slug, name, created_at) VALUES ('main', 'Pando & Friends Gym Crew', ?)",
+        "INSERT OR IGNORE INTO rooms (slug, name, created_at) VALUES ('main', 'Pando Squad', ?)",
         params![now],
+    )?;
+    conn.execute(
+        "UPDATE rooms SET name = 'Pando Squad' WHERE slug = 'main' AND name = 'Pando & Friends Gym Crew'",
+        [],
     )?;
 
     // Check if default goals need to be seeded for 'main'
@@ -87,24 +91,24 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
     )?;
 
     if count == 0 {
-        // 1. Pando (Active Weight Goal)
+        // 1. Pando (Active Weight Goal) - starts clean at 0.0
         conn.execute(
             r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-               VALUES ('main', 'Pando Aspen Clone', 'weight', 13200000.0, 1850.0, 'lbs', 'pando', 'active', 'Hoisting the 13.2-million-pound underground root system of Utah’s massive clonal aspen grove.', ?)"#,
+               VALUES ('main', 'Pando Aspen Clone', 'weight', 13200000.0, 0.0, 'lbs', 'pando', 'active', 'Hoisting the 13.2-million-pound underground root system of Utah’s massive clonal aspen grove.', ?)"#,
             params![now],
         )?;
 
-        // 2. Caribou Migration (Active Distance Goal)
+        // 2. Caribou Migration (Active Distance Goal) - starts clean at 0.0
         conn.execute(
             r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-               VALUES ('main', 'Caribou Migration', 'distance', 3000.0, 42.5, 'mi', 'caribou', 'active', 'Running, walking, and biking the majestic 3,000-mile Arctic tundra migration.', ?)"#,
+               VALUES ('main', 'Caribou Migration', 'distance', 3000.0, 0.0, 'mi', 'caribou', 'active', 'Running, walking, and biking the majestic 3,000-mile Arctic tundra migration.', ?)"#,
             params![now],
         )?;
 
-        // 3. Mt. Everest Climb (Active Elevation Goal)
+        // 3. Mt. Everest Climb (Active Elevation Goal) - starts clean at 0.0
         conn.execute(
             r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-               VALUES ('main', 'Mt. Everest Ascent', 'elevation', 29031.0, 1450.0, 'ft', 'everest', 'active', 'Scaling the roof of the world with nimble mountain goats.', ?)"#,
+               VALUES ('main', 'Mt. Everest Ascent', 'elevation', 29031.0, 0.0, 'ft', 'everest', 'active', 'Scaling the roof of the world with nimble mountain goats.', ?)"#,
             params![now],
         )?;
 
@@ -115,6 +119,18 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
             params![now],
         )?;
     }
+
+    // Ensure active goals accurately reflect the actual sum of logged activities in that room
+    conn.execute(
+        r#"UPDATE goals
+           SET current_value = (
+               SELECT COALESCE(SUM(a.total_metric), 0.0)
+               FROM activities a
+               WHERE (a.goal_id = goals.id OR (a.goal_id IS NULL AND a.room_slug = goals.room_slug AND a.activity_type = goals.category))
+           )
+           WHERE status = 'active'"#,
+        [],
+    )?;
 
     Ok(())
 }
@@ -538,11 +554,23 @@ pub fn get_leaderboard(conn: &Connection, room_slug: &str) -> Result<Vec<Leaderb
         .collect::<Vec<_>>();
 
     let grand_total_weight: f64 = members_raw.iter().map(|m| m.3).sum();
+    let grand_total_distance: f64 = members_raw.iter().map(|m| m.4).sum();
+    let grand_total_elevation: f64 = members_raw.iter().map(|m| m.5).sum();
     let mut leaderboard = Vec::new();
 
     for (idx, (token, nick, color, wt, dist, elev, sets)) in members_raw.into_iter().enumerate() {
-        let pct = if grand_total_weight > 0.0 {
+        let wt_pct = if grand_total_weight > 0.0 {
             (wt / grand_total_weight) * 100.0
+        } else {
+            0.0
+        };
+        let dist_pct = if grand_total_distance > 0.0 {
+            (dist / grand_total_distance) * 100.0
+        } else {
+            0.0
+        };
+        let elev_pct = if grand_total_elevation > 0.0 {
+            (elev / grand_total_elevation) * 100.0
         } else {
             0.0
         };
@@ -555,8 +583,10 @@ pub fn get_leaderboard(conn: &Connection, room_slug: &str) -> Result<Vec<Leaderb
             total_distance: dist,
             total_elevation: elev,
             total_sets: sets,
-            weight_percentage: (pct * 10.0).round() / 10.0,
-            is_daily_mvp: idx == 0 && wt > 0.0,
+            weight_percentage: (wt_pct * 10.0).round() / 10.0,
+            distance_percentage: (dist_pct * 10.0).round() / 10.0,
+            elevation_percentage: (elev_pct * 10.0).round() / 10.0,
+            is_daily_mvp: idx == 0 && (wt > 0.0 || dist > 0.0 || elev > 0.0),
         });
     }
 
