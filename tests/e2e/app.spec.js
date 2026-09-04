@@ -216,7 +216,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#roomNameLabel')).toHaveText('Iron Tardigrades');
 
     // Close modal
-    await page.click('#closeProfileBtn');
+    await page.click('#closeRoomBtn');
     await expect(page.locator('#profileModal')).not.toBeVisible();
   });
 
@@ -239,7 +239,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     // Copy button is clickable
     await page.click('#copyRoomUrlBtn');
 
-    await page.click('#closeProfileBtn');
+    await page.click('#closeRoomBtn');
     await expect(page.locator('#profileModal')).not.toBeVisible();
   });
 
@@ -300,24 +300,36 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     // Swipe left: Quests -> Leaderboard
     await page.evaluate(() => {
-      window.dispatchEvent(new TouchEvent('touchstart', {
-        touches: [{ clientX: 300, clientY: 300 }]
-      }));
-      window.dispatchEvent(new TouchEvent('touchend', {
-        changedTouches: [{ clientX: 100, clientY: 300 }]
-      }));
+      const startX = 300;
+      const endX = 100;
+      const y = 300;
+      const startEvt = new CustomEvent('touchstart', { bubbles: true, cancelable: true });
+      startEvt.touches = [{ clientX: startX, clientY: y }];
+      startEvt.changedTouches = [{ clientX: startX, clientY: y }];
+      document.body.dispatchEvent(startEvt);
+
+      const endEvt = new CustomEvent('touchend', { bubbles: true, cancelable: true });
+      endEvt.touches = [];
+      endEvt.changedTouches = [{ clientX: endX, clientY: y }];
+      document.body.dispatchEvent(endEvt);
     });
     await expect(page.locator('#viewLeaderboard')).toBeVisible();
     await expect(page.locator('#navLeaderboardBtn')).toHaveClass(/active/);
 
     // Swipe right: Leaderboard -> Quests
     await page.evaluate(() => {
-      window.dispatchEvent(new TouchEvent('touchstart', {
-        touches: [{ clientX: 100, clientY: 300 }]
-      }));
-      window.dispatchEvent(new TouchEvent('touchend', {
-        changedTouches: [{ clientX: 300, clientY: 300 }]
-      }));
+      const startX = 100;
+      const endX = 300;
+      const y = 300;
+      const startEvt = new CustomEvent('touchstart', { bubbles: true, cancelable: true });
+      startEvt.touches = [{ clientX: startX, clientY: y }];
+      startEvt.changedTouches = [{ clientX: startX, clientY: y }];
+      document.body.dispatchEvent(startEvt);
+
+      const endEvt = new CustomEvent('touchend', { bubbles: true, cancelable: true });
+      endEvt.touches = [];
+      endEvt.changedTouches = [{ clientX: endX, clientY: y }];
+      document.body.dispatchEvent(endEvt);
     });
     await expect(page.locator('#viewQuests')).toBeVisible();
     await expect(page.locator('#navQuestsBtn')).toHaveClass(/active/);

@@ -140,12 +140,12 @@ function setupSwipeNavigation(switchView) {
 
   window.addEventListener('touchstart', (e) => {
     // Ignore interactive elements, diorama canvas, modals, form fields, buttons
-    if (e.target.closest('canvas, input, select, textarea, button, .modal-backdrop, .modal-box, .color-option, .stepper-btn')) {
+    if (e.target && typeof e.target.closest === 'function' && e.target.closest('canvas, input, select, textarea, button, .modal-backdrop, .modal-box, .color-option, .stepper-btn')) {
       touchStartX = 0;
       touchStartY = 0;
       return;
     }
-    if (e.touches.length === 1) {
+    if (e.touches && e.touches.length === 1) {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
@@ -154,7 +154,7 @@ function setupSwipeNavigation(switchView) {
 
   window.addEventListener('touchend', (e) => {
     if (!touchStartX || !touchStartY) return;
-    if (e.changedTouches.length !== 1) return;
+    if (!e.changedTouches || e.changedTouches.length !== 1) return;
 
     const deltaX = e.changedTouches[0].clientX - touchStartX;
     const deltaY = e.changedTouches[0].clientY - touchStartY;
