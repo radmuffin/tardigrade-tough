@@ -3,6 +3,8 @@ const { test, expect } = require('@playwright/test');
 test.describe('Tardigrade Tough Web App E2E', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    await page.waitForResponse(resp => resp.url().includes('/api/room/') && resp.status() === 200).catch(() => {});
+    await expect(page.locator('#heroGoalTitle')).toBeVisible();
   });
 
   test('loads home page with brand icon and title', async ({ page }) => {
@@ -33,15 +35,13 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   test('toggles active goal dioramas between Pando, Everest, and Caribou', async ({ page }) => {
     await expect(page.locator('#heroGoalTitle')).toContainText('Pando');
 
-    // Switch to Everest — wait for tab to become active before asserting title
+    // Switch to Everest
     await page.click('#goalTabEverest');
-    await page.locator('#goalTabEverest.active, #goalTabEverest[aria-selected="true"]').waitFor({ timeout: 5000 }).catch(() => {});
     await expect(page.locator('#heroGoalTitle')).toContainText('Everest', { timeout: 10000 });
     await expect(page.locator('#heroGoalTarget')).toContainText('29,031');
 
-    // Switch to Caribou — wait for tab to become active before asserting title
+    // Switch to Caribou
     await page.click('#goalTabCaribou');
-    await page.locator('#goalTabCaribou.active, #goalTabCaribou[aria-selected="true"]').waitFor({ timeout: 5000 }).catch(() => {});
     await expect(page.locator('#heroGoalTitle')).toContainText('Caribou', { timeout: 10000 });
     await expect(page.locator('#heroGoalTarget')).toContainText('3,000');
   });

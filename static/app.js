@@ -11,6 +11,7 @@ let trophyDiorama = null;
 let offlineSync = null;
 let currentRoomData = null;
 let selectedGoalIndex = 0;
+let pendingGoalTheme = null;
 let ws = null;
 let lastLoggedSet = null;
 let activityFilter = 'all';
@@ -104,6 +105,7 @@ function setupGoalSegmentedControl() {
   const nextBtn = document.getElementById('nextGoalBtn');
 
   function selectGoalByTheme(theme) {
+    pendingGoalTheme = theme;
     if (!currentRoomData || !currentRoomData.active_goals) return;
     const idx = currentRoomData.active_goals.findIndex(g => g.theme_key === theme);
     if (idx !== -1) {
@@ -210,6 +212,14 @@ function renderAll() {
 function renderGoalShowcase() {
   const activeGoals = currentRoomData.active_goals || [];
   if (activeGoals.length === 0) return;
+
+  if (pendingGoalTheme) {
+    const pIdx = activeGoals.findIndex(g => g.theme_key === pendingGoalTheme);
+    if (pIdx !== -1) {
+      selectedGoalIndex = pIdx;
+    }
+    pendingGoalTheme = null;
+  }
 
   if (selectedGoalIndex >= activeGoals.length) selectedGoalIndex = 0;
   const currentGoal = activeGoals[selectedGoalIndex];
