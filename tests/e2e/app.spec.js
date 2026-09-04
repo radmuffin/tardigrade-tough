@@ -8,7 +8,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
   test('loads home page with brand icon and title', async ({ page }) => {
     await expect(page.locator('.brand-title')).toHaveText('TARDIGRADE TOUGH');
-    await expect(page.locator('.brand-icon-svg')).toBeVisible();
+    await expect(page.locator('.brand-chip .brand-icon-svg')).toBeVisible();
     await expect(page.locator('#roomNameLabel')).toBeVisible();
   });
 
@@ -182,6 +182,10 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   });
 
   test('supports squad renaming and updates squad name label in real-time', async ({ page }) => {
+    // Navigate to dedicated test squad room to isolate state
+    await page.goto('/r/test-squad-rename');
+    await page.waitForSelector('body[data-state="ready"]');
+
     // Open Crew Hub modal
     await page.click('#roomBtn');
     await expect(page.locator('#roomModal')).toBeVisible();
