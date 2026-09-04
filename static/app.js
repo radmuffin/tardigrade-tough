@@ -99,6 +99,17 @@ function setupViewNavigation() {
   Object.keys(navBtns).forEach(k => {
     navBtns[k].addEventListener('click', () => switchView(k));
   });
+
+  // Connective navigation across screens
+  document.querySelectorAll('.connective-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const target = e.currentTarget.dataset.target;
+      if (target && views[target]) {
+        switchView(target);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  });
 }
 
 // Goal Segmented Control & Arrow Cycling
@@ -582,6 +593,19 @@ function handleWsEvent(msg) {
   if (msg.event === 'cheer_reaction') {
     diorama.spawnEmojiReaction(msg.payload.emoji);
     FlyToast.info(`${msg.payload.user_nickname} sent ${msg.payload.emoji}!`);
+  } else if (msg.event === 'room_renamed') {
+    if (msg.payload && msg.payload.room) {
+      if (currentRoomData && currentRoomData.room) {
+        currentRoomData.room.name = msg.payload.room.name;
+      }
+      const label = document.getElementById('roomNameLabel');
+      if (label) label.textContent = msg.payload.room.name;
+      const editInput = document.getElementById('editRoomNameInput');
+      if (editInput) editInput.value = msg.payload.room.name;
+      if (msg.sender_token !== client.token) {
+        FlyToast.info(`Squad renamed to "${msg.payload.room.name}"`);
+      }
+    }
   } else if (msg.event === 'activity_logged' || msg.event === 'batch_activities_logged' || msg.event === 'activity_deleted') {
     loadRoomState();
     if (msg.event === 'activity_logged') {
@@ -1211,22 +1235,115 @@ function setupModals() {
     }
   });
 
-  // Crew Hub & Solo Creation Modal
+  // Crew Hub, Squad Rename, Share & Solo Creation Modal
   const roomModal = document.getElementById('roomModal');
   const roomSlugInput = document.getElementById('roomSlugInput');
   const newRoomNameInput = document.getElementById('newRoomNameInput');
   const qrImg = document.getElementById('roomQrImage');
+  const editRoomNameInput = document.getElementById('editRoomNameInput');
+  const saveRoomNameBtn = document.getElementById('saveRoomNameBtn');
+  const shareRoomUrlInput = document.getElementById('shareRoomUrlInput');
+  const copyRoomUrlBtn = document.getElementById('copyRoomUrlBtn');
+  const nativeShareBtn = document.getElementById('nativeShareBtn');
+  const currentRoomSlugLabel = document.getElementById('currentRoomSlugLabel');
 
-  document.getElementById('roomBtn').addEventListener('click', () => {
+  function openRoomModal() {
     roomSlugInput.value = roomSlug;
+    if (currentRoomSlugLabel) {
+      currentRoomSlugLabel.textContent = `slug: ${roomSlug}`;
+    }
+    if (currentRoomData && currentRoomData.room && editRoomNameInput) {
+      editRoomNameInput.value = currentRoomData.room.name;
+    }
     const roomUrl = `${window.location.origin}/r/${roomSlug}`;
-    qrImg.src = `/api/qr?url=${encodeURIComponent(roomUrl)}`;
+    if (shareRoomUrlInput) {
+      shareRoomUrlInput.value = roomUrl;
+    }
+    if (qrImg) {
+      qrImg.src = `/api/qr?url=${encodeURIComponent(roomUrl)}`;
+    }
+    if (nativeShareBtn && typeof navigator.share === 'function') {
+      nativeShareBtn.style.display = 'block';
+    }
     roomModal.classList.remove('hidden');
-  });
+  }
+
+  document.getElementById('roomBtn').addEventListener('click', openRoomModal);
 
   document.getElementById('closeRoomBtn').addEventListener('click', () => {
     roomModal.classList.add('hidden');
   });
+
+  // Rename Squad
+  if (saveRoomNameBtn && editRoomNameInput) {
+    saveRoomNameBtn.addEventListener('click', async () => {
+      const newName = editRoomNameInput.value.trim();
+      if (!newName) {
+        FlyToast.error('Please enter a squad name');
+        return;
+      }
+      if (newName.length > 50) {
+        FlyToast.error('Squad name must be 50 characters or less');
+        return;
+      }
+
+      try {
+        const res = await client.post(`/room/${roomSlug}/name`, { name: newName });
+        if (res && res.success) {
+          if (currentRoomData && currentRoomData.room) {
+            currentRoomData.room.name = res.room.name;
+          }
+          const label = document.getElementById('roomNameLabel');
+          if (label) label.textContent = res.room.name;
+          FlyToast.success(`Squad renamed to "${res.room.name}"!`);
+        } else {
+          FlyToast.error(res?.error || 'Failed to rename squad');
+        }
+      } catch (err) {
+        console.error('Squad rename error:', err);
+        FlyToast.error('Failed to rename squad');
+      }
+    });
+  }
+
+  // Copy Squad Invite URL
+  if (copyRoomUrlBtn && shareRoomUrlInput) {
+    copyRoomUrlBtn.addEventListener('click', async () => {
+      const url = shareRoomUrlInput.value;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          shareRoomUrlInput.select();
+          document.execCommand('copy');
+        }
+        FlyToast.success('Squad invite link copied to clipboard!');
+      } catch (e) {
+        shareRoomUrlInput.select();
+        document.execCommand('copy');
+        FlyToast.success('Squad invite link copied!');
+      }
+    });
+  }
+
+  // Native Web Share Sheet
+  if (nativeShareBtn && typeof navigator.share === 'function') {
+    nativeShareBtn.style.display = 'block';
+    nativeShareBtn.addEventListener('click', async () => {
+      try {
+        const squadTitle = currentRoomData?.room?.name || 'Tardigrade Tough Squad';
+        await navigator.share({
+          title: `${squadTitle} — Tardigrade Tough`,
+          text: `Join our squad "${squadTitle}" on Tardigrade Tough and conquer colossal nature together!`,
+          url: shareRoomUrlInput ? shareRoomUrlInput.value : window.location.href,
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Share aborted or failed:', err);
+        }
+      }
+    });
+  }
 
   // Create New Group or Solo Quest
   document.getElementById('createNewRoomBtn').addEventListener('click', () => {
@@ -1246,6 +1363,38 @@ function setupModals() {
     if (targetSlug && targetSlug !== roomSlug) {
       window.location.href = `/r/${targetSlug}`;
     }
+  });
+
+  // About Modal & Footer Actions
+  const aboutModal = document.getElementById('aboutModal');
+  const closeAboutBtn = document.getElementById('closeAboutBtn');
+  const footerAboutBtn = document.getElementById('footerAboutBtn');
+  const footerShareBtn = document.getElementById('footerShareBtn');
+
+  if (footerAboutBtn && aboutModal) {
+    footerAboutBtn.addEventListener('click', () => {
+      aboutModal.classList.remove('hidden');
+    });
+  }
+
+  if (closeAboutBtn && aboutModal) {
+    closeAboutBtn.addEventListener('click', () => {
+      aboutModal.classList.add('hidden');
+    });
+  }
+
+  if (footerShareBtn) {
+    footerShareBtn.addEventListener('click', openRoomModal);
+  }
+
+  // Close modals when clicking backdrop outside modal-box
+  [profileModal, roomModal, aboutModal].forEach(modal => {
+    if (!modal) return;
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+      }
+    });
   });
 }
 

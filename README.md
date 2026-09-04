@@ -71,14 +71,24 @@ Built on **`fly-common`** using Rust, Axum, SQLite (WAL mode), WebSockets, anony
    - Workouts queue locally in `localStorage` during basement gym reception blackouts.
    - Automatically detects connectivity restoration and flushes batches cleanly.
 
-5. **🏆 Crew Leaderboard & Podiums**:
+5. **🏆 Crew Leaderboard & Multi-Category Standings**:
+   - Filter leaderboard by **All**, **Weight (Tonnage)**, **Distance (Miles)**, and **Elevation (Feet)**.
    - Gold, Silver, and Bronze podiums (🥇 🥈 🥉).
    - **Daily Tonnage Titan** 👑 MVP badge.
    - Detailed individual breakdown of tonnage, distance, elevation, sets, and % contribution.
 
-6. **👥 Multi-Crew & Solo Rooms**:
+6. **👥 Multi-Crew, Solo Rooms & Squad Renaming**:
    - Create custom named groups (e.g. *"Sally's Bio Squad"*) or track solo quests.
-   - Pure-Rust SVG QR code generation for instant camera pairing.
+   - In-place dynamic Squad Renaming (`POST /api/room/:slug/name`) with real-time WebSocket broadcast to all connected crew members.
+   - Instant camera pairing with pure-Rust SVG QR codes, 1-click clipboard URL copying, and native mobile Web Share sheet integration.
+
+7. **🔗 Connective Action Navigation**:
+   - Seamless inter-screen navigation between Active Quests, Squad Leaderboard, Live Feed, and Trophy Room.
+   - 1-tap call-to-action cards jump directly from leaderboards or trophy hall into logging reps.
+
+8. **ℹ️ Lore & Water Bear Philosophy**:
+   - Dedicated in-app guide exploring the biology and resilience of tardigrades.
+   - Detailed breakdown of all ecological conquest benchmarks (Pando, Everest, Caribou, Blue Whale).
 
 ---
 

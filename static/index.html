@@ -266,6 +266,28 @@
           </button>
         </div>
       </section>
+
+      <!-- Connective Navigation Strip -->
+      <section class="connective-nav-card">
+        <span class="connective-nav-title">🧭 Crew Navigation</span>
+        <div class="connective-nav-grid">
+          <button class="connective-btn" data-target="leaderboard">
+            <span class="conn-icon">🏆</span>
+            <span class="conn-text"><strong>Leaderboard Podiums</strong><small>Rankings & category breakdowns</small></span>
+            <span class="conn-arrow">›</span>
+          </button>
+          <button class="connective-btn" data-target="activity">
+            <span class="conn-icon">📈</span>
+            <span class="conn-text"><strong>Live Activity Feed</strong><small>Recent sets & personal logs</small></span>
+            <span class="conn-arrow">›</span>
+          </button>
+          <button class="connective-btn" data-target="trophy">
+            <span class="conn-icon">🏛️</span>
+            <span class="conn-text"><strong>Trophy Hall</strong><small>Conquered Blue Whale & milestones</small></span>
+            <span class="conn-arrow">›</span>
+          </button>
+        </div>
+      </section>
     </main>
 
     <!-- ===================================================================== -->
@@ -328,6 +350,22 @@
       <div id="leaderboardList" class="leaderboard-list">
         <!-- Injected dynamically -->
       </div>
+
+      <!-- Connective Action Card -->
+      <section class="connective-action-card">
+        <div class="connective-action-content">
+          <h4>⚡ Ready to Move Up the Podiums?</h4>
+          <p>Every rep, mile, and flight of stairs elevates your crew position.</p>
+          <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+            <button class="btn btn-primary connective-btn" data-target="quests" style="flex: 1; min-width: 140px; justify-content: center; font-size: 0.85rem;">
+              🏋️ Log a Workout Set
+            </button>
+            <button class="btn btn-secondary connective-btn" data-target="activity" style="flex: 1; min-width: 140px; justify-content: center; font-size: 0.85rem;">
+              📈 View Activity Feed
+            </button>
+          </div>
+        </div>
+      </section>
     </main>
 
     <!-- ===================================================================== -->
@@ -349,6 +387,15 @@
 
       <div id="activityFeedList" class="activity-feed">
         <!-- Injected dynamically -->
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 14px;">
+        <button class="btn btn-secondary connective-btn" data-target="quests" style="flex: 1; font-size: 0.82rem; justify-content: center;">
+          ← Back to Quests
+        </button>
+        <button class="btn btn-secondary connective-btn" data-target="leaderboard" style="flex: 1; font-size: 0.82rem; justify-content: center;">
+          🏆 Crew Leaderboard →
+        </button>
       </div>
     </main>
 
@@ -397,13 +444,26 @@
         </div>
         <span class="score-main" style="color: var(--accent-amber);">Active</span>
       </div>
+
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <button class="btn btn-secondary connective-btn" data-target="quests" style="flex: 1; font-size: 0.85rem; justify-content: center;">
+          ← Return to Active Quests
+        </button>
+        <button class="btn btn-secondary connective-btn" data-target="leaderboard" style="flex: 1; font-size: 0.85rem; justify-content: center;">
+          🏆 Check Leaderboard →
+        </button>
+      </div>
     </main>
 
-    <!-- Minimal Subtle Footer Status -->
+    <!-- Minimal Subtle Footer Status with Connective Links -->
     <footer class="app-footer">
       <div class="footer-status-row">
         <span id="footerStatusDot" class="status-dot-small">●</span>
         <span id="footerStatusText">Online & Syncing</span>
+        <span class="footer-sep">•</span>
+        <button id="footerAboutBtn" class="footer-link-btn" title="Learn about Tardigrade Tough">ℹ️ About & Quests</button>
+        <span class="footer-sep">•</span>
+        <button id="footerShareBtn" class="footer-link-btn" title="Share Squad">🔗 Share Squad</button>
       </div>
     </footer>
   </div>
@@ -494,20 +554,54 @@
   <div id="roomModal" class="modal-backdrop hidden">
     <div class="modal-box">
       <h3 class="modal-title">👥 Crew & Group Hub</h3>
-      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
-        Collaborate with your friends, create your own gym squad, or track solo!
+      <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+        Collaborate with friends, rename your squad, invite workout partners, or track solo!
       </p>
 
-      <!-- Option 1: Create New Group or Solo Quest -->
+      <!-- Section 1: Rename Current Squad -->
       <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
-        <label class="form-label" style="color: var(--accent-green);">✨ Start New Crew or Solo Quest</label>
+        <label class="form-label" style="color: var(--accent-green); display: flex; justify-content: space-between;">
+          <span>✏️ Current Squad Name</span>
+          <small id="currentRoomSlugLabel" style="color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem;">slug: main</small>
+        </label>
+        <div style="display: flex; gap: 6px;">
+          <input id="editRoomNameInput" type="text" class="form-input" placeholder="Squad Name" maxlength="50">
+          <button id="saveRoomNameBtn" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;">
+            Save Name
+          </button>
+        </div>
+      </div>
+
+      <!-- Section 2: Share Current Squad -->
+      <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
+        <label class="form-label" style="color: #60a5fa;">🔗 Share Squad Invite Link</label>
+        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+          <input id="shareRoomUrlInput" type="text" class="form-input" readonly style="font-size: 0.78rem; font-family: var(--font-mono); background: var(--bg-surface);">
+          <button id="copyRoomUrlBtn" class="btn btn-secondary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;">
+            📋 Copy
+          </button>
+        </div>
+        <button id="nativeShareBtn" class="btn btn-secondary" style="width: 100%; display: none; margin-bottom: 8px; font-size: 0.82rem;">
+          📲 Share via Apps / Messages
+        </button>
+        <div style="text-align: center; margin-top: 8px;">
+          <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Scan with Phone to Join:</span>
+          <div style="display: flex; justify-content: center;">
+            <img id="roomQrImage" src="" alt="Room QR Code" style="width: 130px; height: 130px; background: #fff; border-radius: var(--radius-md); padding: 6px;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Start New Crew or Solo Quest -->
+      <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
+        <label class="form-label" style="color: var(--accent-amber);">✨ Start New Crew or Solo Quest</label>
         <input id="newRoomNameInput" type="text" class="form-input" placeholder="e.g. Sally's Bio Squad or Solo Tonnage">
-        <button id="createNewRoomBtn" class="btn btn-primary" style="width: 100%; margin-top: 8px; font-size: 0.85rem;">
+        <button id="createNewRoomBtn" class="btn btn-secondary" style="width: 100%; margin-top: 8px; font-size: 0.85rem;">
           Create New Group
         </button>
       </div>
 
-      <!-- Option 2: Join by Slug or QR -->
+      <!-- Section 4: Join by Slug -->
       <div class="form-group">
         <label class="form-label">Join Existing Group by Code / Slug</label>
         <div style="display: flex; gap: 6px;">
@@ -516,16 +610,94 @@
         </div>
       </div>
 
-      <!-- QR Code Pairing -->
-      <div style="text-align: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
-        <label class="form-label">Scan to Share Current Group</label>
-        <div style="display: flex; justify-content: center; margin: 8px 0;">
-          <img id="roomQrImage" src="" alt="Room QR Code" style="width: 150px; height: 150px; background: #fff; border-radius: var(--radius-md); padding: 6px;">
+      <div class="action-buttons-row" style="margin-top: 14px;">
+        <button id="closeRoomBtn" class="btn btn-secondary" style="width: 100%;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- About & Lore Modal -->
+  <div id="aboutModal" class="modal-backdrop hidden">
+    <div class="modal-box about-modal-box">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+        <svg class="brand-icon-svg" viewBox="0 0 32 24" width="34" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="5" width="22" height="14" rx="5" fill="#10B981"/>
+          <rect x="7" y="5" width="2.5" height="14" fill="#059669"/>
+          <rect x="13" y="5" width="2.5" height="14" fill="#059669"/>
+          <rect x="19" y="5" width="2.5" height="14" fill="#059669"/>
+          <rect x="22" y="8" width="7" height="8" rx="2" fill="#34D399"/>
+          <circle cx="28" cy="12" r="1.5" fill="#064E3B"/>
+          <circle cx="24" cy="9" r="1" fill="#0F172A"/>
+          <rect x="4" y="18" width="3" height="4" fill="#059669"/>
+          <rect x="3" y="21" width="1.5" height="2" fill="#F59E0B"/>
+          <rect x="5.5" y="21" width="1.5" height="2" fill="#F59E0B"/>
+          <rect x="10" y="18" width="3" height="4" fill="#059669"/>
+          <rect x="9" y="21" width="1.5" height="2" fill="#F59E0B"/>
+          <rect x="11.5" y="21" width="1.5" height="2" fill="#F59E0B"/>
+          <rect x="16" y="18" width="3" height="4" fill="#059669"/>
+          <rect x="15" y="21" width="1.5" height="2" fill="#F59E0B"/>
+          <rect x="17.5" y="21" width="1.5" height="2" fill="#F59E0B"/>
+          <rect x="22" y="18" width="3" height="4" fill="#059669"/>
+          <rect x="21" y="21" width="1.5" height="2" fill="#F59E0B"/>
+          <rect x="23.5" y="21" width="1.5" height="2" fill="#F59E0B"/>
+        </svg>
+        <div>
+          <h3 class="modal-title" style="margin: 0; font-size: 1.15rem;">Tardigrade Tough</h3>
+          <span style="font-size: 0.76rem; color: var(--accent-green); font-weight: 700;">Collaborative Fitness vs Colossal Nature</span>
         </div>
       </div>
 
-      <div class="action-buttons-row" style="margin-top: 14px;">
-        <button id="closeRoomBtn" class="btn btn-secondary" style="width: 100%;">Close</button>
+      <div class="about-section-body">
+        <h4>🦠 The Water Bear Philosophy</h4>
+        <p>
+          Tardigrades (water bears) are the most resilient creatures on Earth. They survive boiling volcanos, absolute zero, cosmic radiation, and the vacuum of outer space. <strong>Tardigrade Tough</strong> channels this indestructible spirit by turning every lift, run, and climb into a collaborative quest to conquer nature's heaviest benchmarks.
+        </p>
+
+        <h4>🌲 The Active Quests</h4>
+        <div class="about-quest-list">
+          <div class="about-quest-item">
+            <span class="quest-emoji">🌲</span>
+            <div>
+              <strong>Pando Aspen Clone (Weight)</strong>
+              <p>Hoisting the 13.2-million-pound underground clonal root system in Utah through collective gym tonnage.</p>
+            </div>
+          </div>
+          <div class="about-quest-item">
+            <span class="quest-emoji">🦌</span>
+            <div>
+              <strong>Caribou Migration (Distance)</strong>
+              <p>Traversing the majestic 3,000-mile Arctic tundra migration through cardio, running, cycling, and walking.</p>
+            </div>
+          </div>
+          <div class="about-quest-item">
+            <span class="quest-emoji">🐐</span>
+            <div>
+              <strong>Mt. Everest Ascent (Elevation)</strong>
+              <p>Scaling the 29,031 ft summit of the world with nimble mountain goats via stair climbing and elevation vert.</p>
+            </div>
+          </div>
+          <div class="about-quest-item">
+            <span class="quest-emoji">🐋</span>
+            <div>
+              <strong>The Blue Whale (Trophy Hall)</strong>
+              <p>Conquered trophy benchmark honoring 418,878 lbs hoisted by the crew.</p>
+            </div>
+          </div>
+        </div>
+
+        <h4>🔒 Zero Accounts & Anonymous Sync</h4>
+        <p>
+          No logins, passwords, or personal data harvested. Your device token pairs seamlessly across devices using QR codes and unique squad links.
+        </p>
+
+        <h4>🔌 Offline-First Resilience</h4>
+        <p>
+          Working out in a basement gym with zero cell reception? The built-in offline engine stores your sets locally and automatically syncs in batches the instant connection returns.
+        </p>
+      </div>
+
+      <div class="action-buttons-row" style="margin-top: 16px;">
+        <button id="closeAboutBtn" class="btn btn-secondary" style="width: 100%;">Close</button>
       </div>
     </div>
   </div>

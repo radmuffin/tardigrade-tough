@@ -33,15 +33,17 @@ All activity logs, goals, and leaderboards are partitioned by `room_slug`:
 
 ### 3. Security, Input Validation & XSS Prevention
 - All user-controlled text rendered into the DOM must pass through `FlyToast.escape()` or `textContent` (never raw unescaped `innerHTML`).
-- Input lengths are strictly capped: `nickname` (max 50 chars), `notes` (max 500 chars), `exercise_name` (max 100 chars).
+- Input lengths are strictly capped: `nickname` (max 50 chars), `notes` (max 500 chars), `exercise_name` (max 100 chars), `room name` (max 50 chars).
 - Numeric values must be bounded: `weight_per_rep >= 0`, `reps >= 1`, `sets >= 1`, `target_value > 0`.
 - Deletion authorization: Users can only delete / rollback activity records that match their `user_token`.
 
-### 4. Zero-Build Frontend Conventions
+### 4. Zero-Build Frontend Conventions & Connective Navigation
 - Frontend files in `static/` are served statically by Axum without node bundlers (no webpack/vite).
 - Modules use native browser ES6 imports (`import { ... } from '/_fly/fly-ui.js'`).
 - Always test responsive mobile viewports (390x844 Pixel/iPhone).
 - Do not introduce Node/npm dependencies into client-side JS.
+- Inter-screen navigation uses `.connective-btn` with `data-target="<quests|leaderboard|activity|trophy>"` to allow smooth context-switching across views.
+- Squad renaming sends `POST /api/room/:slug/name` and emits a WebSocket broadcast `room_renamed` with `{ room: Room }` to sync all connected crew members in real-time.
 
 ---
 

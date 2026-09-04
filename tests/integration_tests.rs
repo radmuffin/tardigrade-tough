@@ -622,3 +622,24 @@ fn test_pwa_configuration_and_assets() {
         "index.html must include apple-touch-icon link"
     );
 }
+
+#[test]
+fn test_room_renaming_and_persistence() {
+    let conn = setup_test_db();
+
+    // 1. Initial room name is Pando Squad
+    let room = get_or_create_room(&conn, "main").expect("room");
+    assert_eq!(room.name, "Pando Squad");
+
+    // 2. Rename room
+    let updated = update_room_name(&conn, "main", "Iron Bears Squad").expect("update room");
+    assert_eq!(updated.name, "Iron Bears Squad");
+    assert_eq!(updated.slug, "main");
+
+    // 3. Verify persistence
+    let fetched = get_or_create_room(&conn, "main").expect("fetch room");
+    assert_eq!(fetched.name, "Iron Bears Squad");
+
+    // 4. Verify invalid empty names are rejected
+    assert!(update_room_name(&conn, "main", "   ").is_err());
+}

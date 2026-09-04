@@ -181,6 +181,88 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#heroGoalTitle')).toBeVisible();
   });
 
+  test('supports squad renaming and updates squad name label in real-time', async ({ page }) => {
+    // Open Crew Hub modal
+    await page.click('#roomBtn');
+    await expect(page.locator('#roomModal')).toBeVisible();
+
+    // Verify current squad name input is pre-populated
+    const nameInput = page.locator('#editRoomNameInput');
+    await expect(nameInput).not.toHaveValue('');
+
+    // Enter a new squad name and save
+    await nameInput.fill('Iron Tardigrades');
+    await page.click('#saveRoomNameBtn');
+
+    // Verify room header label updates
+    await expect(page.locator('#roomNameLabel')).toHaveText('Iron Tardigrades');
+
+    // Close modal
+    await page.click('#closeRoomBtn');
+    await expect(page.locator('#roomModal')).not.toBeVisible();
+  });
+
+  test('provides squad invite link and QR code in share section', async ({ page }) => {
+    // Open room modal via footer share button
+    await page.click('#footerShareBtn');
+    await expect(page.locator('#roomModal')).toBeVisible();
+
+    // Check share link and QR code
+    const shareInput = page.locator('#shareRoomUrlInput');
+    await expect(shareInput).toBeVisible();
+    const val = await shareInput.inputValue();
+    expect(val).toContain('/r/');
+
+    const qrImg = page.locator('#roomQrImage');
+    await expect(qrImg).toBeVisible();
+    const qrSrc = await qrImg.getAttribute('src');
+    expect(qrSrc).toContain('/api/qr?url=');
+
+    // Copy button is clickable
+    await page.click('#copyRoomUrlBtn');
+
+    await page.click('#closeRoomBtn');
+    await expect(page.locator('#roomModal')).not.toBeVisible();
+  });
+
+  test('navigates seamlessly using connective action cards across screens', async ({ page }) => {
+    // 1. From Quests, navigate to Leaderboard
+    await expect(page.locator('#viewQuests')).toBeVisible();
+    await page.locator('#viewQuests .connective-btn[data-target="leaderboard"]').click();
+    await expect(page.locator('#viewLeaderboard')).toBeVisible();
+    await expect(page.locator('#viewQuests')).not.toBeVisible();
+
+    // 2. From Leaderboard, navigate to Live Activity
+    await page.locator('#viewLeaderboard .connective-btn[data-target="activity"]').click();
+    await expect(page.locator('#viewActivity')).toBeVisible();
+    await expect(page.locator('#viewLeaderboard')).not.toBeVisible();
+
+    // 3. From Activity, navigate back to Quests
+    await page.locator('#viewActivity .connective-btn[data-target="quests"]').click();
+    await expect(page.locator('#viewQuests')).toBeVisible();
+    await expect(page.locator('#viewActivity')).not.toBeVisible();
+
+    // 4. From Quests, navigate to Trophy Room
+    await page.locator('#viewQuests .connective-btn[data-target="trophy"]').click();
+    await expect(page.locator('#viewTrophy')).toBeVisible();
+    await expect(page.locator('#viewQuests')).not.toBeVisible();
+
+    // 5. From Trophy Room, navigate back to Quests
+    await page.locator('#viewTrophy .connective-btn[data-target="quests"]').click();
+    await expect(page.locator('#viewQuests')).toBeVisible();
+  });
+
+  test('opens and closes About & Quests lore modal from footer', async ({ page }) => {
+    await page.click('#footerAboutBtn');
+    await expect(page.locator('#aboutModal')).toBeVisible();
+    await expect(page.locator('#aboutModal h3')).toContainText('Tardigrade Tough');
+    await expect(page.locator('#aboutModal')).toContainText('Water Bear Philosophy');
+    await expect(page.locator('#aboutModal')).toContainText('Pando Aspen Clone');
+
+    await page.click('#closeAboutBtn');
+    await expect(page.locator('#aboutModal')).not.toBeVisible();
+  });
+
   test('configures PWA manifest, meta tags, and mobile capabilities', async ({ page }) => {
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(manifestHref).toBe('/manifest.json');

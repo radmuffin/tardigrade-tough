@@ -1080,3 +1080,173 @@ body {
   transform: scale(1.15);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
+
+/* Connective Navigation Cards & Strips */
+.connective-nav-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-top: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.connective-nav-title {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.connective-nav-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.connective-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.connective-btn:active {
+  transform: scale(0.98);
+}
+
+.connective-btn .conn-icon {
+  font-size: 1.25rem;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.connective-btn .conn-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.connective-btn .conn-text strong {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.connective-btn .conn-text small {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.connective-btn .conn-arrow {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.connective-action-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-top: 16px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+
+.connective-action-content h4 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.connective-action-content p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* Footer Link Buttons */
+.footer-link-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-green);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 4px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.footer-link-btn:hover {
+  color: #34d399;
+}
+
+.footer-sep {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* About Modal Styling */
+.about-section-body {
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.about-section-body h4 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-top: 14px;
+  margin-bottom: 4px;
+}
+
+.about-quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.about-quest-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.about-quest-item .quest-emoji {
+  font-size: 1.3rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.about-quest-item strong {
+  color: var(--text-primary);
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.about-quest-item p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}

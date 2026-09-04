@@ -8,6 +8,11 @@ pub struct Room {
     pub created_at: String,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct RenameRoomRequest {
+    pub name: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserProfile {
     pub user_token: String,

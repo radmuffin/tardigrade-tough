@@ -185,6 +185,30 @@ pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
     }
 }
 
+pub fn update_room_name(conn: &Connection, slug: &str, new_name: &str) -> Result<Room> {
+    let clean_name = new_name.trim();
+    if clean_name.is_empty() {
+        return Err(rusqlite::Error::InvalidParameterName(
+            "Room name cannot be empty".to_string(),
+        ));
+    }
+    let truncated_name = if clean_name.chars().count() > 50 {
+        clean_name.chars().take(50).collect::<String>()
+    } else {
+        clean_name.to_string()
+    };
+
+    // Ensure room exists first
+    let _ = get_or_create_room(conn, slug)?;
+
+    conn.execute(
+        "UPDATE rooms SET name = ? WHERE slug = ?",
+        params![truncated_name, slug],
+    )?;
+
+    get_or_create_room(conn, slug)
+}
+
 pub fn get_or_create_user(
     conn: &Connection,
     token: &str,

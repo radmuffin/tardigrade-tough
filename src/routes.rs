@@ -1,8 +1,8 @@
 use crate::db::*;
 use crate::models::{
     Activity, BatchLogActivityRequest, CheerRequest, CreateGoalRequest, CreateGoalWishlistRequest,
-    Goal, GoalWishlistItem, LogActivityRequest, RoomDataResponse, UpdateProfileRequest,
-    UserProfile as AppUserProfile,
+    Goal, GoalWishlistItem, LogActivityRequest, RenameRoomRequest, Room, RoomDataResponse,
+    UpdateProfileRequest, UserProfile as AppUserProfile,
 };
 use axum::{
     extract::{
@@ -40,6 +40,7 @@ pub struct QrQuery {
 pub fn create_routes(state: AppState) -> Router {
     Router::new()
         .route("/room/:slug", get(get_room_data))
+        .route("/room/:slug/name", post(rename_room_handler))
         .route("/users/profile", post(update_profile))
         .route("/activities", post(log_activity))
         .route("/activities/batch", post(log_batch_activities))
@@ -106,6 +107,48 @@ async fn get_room_data(
             wishlists,
         })),
     )
+}
+
+async fn rename_room_handler(
+    user: UserToken,
+    Path(slug): Path<String>,
+    State(state): State<AppState>,
+    Json(payload): Json<RenameRoomRequest>,
+) -> (StatusCode, Json<ApiResponse<Room>>) {
+    let clean_slug = slug.trim().to_lowercase();
+    let clean_name = payload.name.trim();
+
+    if clean_name.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::err("Squad name cannot be empty")),
+        );
+    }
+    if clean_name.chars().count() > 50 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::err("Squad name must be 50 characters or less")),
+        );
+    }
+
+    let conn = state.db.lock().unwrap();
+    match update_room_name(&conn, &clean_slug, clean_name) {
+        Ok(room) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: clean_slug,
+                event: "room_renamed".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "room": room,
+                }),
+            });
+            (StatusCode::OK, Json(ApiResponse::ok(room)))
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
+    }
 }
 
 async fn update_profile(
