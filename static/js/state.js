@@ -4,7 +4,7 @@ export function getRoomFromUrl() {
   const match = window.location.pathname.match(/\/r\/([a-zA-Z0-9_-]+)/);
   if (match) return match[1];
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('room') || 'main';
+  return urlParams.get('room') || null;
 }
 
 export function formatNumber(num) {
@@ -15,8 +15,13 @@ const apiBase = (typeof window !== 'undefined' && window.location && window.loca
   ? `${window.location.origin}/api`
   : '/api';
 
+const urlRoom = getRoomFromUrl();
+const storedRoom = (typeof localStorage !== 'undefined')
+  ? localStorage.getItem('tardigrade_current_room')
+  : null;
+
 export const state = {
-  roomSlug: getRoomFromUrl() || 'main',
+  roomSlug: urlRoom || storedRoom || 'current',
   apiBase,
   client: new FlyClient({ baseUrl: apiBase }),
   diorama: null,

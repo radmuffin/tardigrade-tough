@@ -163,7 +163,11 @@ pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
         Ok(room) => Ok(room),
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             let now = Utc::now().to_rfc3339();
-            let pretty_name = format!("{} Crew", slug.replace('-', " "));
+            let pretty_name = if slug.starts_with("solo-") {
+                "Solo Quest".to_string()
+            } else {
+                format!("{} Crew", slug.replace('-', " "))
+            };
             conn.execute(
                 "INSERT INTO rooms (slug, name, created_at) VALUES (?, ?, ?)",
                 params![slug, pretty_name, now],
@@ -220,6 +224,35 @@ pub fn update_room_name(conn: &Connection, slug: &str, new_name: &str) -> Result
     )?;
 
     get_or_create_room(conn, slug)
+}
+
+pub fn get_user_current_room(conn: &Connection, token: &str) -> Result<Option<String>> {
+    let mut stmt = conn.prepare("SELECT current_room_slug FROM users WHERE user_token = ?")?;
+    let mut rows = stmt.query(params![token])?;
+    if let Some(row) = rows.next()? {
+        let slug: String = row.get(0)?;
+        Ok(Some(slug))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn generate_solo_room_slug(token: &str) -> String {
+    let sanitized: String = token
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    if sanitized.is_empty() {
+        return format!("solo-{}", &fly_common::sync::generate_share_token()[..8]);
+    }
+
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    sanitized.hash(&mut hasher);
+    let hash = hasher.finish();
+    format!("solo-{:06x}", hash & 0xFFFFFF)
 }
 
 pub fn get_or_create_user(
@@ -286,7 +319,8 @@ pub fn update_user_profile(
     token: &str,
     req: &UpdateProfileRequest,
 ) -> Result<UserProfile> {
-    let current = get_or_create_user(conn, token, "main")?;
+    let default_room = generate_solo_room_slug(token);
+    let current = get_or_create_user(conn, token, &default_room)?;
     let nickname = req.nickname.as_deref().unwrap_or(&current.nickname).trim();
     let nickname = if nickname.is_empty() {
         current.nickname.as_str()

@@ -790,3 +790,80 @@ fn test_custom_quest_category_proposal_promotion_and_activity_logging() {
         .expect("pushup goal");
     assert_eq!(pushup_goal.current_value, 100.0);
 }
+
+#[tokio::test]
+async fn test_new_visitor_gets_isolated_solo_room_not_main() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState { db, hub };
+    let app = create_routes(state);
+    let mut server = TestServer::new(app).unwrap();
+
+    // 1. New visitor visits main site (GET /room/current or GET /room)
+    let res = server
+        .get("/room/current")
+        .add_header("X-Device-Token", "visitor_alice_new_1")
+        .await;
+
+    res.assert_status_ok();
+    let json_val: serde_json::Value = res.json();
+    assert_eq!(json_val["success"], true);
+
+    let room_slug = json_val["data"]["room"]["slug"].as_str().unwrap();
+    assert_ne!(
+        room_slug, "main",
+        "New visitors must NOT be automatically added to the 'main' group!"
+    );
+    assert!(
+        room_slug.starts_with("solo-"),
+        "New visitors should receive a private solo room slug"
+    );
+    assert_eq!(
+        json_val["data"]["room"]["name"], "Solo Quest",
+        "New solo room should be named Solo Quest"
+    );
+    assert_eq!(
+        json_val["data"]["recent_activities"]
+            .as_array()
+            .unwrap()
+            .len(),
+        0,
+        "New visitor solo room must have clean 0 activities"
+    );
+
+    // 2. Second visitor on a different device visits main site and gets their own distinct room
+    server.clear_cookies();
+    let res2 = server
+        .get("/room/current")
+        .add_header("X-Device-Token", "visitor_bob_new_2")
+        .await;
+
+    res2.assert_status_ok();
+    let json_val2: serde_json::Value = res2.json();
+    let bob_slug = json_val2["data"]["room"]["slug"].as_str().unwrap();
+    assert_ne!(bob_slug, "main", "Second visitor must NOT be added to main");
+    assert_ne!(
+        bob_slug, room_slug,
+        "Visitors must be isolated from each other"
+    );
+
+    // 3. Alice explicitly joining a squad retains that squad on subsequent /room/current calls
+    server.clear_cookies();
+    let res_join = server
+        .get("/room/champions-crew")
+        .add_header("X-Device-Token", "visitor_alice_new_1")
+        .await;
+    res_join.assert_status_ok();
+    let json_join: serde_json::Value = res_join.json();
+    assert_eq!(json_join["data"]["room"]["slug"], "champions-crew");
+
+    // Returning to /room/current retains champions-crew
+    let res_return = server
+        .get("/room/current")
+        .add_header("X-Device-Token", "visitor_alice_new_1")
+        .await;
+    res_return.assert_status_ok();
+    let json_return: serde_json::Value = res_return.json();
+    assert_eq!(json_return["data"]["room"]["slug"], "champions-crew");
+}

@@ -400,6 +400,9 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       }
 
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `squad-${Date.now().toString(36)}`;
+      try {
+        localStorage.setItem('tardigrade_current_room', slug);
+      } catch (e) {}
       window.location.href = `/r/${slug}`;
     });
   }
@@ -410,6 +413,9 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     switchRoomBtn.addEventListener('click', () => {
       const targetSlug = roomSlugInput.value.trim().toLowerCase();
       if (targetSlug && targetSlug !== state.roomSlug) {
+        try {
+          localStorage.setItem('tardigrade_current_room', targetSlug);
+        } catch (e) {}
         window.location.href = `/r/${targetSlug}`;
       }
     });

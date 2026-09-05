@@ -66,6 +66,19 @@ export async function loadRoomState() {
     if (res && res.success) {
       state.currentRoomData = res.data;
 
+      // Update and persist the actual resolved room slug
+      if (res.data.room && res.data.room.slug) {
+        state.roomSlug = res.data.room.slug;
+        try {
+          localStorage.setItem('tardigrade_current_room', state.roomSlug);
+        } catch (e) {}
+
+        // If on the root path, update URL in browser history so sharing and bookmarking works naturally
+        if (window.location.pathname === '/' && state.roomSlug) {
+          window.history.replaceState(null, '', `/r/${state.roomSlug}`);
+        }
+      }
+
       // Ensure active_goals are in the exact order as visual tabs: Pando -> Everest -> Caribou
       if (state.currentRoomData && state.currentRoomData.active_goals) {
         const themeOrder = ['pando', 'everest', 'caribou'];

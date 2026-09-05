@@ -4,6 +4,7 @@ use crate::models::{
     Goal, GoalWishlistItem, LogActivityRequest, RenameRoomRequest, Room, RoomDataResponse,
     UpdateProfileRequest, UserProfile as AppUserProfile,
 };
+use axum::async_trait;
 use axum::{
     extract::{
         ws::{WebSocket, WebSocketUpgrade},
@@ -14,11 +15,89 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
-use fly_common::prelude::{ApiResponse, DbPool, UserToken};
+use fly_common::prelude::{ApiResponse, DbPool, UserToken as FlyUserToken};
 use fly_common::qr::generate_qr_svg;
 use fly_common::ws::{BroadcastHub, WsMessage};
 use serde::Deserialize;
 use std::sync::Arc;
+
+/// Anonymous user token extracted from incoming request headers or queries.
+/// Supports both `x-user-token` (standard fly-device-sync) and `x-device-token`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserToken(String);
+
+impl UserToken {
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    pub fn is_present(&self) -> bool {
+        !self.0.is_empty()
+    }
+}
+
+impl std::ops::Deref for UserToken {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[async_trait]
+impl<S> axum::extract::FromRequestParts<S> for UserToken
+where
+    S: Send + Sync,
+{
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        // 1. Check fly_common's FlyUserToken (handles x-user-token header and query params: token, user_token, x-user-token)
+        let Ok(tok) = FlyUserToken::from_request_parts(parts, state).await;
+        if tok.is_present() {
+            return Ok(UserToken(tok.as_str().to_string()));
+        }
+
+        // 2. Check x-device-token header
+        if let Some(h) = parts.headers.get("x-device-token") {
+            if let Ok(s) = h.to_str() {
+                let sanitized: String = s
+                    .chars()
+                    .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+                    .take(128)
+                    .collect();
+                if !sanitized.is_empty() {
+                    return Ok(UserToken(sanitized));
+                }
+            }
+        }
+
+        // 3. Check query param device_token
+        if let Some(query) = parts.uri.query() {
+            for pair in query.split('&') {
+                let mut it = pair.split('=');
+                if let (Some(k), Some(v)) = (it.next(), it.next()) {
+                    if (k == "device_token" || k == "x-device-token") && !v.trim().is_empty() {
+                        let sanitized: String = v
+                            .chars()
+                            .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+                            .take(128)
+                            .collect();
+                        if !sanitized.is_empty() {
+                            return Ok(UserToken(sanitized));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(UserToken(String::new()))
+    }
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -39,6 +118,7 @@ pub struct QrQuery {
 
 pub fn create_routes(state: AppState) -> Router {
     Router::new()
+        .route("/room", get(get_default_room_data))
         .route("/room/:slug", get(get_room_data))
         .route("/room/:slug/name", post(rename_room_handler))
         .route("/users/profile", post(update_profile))
@@ -53,6 +133,13 @@ pub fn create_routes(state: AppState) -> Router {
         .with_state(state)
 }
 
+async fn get_default_room_data(
+    user: UserToken,
+    state: State<AppState>,
+) -> (StatusCode, Json<ApiResponse<RoomDataResponse>>) {
+    get_room_data(user, Path("current".to_string()), state).await
+}
+
 async fn get_room_data(
     user: UserToken,
     Path(slug): Path<String>,
@@ -61,7 +148,16 @@ async fn get_room_data(
     let clean_slug = slug.trim().to_lowercase();
     let conn = state.db.lock().unwrap();
 
-    let room = match get_or_create_room(&conn, &clean_slug) {
+    let target_slug = if clean_slug == "current" || clean_slug == "default" {
+        match get_user_current_room(&conn, user.as_str()) {
+            Ok(Some(existing_slug)) => existing_slug,
+            _ => generate_solo_room_slug(user.as_str()),
+        }
+    } else {
+        clean_slug
+    };
+
+    let room = match get_or_create_room(&conn, &target_slug) {
         Ok(r) => r,
         Err(e) => {
             return (
@@ -71,8 +167,20 @@ async fn get_room_data(
         }
     };
 
-    let user_profile = match get_or_create_user(&conn, user.as_str(), &clean_slug) {
-        Ok(u) => u,
+    let user_profile = match get_or_create_user(&conn, user.as_str(), &target_slug) {
+        Ok(mut u) => {
+            if u.current_room_slug != target_slug {
+                let update_req = UpdateProfileRequest {
+                    nickname: None,
+                    avatar_color: None,
+                    current_room_slug: Some(target_slug.clone()),
+                };
+                if let Ok(updated) = update_user_profile(&conn, user.as_str(), &update_req) {
+                    u = updated;
+                }
+            }
+            u
+        }
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -81,7 +189,7 @@ async fn get_room_data(
         }
     };
 
-    let (active_goals, completed_goals) = match get_goals_for_room(&conn, &clean_slug) {
+    let (active_goals, completed_goals) = match get_goals_for_room(&conn, &target_slug) {
         Ok(g) => g,
         Err(e) => {
             return (
@@ -91,9 +199,9 @@ async fn get_room_data(
         }
     };
 
-    let recent_activities = get_recent_activities(&conn, &clean_slug, 50).unwrap_or_default();
-    let leaderboard = get_leaderboard(&conn, &clean_slug).unwrap_or_default();
-    let wishlists = get_wishlists(&conn, &clean_slug).unwrap_or_default();
+    let recent_activities = get_recent_activities(&conn, &target_slug, 50).unwrap_or_default();
+    let leaderboard = get_leaderboard(&conn, &target_slug).unwrap_or_default();
+    let wishlists = get_wishlists(&conn, &target_slug).unwrap_or_default();
 
     (
         StatusCode::OK,
@@ -182,7 +290,11 @@ async fn log_activity(
     Json(payload): Json<LogActivityRequest>,
 ) -> (StatusCode, Json<ApiResponse<Activity>>) {
     let mut conn = state.db.lock().unwrap();
-    let user_profile = match get_or_create_user(&conn, user.as_str(), "main") {
+    let default_room = match get_user_current_room(&conn, user.as_str()) {
+        Ok(Some(slug)) => slug,
+        _ => generate_solo_room_slug(user.as_str()),
+    };
+    let user_profile = match get_or_create_user(&conn, user.as_str(), &default_room) {
         Ok(u) => u,
         Err(e) => {
             return (
@@ -236,7 +348,11 @@ async fn log_batch_activities(
     }
 
     let mut conn = state.db.lock().unwrap();
-    let user_profile = match get_or_create_user(&conn, user.as_str(), "main") {
+    let default_room = match get_user_current_room(&conn, user.as_str()) {
+        Ok(Some(slug)) => slug,
+        _ => generate_solo_room_slug(user.as_str()),
+    };
+    let user_profile = match get_or_create_user(&conn, user.as_str(), &default_room) {
         Ok(u) => u,
         Err(e) => {
             return (
@@ -356,12 +472,16 @@ async fn cheer_handler(
 }
 
 async fn create_goal_handler(
-    _user: UserToken,
+    user: UserToken,
     State(state): State<AppState>,
     Json(payload): Json<CreateGoalRequest>,
 ) -> (StatusCode, Json<ApiResponse<Goal>>) {
     let conn = state.db.lock().unwrap();
-    let room_slug = payload.room_slug.as_deref().unwrap_or("main");
+    let fallback = match get_user_current_room(&conn, user.as_str()) {
+        Ok(Some(slug)) => slug,
+        _ => generate_solo_room_slug(user.as_str()),
+    };
+    let room_slug = payload.room_slug.as_deref().unwrap_or(&fallback);
     match create_custom_goal(&conn, room_slug, &payload) {
         Ok(goal) => {
             let _ = state.hub.broadcast(WsMessage {
@@ -551,8 +671,14 @@ async fn ws_handler(
     Query(query): Query<WsQuery>,
     State(state): State<AppState>,
 ) -> Response {
-    let room = query.room.unwrap_or_else(|| "main".to_string());
     let token = query.token;
+    let room = query.room.unwrap_or_else(|| {
+        let conn = state.db.lock().unwrap();
+        let tok = token.as_deref().unwrap_or_default();
+        get_user_current_room(&conn, tok)
+            .unwrap_or(None)
+            .unwrap_or_else(|| generate_solo_room_slug(tok))
+    });
     let hub = state.hub.clone();
 
     ws.on_upgrade(move |socket: WebSocket| async move {
