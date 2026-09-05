@@ -1421,3 +1421,44 @@ async fn test_solo_activity_auto_forwards_to_user_squads_and_cascades_delete() {
         .iter()
         .all(|a| a["exercise_name"] != "Deadlift"));
 }
+
+#[test]
+fn test_init_db_migrates_existing_activities_table_without_parent_activity_id() {
+    let mut conn = Connection::open_in_memory().expect("open");
+    // Create an older schema table activities WITHOUT parent_activity_id
+    conn.execute_batch(
+        r#"
+        CREATE TABLE activities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_slug TEXT NOT NULL,
+            user_token TEXT NOT NULL,
+            user_nickname TEXT NOT NULL,
+            user_avatar_color TEXT NOT NULL,
+            goal_id INTEGER,
+            activity_type TEXT NOT NULL,
+            exercise_name TEXT NOT NULL,
+            sets INTEGER DEFAULT 1,
+            reps INTEGER DEFAULT 1,
+            weight_per_rep REAL DEFAULT 0,
+            distance_val REAL DEFAULT 0,
+            elevation_val REAL DEFAULT 0,
+            total_metric REAL NOT NULL,
+            notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL
+        );
+        "#,
+    )
+    .expect("seed old activities");
+
+    // init_db must migrate the table and not error on missing column
+    init_db(&mut conn).expect("init_db on pre-existing table should succeed");
+
+    // Ensure parent_activity_id column exists and can be selected
+    let _stmt = conn
+        .prepare("SELECT parent_activity_id FROM activities")
+        .expect("parent_activity_id column must exist after migration");
+    let count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM activities", [], |r| r.get(0))
+        .expect("count");
+    assert_eq!(count, 0);
+}

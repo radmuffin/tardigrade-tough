@@ -83,7 +83,6 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_activities_room ON activities(room_slug, id DESC);
         CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_token);
         CREATE INDEX IF NOT EXISTS idx_activities_goal ON activities(goal_id);
-        CREATE INDEX IF NOT EXISTS idx_activities_parent ON activities(parent_activity_id);
         CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_slug);
         CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(user_token);
     "#,
@@ -104,6 +103,12 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
     // Ensure parent_activity_id column exists in activities
     let _ = conn.execute(
         "ALTER TABLE activities ADD COLUMN parent_activity_id INTEGER DEFAULT NULL",
+        [],
+    );
+
+    // Ensure index on parent_activity_id exists
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_activities_parent ON activities(parent_activity_id)",
         [],
     );
 
