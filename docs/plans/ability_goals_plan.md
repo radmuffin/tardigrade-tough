@@ -94,8 +94,8 @@ This plan introduces:
 - [x] Clippy check: `cargo clippy --all-targets -- -D warnings`.
 - [x] Full backend tests: `cargo test --all-targets` (all 28 tests pass).
 - [x] Fast affected runner: `npm run test:affected`.
-- [ ] Autonomous commit and push to `origin/main`.
-- [ ] Deploy to Fly.io via `fly deploy` and test live health endpoint.
+- [x] Autonomous commit and push to `origin/main`.
+- [x] Deploy to Fly.io via `fly deploy` and test live health endpoint.
 
 ---
 
