@@ -312,20 +312,35 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     }
 
     // Stats Grid Calculation
-    const myLeaderboard = (state.currentRoomData.leaderboard || []).find(m => m.user_token === myToken);
-    const totalSets = myLeaderboard ? myLeaderboard.total_sets : 0;
-    const totalWeight = myLeaderboard ? myLeaderboard.total_weight : 0;
-    const totalDist = myLeaderboard ? myLeaderboard.total_distance : 0;
-    const totalElev = myLeaderboard ? myLeaderboard.total_elevation : 0;
+    let totalSets = 0;
+    let totalWeight = 0;
+    let totalDist = 0;
+    let totalElev = 0;
+
+    if (user.personal_stats) {
+      totalWeight = user.personal_stats.total_weight || 0;
+      totalDist = user.personal_stats.total_distance || 0;
+      totalElev = user.personal_stats.total_elevation || 0;
+      totalSets = user.personal_stats.total_sets || 0;
+    } else {
+      const myEntries = (state.currentRoomData.leaderboard || []).filter(m => m.user_token === myToken);
+      for (const m of myEntries) {
+        totalWeight += m.total_weight || 0;
+        totalDist += m.total_distance || 0;
+        totalElev += m.total_elevation || 0;
+        totalSets += m.total_sets || 0;
+      }
+    }
 
     if (profileStatTonnage) profileStatTonnage.textContent = `${formatNumber(totalWeight)} lbs`;
     if (profileStatSets) profileStatSets.textContent = totalSets.toString();
 
     if (profileStatCardio) {
+      const distFormatted = Number.isInteger(totalDist) ? totalDist : (Math.round(totalDist * 10) / 10);
       if (totalDist > 0 && totalElev > 0) {
-        profileStatCardio.textContent = `${totalDist} mi · ${formatNumber(totalElev)} ft`;
+        profileStatCardio.textContent = `${distFormatted} mi · ${formatNumber(totalElev)} ft`;
       } else if (totalDist > 0) {
-        profileStatCardio.textContent = `${totalDist} mi`;
+        profileStatCardio.textContent = `${distFormatted} mi`;
       } else if (totalElev > 0) {
         profileStatCardio.textContent = `${formatNumber(totalElev)} ft`;
       } else {
@@ -334,9 +349,12 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     }
 
     const prs = state.currentRoomData.personal_records || [];
+    const featsCount = user.personal_stats?.total_feats || 0;
     if (profileStatFeats) {
+      const myLeaderboard = (state.currentRoomData.leaderboard || []).find(m => m.user_token === myToken);
       const mvpBadge = (myLeaderboard && myLeaderboard.is_daily_mvp) ? ' · 👑 MVP' : '';
-      profileStatFeats.textContent = `${prs.length} PR${prs.length === 1 ? '' : 's'}${mvpBadge}`;
+      const featsBadge = featsCount > 0 ? ` · ${featsCount} Feat${featsCount === 1 ? '' : 's'}` : '';
+      profileStatFeats.textContent = `${prs.length} PR${prs.length === 1 ? '' : 's'}${featsBadge}${mvpBadge}`;
     }
 
     // Populate PRs Card

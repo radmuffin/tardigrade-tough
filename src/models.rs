@@ -44,6 +44,15 @@ pub struct RenameRoomRequest {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UserPersonalStats {
+    pub total_weight: f64,
+    pub total_distance: f64,
+    pub total_elevation: f64,
+    pub total_sets: i64,
+    pub total_feats: i64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserProfile {
     pub user_token: String,
@@ -57,6 +66,8 @@ pub struct UserProfile {
     pub streak_days: i32,
     #[serde(default)]
     pub tardigrade_state: String,
+    #[serde(default)]
+    pub personal_stats: UserPersonalStats,
 }
 
 #[derive(Debug, Deserialize, Default)]

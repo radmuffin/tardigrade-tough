@@ -109,5 +109,6 @@ pub fn map_user_profile(
         updated_at: row.get(5)?,
         streak_days,
         tardigrade_state,
+        personal_stats: UserPersonalStats::default(),
     })
 }

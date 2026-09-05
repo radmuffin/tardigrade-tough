@@ -1,0 +1,197 @@
+/* =====================================================================
+   Tardigrade Tough - Toasts & Reaction Popups
+   Top-anchored, compact, non-obtrusive feedback & reaction notifications
+   ===================================================================== */
+
+/* System Toast Container Override: Ensure popups never block the workout logging dock */
+.fly-toast-container {
+  top: max(12px, env(safe-area-inset-top, 12px));
+  bottom: auto !important;
+  right: 14px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  max-width: min(380px, calc(100vw - 28px));
+}
+
+.fly-toast {
+  padding: 8px 14px !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@media (max-width: 640px) {
+  .fly-toast-container {
+    top: max(10px, env(safe-area-inset-top, 10px));
+    right: 10px;
+    left: auto;
+  }
+}
+
+/* =====================================================================
+   Dedicated Reaction Popups (Cheer Bursts)
+   Top-centered, sleek capsule size, smart multi-reaction stacking
+   ===================================================================== */
+.reaction-toast-container {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top, 10px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  width: auto;
+  max-width: min(360px, calc(100vw - 20px));
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reaction-toast-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 2px 10px 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  background: var(--bg-surface, #1e293b);
+  color: var(--text-primary, #f8fafc);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color, rgba(59, 130, 246, 0.35));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: reactionToastIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.2s ease,
+              margin 0.2s ease;
+}
+
+[data-theme="dark"] .reaction-toast-pill {
+  background: rgba(21, 31, 50, 0.88);
+  color: var(--text-primary);
+  border-color: rgba(59, 130, 246, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+[data-theme="light"] .reaction-toast-pill {
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--text-primary);
+  border-color: rgba(37, 99, 235, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.reaction-toast-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.68rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.reaction-toast-user {
+  font-weight: 700;
+  color: var(--text-primary);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reaction-toast-text {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.72rem;
+}
+
+.reaction-toast-emoji {
+  font-size: 0.95rem;
+  line-height: 1;
+  display: inline-block;
+  transform: translateY(-0.5px);
+}
+
+.reaction-toast-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  min-width: 18px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+/* Pulse animation on repeated cheers */
+.reaction-toast-pill.pulse {
+  animation: reactionPulse 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.reaction-toast-pill.reaction-dismissing {
+  animation: reactionToastOut 0.2s ease forwards;
+}
+
+@keyframes reactionToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes reactionToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.9);
+  }
+}
+
+@keyframes reactionPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* Stacking card deck layout when multiple reaction toasts are present */
+.reaction-toast-container.has-multiple .reaction-toast-pill:not(:first-child) {
+  margin-top: -6px;
+  opacity: 0.92;
+  transform: scale(0.96);
+}
+
+.reaction-toast-container.has-multiple .reaction-toast-pill:nth-child(3) {
+  margin-top: -6px;
+  opacity: 0.82;
+  transform: scale(0.92);
+}

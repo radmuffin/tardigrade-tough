@@ -165,12 +165,24 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('#closeProfileBtn');
   });
 
-  test('submits cheer reaction via tap', async ({ page }) => {
+  test('submits cheer reaction via tap and displays stacked reaction toast at top', async ({ page }) => {
     const cheerBtn = page.locator('.cheer-btn[data-emoji="🔥"]');
     await expect(cheerBtn).toBeVisible();
     await cheerBtn.click();
     // Verify cheer button responds
     await expect(cheerBtn).toBeEnabled();
+
+    // Verify reaction toast appears at top
+    const toastContainer = page.locator('#reactionToastContainer');
+    const pill = toastContainer.locator('.reaction-toast-pill').first();
+    await expect(pill).toBeVisible();
+    await expect(pill.locator('.reaction-toast-emoji')).toHaveText('🔥');
+
+    // Tap again to test burst multiplier stacking
+    await cheerBtn.click();
+    const countBadge = pill.locator('.reaction-toast-count');
+    await expect(countBadge).toBeVisible();
+    await expect(countBadge).toHaveText('×2');
   });
 
   test('switches between logging modes (Rapid Stepper, Full Workout, Fast-Add)', async ({ page }) => {

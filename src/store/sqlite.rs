@@ -94,6 +94,11 @@ impl UserStore for SqliteStore {
         let conn = self.conn.lock().unwrap();
         crate::db::get_user_personal_records(&conn, user_token).map_err(Into::into)
     }
+
+    fn get_user_personal_stats(&self, user_token: &str) -> StoreResult<UserPersonalStats> {
+        let conn = self.conn.lock().unwrap();
+        crate::db::get_user_personal_stats(&conn, user_token).map_err(Into::into)
+    }
 }
 
 impl GoalStore for SqliteStore {

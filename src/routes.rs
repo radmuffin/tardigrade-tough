@@ -3,7 +3,7 @@ use crate::models::{
     Activity, BatchLogActivityRequest, CheckoffGoalRequest, CheckoffGoalResponse, CheerRequest,
     CreateGoalRequest, CreateGoalWishlistRequest, CreateRoomRequest, Goal, GoalWishlistItem,
     LogActivityRequest, PersonalRecord, RenameRoomRequest, Room, RoomDataResponse,
-    UpdateProfileRequest, UserProfile as AppUserProfile,
+    UpdateProfileRequest, UserPersonalStats, UserProfile as AppUserProfile,
 };
 use axum::async_trait;
 use axum::{
@@ -713,6 +713,7 @@ async fn cheer_handler(
             updated_at: "".to_string(),
             streak_days: 0,
             tardigrade_state: "cryptobiosis".to_string(),
+            personal_stats: UserPersonalStats::default(),
         });
 
     let _ = state.hub.broadcast(WsMessage {

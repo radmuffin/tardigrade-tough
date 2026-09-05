@@ -58,6 +58,7 @@ pub trait UserStore: Send + Sync {
         req: &UpdateProfileRequest,
     ) -> StoreResult<UserProfile>;
     fn get_user_personal_records(&self, user_token: &str) -> StoreResult<Vec<PersonalRecord>>;
+    fn get_user_personal_stats(&self, user_token: &str) -> StoreResult<UserPersonalStats>;
 }
 
 pub trait GoalStore: Send + Sync {

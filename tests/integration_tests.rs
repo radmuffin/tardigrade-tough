@@ -1922,3 +1922,167 @@ async fn test_solo_ability_checkoff_auto_forwards_to_squads() {
     assert_eq!(fwd_act["activity_type"], "ability");
     assert_eq!(fwd_act["notes"], "Landed on grass!");
 }
+
+#[test]
+fn test_sally_multi_category_personal_progress_and_leaderboard() {
+    let mut conn = setup_test_db();
+    let sally_token = "token_sally_athlete";
+
+    // 1. Initial user setup with auto-generated nickname
+    let user = get_or_create_user(&conn, sally_token, "sally-squad").expect("user");
+    assert_eq!(user.personal_stats.total_weight, 0.0);
+    assert_eq!(user.personal_stats.total_distance, 0.0);
+    assert_eq!(user.personal_stats.total_elevation, 0.0);
+
+    // 2. Log weight workout under initial default nickname
+    log_single_activity(
+        &mut conn,
+        &user,
+        "sally-squad",
+        &LogActivityRequest {
+            room_slug: Some("sally-squad".to_string()),
+            user_nickname: None,
+            user_avatar_color: None,
+            user_avatar_emoji: None,
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Deadlift".to_string()),
+            sets: Some(3),
+            reps: Some(5),
+            weight_per_rep: Some(300.0),
+            distance_val: None,
+            elevation_val: None,
+            total_metric: Some(1500.0),
+            notes: None,
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+        },
+    )
+    .expect("log weight");
+
+    // 3. User updates nickname to "Sally"
+    let updated_user = update_user_profile(
+        &conn,
+        sally_token,
+        &UpdateProfileRequest {
+            nickname: Some("Sally".to_string()),
+            avatar_color: Some("#ec4899".to_string()),
+            avatar_emoji: Some("💪".to_string()),
+            current_room_slug: None,
+        },
+    )
+    .expect("update profile");
+    assert_eq!(updated_user.nickname, "Sally");
+    assert_eq!(updated_user.personal_stats.total_weight, 1500.0);
+
+    // 4. Sally logs distance workout
+    log_single_activity(
+        &mut conn,
+        &updated_user,
+        "sally-squad",
+        &LogActivityRequest {
+            room_slug: Some("sally-squad".to_string()),
+            user_nickname: Some("Sally".to_string()),
+            user_avatar_color: Some("#ec4899".to_string()),
+            user_avatar_emoji: Some("💪".to_string()),
+            activity_type: "distance".to_string(),
+            exercise_name: Some("Trail Run".to_string()),
+            sets: Some(1),
+            reps: Some(1),
+            weight_per_rep: None,
+            distance_val: Some(5.2),
+            elevation_val: None,
+            total_metric: Some(5.2),
+            notes: None,
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+        },
+    )
+    .expect("log distance");
+
+    // 5. Sally logs elevation workout
+    log_single_activity(
+        &mut conn,
+        &updated_user,
+        "sally-squad",
+        &LogActivityRequest {
+            room_slug: Some("sally-squad".to_string()),
+            user_nickname: Some("Sally".to_string()),
+            user_avatar_color: Some("#ec4899".to_string()),
+            user_avatar_emoji: Some("💪".to_string()),
+            activity_type: "elevation".to_string(),
+            exercise_name: Some("Incline Mountain".to_string()),
+            sets: Some(2),
+            reps: Some(1),
+            weight_per_rep: None,
+            distance_val: None,
+            elevation_val: Some(800.0),
+            total_metric: Some(800.0),
+            notes: None,
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+        },
+    )
+    .expect("log elevation");
+
+    // 6. Sally logs an ability feat
+    log_single_activity(
+        &mut conn,
+        &updated_user,
+        "sally-squad",
+        &LogActivityRequest {
+            room_slug: Some("sally-squad".to_string()),
+            user_nickname: Some("Sally".to_string()),
+            user_avatar_color: Some("#ec4899".to_string()),
+            user_avatar_emoji: Some("💪".to_string()),
+            activity_type: "ability".to_string(),
+            exercise_name: Some("Handstand Pushup".to_string()),
+            sets: Some(1),
+            reps: Some(1),
+            weight_per_rep: None,
+            distance_val: None,
+            elevation_val: None,
+            total_metric: Some(1.0),
+            notes: None,
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+        },
+    )
+    .expect("log feat");
+
+    // 7. Verify personal stats across all categories
+    let stats = get_user_personal_stats(&conn, sally_token).expect("personal stats");
+    assert_eq!(stats.total_weight, 1500.0);
+    assert_eq!(stats.total_distance, 5.2);
+    assert_eq!(stats.total_elevation, 800.0);
+    assert_eq!(stats.total_sets, 7); // 3 + 1 + 2 + 1
+    assert_eq!(stats.total_feats, 1);
+
+    // 8. Verify get_or_create_user carries the populated personal_stats
+    let profile = get_or_create_user(&conn, sally_token, "sally-squad").expect("profile");
+    assert_eq!(profile.personal_stats.total_weight, 1500.0);
+    assert_eq!(profile.personal_stats.total_distance, 5.2);
+    assert_eq!(profile.personal_stats.total_elevation, 800.0);
+    assert_eq!(profile.personal_stats.total_sets, 7);
+    assert_eq!(profile.personal_stats.total_feats, 1);
+
+    // 9. Verify room leaderboard aggregates Sally into exactly ONE entry with all categories populated
+    let lb = get_leaderboard(&conn, "sally-squad").expect("leaderboard");
+    assert_eq!(
+        lb.len(),
+        1,
+        "Sally should be grouped into a single leaderboard row"
+    );
+    assert_eq!(lb[0].nickname, "Sally");
+    assert_eq!(lb[0].total_weight, 1500.0);
+    assert_eq!(lb[0].total_distance, 5.2);
+    assert_eq!(lb[0].total_elevation, 800.0);
+    assert_eq!(lb[0].total_sets, 7);
+}

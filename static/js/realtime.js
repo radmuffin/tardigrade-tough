@@ -1,5 +1,6 @@
 import { FlyToast } from '/_fly/fly-ui.js';
 import { state, formatNumber } from './state.js';
+import { showReactionToast } from './reaction-toast.js';
 
 export function initWebSocket({ onReloadState } = {}) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -27,10 +28,18 @@ export function initWebSocket({ onReloadState } = {}) {
 
 export function handleWsEvent(msg, { onReloadState } = {}) {
   if (msg.event === 'cheer_reaction') {
-    if (state.diorama) {
+    if (state.diorama && msg.payload && msg.payload.emoji) {
       state.diorama.spawnEmojiReaction(msg.payload.emoji);
     }
-    FlyToast.info(`${msg.payload.user_nickname} sent ${msg.payload.emoji}!`);
+    if (msg.payload) {
+      showReactionToast({
+        userNickname: msg.payload.user_nickname,
+        userAvatarColor: msg.payload.user_avatar_color,
+        userAvatarEmoji: msg.payload.user_avatar_emoji,
+        emoji: msg.payload.emoji,
+        senderToken: msg.sender_token,
+      });
+    }
   } else if (msg.event === 'room_renamed') {
     if (msg.payload && msg.payload.room) {
       if (state.currentRoomData && state.currentRoomData.room) {

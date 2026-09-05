@@ -4,7 +4,7 @@
  * and offline fallback for SPA routing.
  */
 
-const CACHE_NAME = 'tardigrade-tough-v6';
+const CACHE_NAME = 'tardigrade-tough-v7';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -18,6 +18,7 @@ const PRECACHE_ASSETS = [
   '/css/activity.css',
   '/css/trophy.css',
   '/css/modals.css',
+  '/css/toasts.css',
   '/css/footer.css',
   '/app.js',
   '/js/state.js',
@@ -28,6 +29,7 @@ const PRECACHE_ASSETS = [
   '/js/trophy.js',
   '/js/modals.js',
   '/js/realtime.js',
+  '/js/reaction-toast.js',
   '/js/pwa.js',
   '/canvas-art.js',
   '/offline-sync.js',

@@ -651,12 +651,50 @@ pub fn calculate_user_streak(conn: &Connection, user_token: &str) -> (i32, Strin
     (streak, state)
 }
 
+pub fn get_user_personal_stats(conn: &Connection, user_token: &str) -> Result<UserPersonalStats> {
+    let mut stmt = conn.prepare(
+        r#"SELECT 
+            COALESCE(SUM(CASE 
+                WHEN a.activity_type = 'weight' THEN a.total_metric
+                WHEN a.weight_per_rep > 0.0 AND a.distance_val = 0.0 AND a.elevation_val = 0.0 THEN a.total_metric
+                ELSE 0.0 
+            END), 0.0) as total_wt,
+            COALESCE(SUM(CASE 
+                WHEN a.activity_type = 'distance' THEN a.total_metric
+                WHEN a.distance_val > 0.0 THEN a.distance_val
+                ELSE 0.0 
+            END), 0.0) as total_dist,
+            COALESCE(SUM(CASE 
+                WHEN a.activity_type = 'elevation' THEN a.total_metric
+                WHEN a.elevation_val > 0.0 THEN a.elevation_val
+                ELSE 0.0 
+            END), 0.0) as total_elev,
+            COALESCE(SUM(a.sets), 0) as total_sets,
+            COALESCE(SUM(CASE WHEN a.activity_type = 'ability' THEN 1 ELSE 0 END), 0) as total_feats
+           FROM activities a
+           WHERE a.user_token = ? AND (a.parent_activity_id IS NULL OR a.parent_activity_id = 0)"#,
+    )?;
+
+    let stats = stmt.query_row(params![user_token], |row| {
+        Ok(UserPersonalStats {
+            total_weight: row.get(0)?,
+            total_distance: row.get(1)?,
+            total_elevation: row.get(2)?,
+            total_sets: row.get(3)?,
+            total_feats: row.get(4)?,
+        })
+    })?;
+
+    Ok(stats)
+}
+
 pub fn get_or_create_user(
     conn: &Connection,
     token: &str,
     default_room: &str,
 ) -> Result<UserProfile> {
     let (streak_days, tardigrade_state) = calculate_user_streak(conn, token);
+    let personal_stats = get_user_personal_stats(conn, token).unwrap_or_default();
     let mut stmt = conn.prepare(
         "SELECT user_token, nickname, avatar_color, COALESCE(avatar_emoji, ''), current_room_slug, updated_at FROM users WHERE user_token = ?",
     )?;
@@ -670,6 +708,7 @@ pub fn get_or_create_user(
             updated_at: row.get(5)?,
             streak_days,
             tardigrade_state: tardigrade_state.clone(),
+            personal_stats: personal_stats.clone(),
         })
     });
 
@@ -717,6 +756,7 @@ pub fn get_or_create_user(
                 updated_at: now,
                 streak_days,
                 tardigrade_state,
+                personal_stats,
             })
         }
         Err(e) => Err(e),
@@ -756,6 +796,7 @@ pub fn update_user_profile(
     )?;
 
     let (streak_days, tardigrade_state) = calculate_user_streak(conn, token);
+    let personal_stats = get_user_personal_stats(conn, token).unwrap_or_default();
 
     Ok(UserProfile {
         user_token: token.to_string(),
@@ -766,6 +807,7 @@ pub fn update_user_profile(
         updated_at: now,
         streak_days,
         tardigrade_state,
+        personal_stats,
     })
 }
 
@@ -921,6 +963,34 @@ pub fn log_single_activity(
         .user_avatar_emoji
         .as_deref()
         .unwrap_or(&user.avatar_emoji);
+
+    if let Some(explicit_nick) = req.user_nickname.as_deref() {
+        let clean_nick = explicit_nick.trim();
+        if !clean_nick.is_empty() && clean_nick != user.nickname {
+            let _ = tx.execute(
+                "UPDATE users SET nickname = ? WHERE user_token = ?",
+                params![clean_nick, user.user_token],
+            );
+        }
+    }
+    if let Some(explicit_color) = req.user_avatar_color.as_deref() {
+        let clean_color = explicit_color.trim();
+        if !clean_color.is_empty() && clean_color != user.avatar_color {
+            let _ = tx.execute(
+                "UPDATE users SET avatar_color = ? WHERE user_token = ?",
+                params![clean_color, user.user_token],
+            );
+        }
+    }
+    if let Some(explicit_emoji) = req.user_avatar_emoji.as_deref() {
+        let clean_emoji = explicit_emoji.trim();
+        if !clean_emoji.is_empty() && clean_emoji != user.avatar_emoji {
+            let _ = tx.execute(
+                "UPDATE users SET avatar_emoji = ? WHERE user_token = ?",
+                params![clean_emoji, user.user_token],
+            );
+        }
+    }
     let notes = req.notes.as_deref().unwrap_or("").trim();
     let parent_activity_id = req.parent_activity_id;
 
@@ -1087,7 +1157,7 @@ pub fn delete_activity(
         for (c_id, c_goal_id, c_metric, c_room) in child_rows {
             if let Some(gid) = c_goal_id {
                 tx.execute(
-                    "UPDATE goals SET current_value = MAX(0, current_value - ?) WHERE id = ?",
+                    "UPDATE goals SET current_value = MAX(0.0, current_value - ?) WHERE id = ?",
                     params![c_metric, gid],
                 )?;
                 tx.execute(
@@ -1103,7 +1173,7 @@ pub fn delete_activity(
 
         if let Some(gid) = goal_id {
             tx.execute(
-                "UPDATE goals SET current_value = MAX(0, current_value - ?) WHERE id = ?",
+                "UPDATE goals SET current_value = MAX(0.0, current_value - ?) WHERE id = ?",
                 params![total_metric, gid],
             )?;
 
@@ -1141,17 +1211,41 @@ pub fn get_leaderboard(conn: &Connection, room_slug: &str) -> Result<Vec<Leaderb
     let mut stmt = conn.prepare(
         r#"SELECT 
             a.user_token,
-            COALESCE(NULLIF(a.user_nickname, ''), u.nickname, 'Lifter') as nick,
-            COALESCE(NULLIF(a.user_avatar_color, ''), u.avatar_color, '#10b981') as col,
-            COALESCE(NULLIF(a.user_avatar_emoji, ''), u.avatar_emoji, '') as emoji,
-            SUM(CASE WHEN a.activity_type = 'weight' THEN a.total_metric ELSE 0 END) as total_wt,
-            SUM(CASE WHEN a.activity_type = 'distance' THEN a.total_metric ELSE 0 END) as total_dist,
-            SUM(CASE WHEN a.activity_type = 'elevation' THEN a.total_metric ELSE 0 END) as total_elev,
-            SUM(a.sets) as total_sets
+            COALESCE(
+                NULLIF((SELECT a2.user_nickname FROM activities a2 WHERE a2.user_token = a.user_token AND a2.room_slug = a.room_slug AND NULLIF(a2.user_nickname, '') IS NOT NULL ORDER BY a2.id DESC LIMIT 1), ''),
+                NULLIF(u.nickname, ''),
+                'Lifter'
+            ) as nick,
+            COALESCE(
+                NULLIF((SELECT a2.user_avatar_color FROM activities a2 WHERE a2.user_token = a.user_token AND a2.room_slug = a.room_slug AND NULLIF(a2.user_avatar_color, '') IS NOT NULL ORDER BY a2.id DESC LIMIT 1), ''),
+                NULLIF(u.avatar_color, ''),
+                '#10b981'
+            ) as col,
+            COALESCE(
+                NULLIF((SELECT a2.user_avatar_emoji FROM activities a2 WHERE a2.user_token = a.user_token AND a2.room_slug = a.room_slug AND NULLIF(a2.user_avatar_emoji, '') IS NOT NULL ORDER BY a2.id DESC LIMIT 1), ''),
+                NULLIF(u.avatar_emoji, ''),
+                ''
+            ) as emoji,
+            COALESCE(SUM(CASE 
+                WHEN a.activity_type = 'weight' THEN a.total_metric
+                WHEN a.weight_per_rep > 0.0 AND a.distance_val = 0.0 AND a.elevation_val = 0.0 THEN a.total_metric
+                ELSE 0.0 
+            END), 0.0) as total_wt,
+            COALESCE(SUM(CASE 
+                WHEN a.activity_type = 'distance' THEN a.total_metric
+                WHEN a.distance_val > 0.0 THEN a.distance_val
+                ELSE 0.0 
+            END), 0.0) as total_dist,
+            COALESCE(SUM(CASE 
+                WHEN a.activity_type = 'elevation' THEN a.total_metric
+                WHEN a.elevation_val > 0.0 THEN a.elevation_val
+                ELSE 0.0 
+            END), 0.0) as total_elev,
+            COALESCE(SUM(a.sets), 0) as total_sets
            FROM activities a
            LEFT JOIN users u ON a.user_token = u.user_token
            WHERE a.room_slug = ?
-           GROUP BY COALESCE(NULLIF(a.user_nickname, ''), a.user_token)
+           GROUP BY a.user_token
            ORDER BY total_wt DESC, total_dist DESC, total_elev DESC"#,
     )?;
 
