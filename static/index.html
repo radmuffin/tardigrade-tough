@@ -644,102 +644,155 @@
       <div class="hub-consolidated-content">
         <!-- Section 1: User Profile -->
         <section id="hubPaneProfile" class="hub-section">
-          <!-- Live Avatar Preview -->
-          <div class="avatar-preview-wrapper" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 12px 14px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-            <div id="avatarPreviewChip" class="user-avatar-large" style="width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.2); flex-shrink: 0; background-color: #10b981; line-height: 1;">
-              <span id="avatarPreviewEmoji">🐻</span>
-            </div>
-            <div style="flex: 1; min-width: 0;">
-              <div id="avatarPreviewName" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Athlete</div>
-              <div id="avatarPreviewStreak" style="font-size: 0.78rem; font-weight: 600; color: var(--accent-amber); margin-top: 2px;">🔥 0d · Cryptobiosis</div>
-            </div>
-          </div>
-
-          <!-- Personal Records Section -->
-          <div id="profilePrsCard" class="prs-summary-card" style="margin-bottom: 14px; padding: 10px 12px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color); display: none;">
-            <div style="font-size: 0.74rem; font-weight: 800; color: var(--accent-amber); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em;">👑 Personal Records</div>
-            <div id="profilePrsList" class="prs-pill-list" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="nickInput">Nickname</label>
-            <input id="nickInput" type="text" class="form-input" placeholder="Your Name" maxlength="24">
-          </div>
-
-          <!-- Avatar Emoji & Initials Selection -->
-          <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label class="form-label" style="margin-bottom: 0;">Avatar</label>
-              <button id="toggleInitialsBtn" type="button" class="btn-initials-toggle" title="Switch to initials mode">
-                <span>🔤</span> <span id="initialsToggleText">Use Initials</span>
-              </button>
-            </div>
-            <div id="emojiPickerGrid" class="emoji-picker-grid">
-              <button type="button" class="emoji-chip selected" data-emoji="🐻" title="Bear">🐻</button>
-              <button type="button" class="emoji-chip" data-emoji="🦔" title="Tardigrade / Hedgehog">🦔</button>
-              <button type="button" class="emoji-chip" data-emoji="🌲" title="Pando Aspen">🌲</button>
-              <button type="button" class="emoji-chip" data-emoji="🐐" title="Mountain Goat">🐐</button>
-              <button type="button" class="emoji-chip" data-emoji="🐋" title="Blue Whale">🐋</button>
-              <button type="button" class="emoji-chip" data-emoji="🦾" title="Bionic Power">🦾</button>
-              <button type="button" class="emoji-chip" data-emoji="⚡" title="Lightning Speed">⚡</button>
-              <button type="button" class="emoji-chip" data-emoji="🏋️" title="Lifter">🏋️</button>
-              <button type="button" class="emoji-chip" data-emoji="🦍" title="Silverback Gorilla">🦍</button>
-              <button type="button" class="emoji-chip" data-emoji="🦅" title="Eagle">🦅</button>
-              <button type="button" class="emoji-chip" data-emoji="🦁" title="Lion">🦁</button>
-              <button type="button" class="emoji-chip" data-emoji="🐯" title="Tiger">🐯</button>
-              <button type="button" class="emoji-chip" data-emoji="🧗" title="Climber">🧗</button>
-              <button type="button" class="emoji-chip" data-emoji="🏃" title="Runner">🏃</button>
-              <button type="button" class="emoji-chip" data-emoji="🥊" title="Boxer">🥊</button>
-              <button type="button" class="emoji-chip" data-emoji="🔥" title="Fire Spirit">🔥</button>
-            </div>
-            <!-- Revealed Initials / Custom Input (hidden by default) -->
-            <div id="initialsContainer" class="initials-reveal-box" style="display: none; margin-top: 10px;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <label for="initialsInput" style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap; margin-bottom: 0;">Initials:</label>
-                <input id="initialsInput" type="text" class="form-input" placeholder="AB" maxlength="4" style="width: 72px; text-align: center; font-weight: 700; font-size: 1.05rem; padding: 6px 8px; text-transform: uppercase;">
-                <button id="resetInitialsBtn" class="btn btn-secondary" style="font-size: 0.72rem; padding: 6px 10px; white-space: nowrap; flex: 0 0 auto;" type="button" title="Reset to nickname initial">Default</button>
+          <!-- Mode A: Profile Telemetry & Stats (Default View) -->
+          <div id="profileViewMode" class="profile-mode-pane">
+            <!-- User Header Card -->
+            <div class="avatar-preview-wrapper" style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px; padding: 12px 14px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <div id="avatarPreviewChip" class="user-avatar-large" style="width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.2); flex-shrink: 0; background-color: #10b981; line-height: 1;">
+                <span id="avatarPreviewEmoji">🐻</span>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <div id="avatarPreviewName" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Athlete</div>
+                  <button id="startEditProfileBtn" type="button" class="btn btn-secondary" style="font-size: 0.76rem; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                    <span>✏️</span> Edit
+                  </button>
+                </div>
+                <div id="avatarPreviewStreak" style="font-size: 0.78rem; font-weight: 600; color: var(--accent-amber); margin-top: 2px;">🔥 0d · Cryptobiosis</div>
               </div>
             </div>
+
+            <!-- Personal Stats Grid -->
+            <div id="profileStatsGrid" class="profile-stats-grid">
+              <div class="profile-stat-box">
+                <div class="profile-stat-label">Total Volume</div>
+                <div id="profileStatTonnage" class="profile-stat-value">0 lbs</div>
+              </div>
+              <div class="profile-stat-box">
+                <div class="profile-stat-label">Total Sets</div>
+                <div id="profileStatSets" class="profile-stat-value">0</div>
+              </div>
+              <div class="profile-stat-box">
+                <div class="profile-stat-label">Cardio & Vert</div>
+                <div id="profileStatCardio" class="profile-stat-value">0 mi · 0 ft</div>
+              </div>
+              <div class="profile-stat-box">
+                <div class="profile-stat-label">Feats & PRs</div>
+                <div id="profileStatFeats" class="profile-stat-value">0</div>
+              </div>
+            </div>
+
+            <!-- Personal Records Section -->
+            <div id="profilePrsCard" class="prs-summary-card" style="margin-bottom: 12px; padding: 10px 12px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color); display: none;">
+              <div style="font-size: 0.74rem; font-weight: 800; color: var(--accent-amber); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em;">👑 Personal Records</div>
+              <div id="profilePrsList" class="prs-pill-list" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
+            </div>
+
+            <!-- Recent Developments Section -->
+            <div id="profileRecentCard" class="prs-summary-card" style="margin-bottom: 12px; padding: 10px 12px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <div style="font-size: 0.74rem; font-weight: 800; color: var(--accent-green); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em;">⚡ Recent Developments</div>
+              <div id="profileRecentList" class="profile-recent-list"></div>
+            </div>
+
+            <!-- App Preferences & Theme -->
+            <div class="form-group" style="margin-top: 10px;">
+              <label class="form-label">Theme</label>
+              <div style="display: flex; gap: 8px;">
+                <button id="themeDarkBtn" class="btn btn-secondary" style="flex: 1;" type="button">🌙 Dark</button>
+                <button id="themeLightBtn" class="btn btn-secondary" style="flex: 1;" type="button">☀️ Light</button>
+              </div>
+            </div>
+            <div id="profilePwaGroup" class="form-group" style="margin-top: 10px;">
+              <button id="pwaInstallBtn" class="btn btn-secondary" style="width: 100%; display: none; align-items: center; justify-content: center; gap: 8px;" type="button">
+                <span>📲</span> Install App
+              </button>
+            </div>
           </div>
 
-          <!-- Color Palette -->
-          <div class="form-group" style="margin-top: 14px;">
-            <div style="margin-bottom: 6px;">
-              <label class="form-label" style="margin-bottom: 0;">Color</label>
+          <!-- Mode B: Profile Edit (Hidden by Default) -->
+          <div id="profileEditMode" class="profile-mode-pane" style="display: none;">
+            <!-- Live Avatar Preview for Editing -->
+            <div class="avatar-preview-wrapper" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 12px 14px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+              <div id="avatarEditChip" class="user-avatar-large" style="width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.2); flex-shrink: 0; background-color: #10b981; line-height: 1;">
+                <span id="avatarEditEmoji">🐻</span>
+              </div>
+              <div style="flex: 1; min-width: 0;">
+                <div id="avatarEditName" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Athlete</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Editing Profile</div>
+              </div>
             </div>
-            <div id="colorPickerRow" class="color-picker-grid">
-              <div class="color-option selected" data-color="#10b981" style="background: #10b981;" title="Emerald Green"></div>
-              <div class="color-option" data-color="#3b82f6" style="background: #3b82f6;" title="Ocean Blue"></div>
-              <div class="color-option" data-color="#f59e0b" style="background: #f59e0b;" title="Amber Gold"></div>
-              <div class="color-option" data-color="#ec4899" style="background: #ec4899;" title="Hot Pink"></div>
-              <div class="color-option" data-color="#8b5cf6" style="background: #8b5cf6;" title="Royal Purple"></div>
-              <div class="color-option" data-color="#06b6d4" style="background: #06b6d4;" title="Cyan Neon"></div>
-              <div class="color-option" data-color="#14b8a6" style="background: #14b8a6;" title="Teal Beast"></div>
-              <div class="color-option" data-color="#6366f1" style="background: #6366f1;" title="Indigo Glow"></div>
-              <div class="color-option" data-color="#d946ef" style="background: #d946ef;" title="Fuchsia Power"></div>
-              <div class="color-option" data-color="#f43f5e" style="background: #f43f5e;" title="Rose Red"></div>
-              <div class="color-option" data-color="#84cc16" style="background: #84cc16;" title="Lime Punch"></div>
-              <div class="color-option" data-color="#eab308" style="background: #eab308;" title="Electric Yellow"></div>
-              <div class="color-option" data-color="#f97316" style="background: #f97316;" title="Blaze Orange"></div>
-              <div class="color-option" data-color="#0ea5e9" style="background: #0ea5e9;" title="Sky High"></div>
-              <div class="color-option" data-color="#a855f7" style="background: #a855f7;" title="Violet Flame"></div>
-              <div class="color-option" data-color="#22c55e" style="background: #22c55e;" title="Vibrant Green"></div>
+
+            <div class="form-group">
+              <label class="form-label" for="nickInput">Nickname</label>
+              <input id="nickInput" type="text" class="form-input" placeholder="Your Name" maxlength="24">
             </div>
-          </div>
-          <div class="form-group" style="margin-top: 14px;">
-            <label class="form-label">Theme</label>
-            <div style="display: flex; gap: 8px;">
-              <button id="themeDarkBtn" class="btn btn-secondary" style="flex: 1;" type="button">🌙 Dark</button>
-              <button id="themeLightBtn" class="btn btn-secondary" style="flex: 1;" type="button">☀️ Light</button>
+
+            <!-- Avatar Emoji & Initials Selection -->
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label class="form-label" style="margin-bottom: 0;">Avatar</label>
+                <button id="toggleInitialsBtn" type="button" class="btn-initials-toggle" title="Switch to initials mode">
+                  <span>🔤</span> <span id="initialsToggleText">Use Initials</span>
+                </button>
+              </div>
+              <div id="emojiPickerGrid" class="emoji-picker-grid">
+                <button type="button" class="emoji-chip selected" data-emoji="🐻" title="Bear">🐻</button>
+                <button type="button" class="emoji-chip" data-emoji="🦔" title="Tardigrade / Hedgehog">🦔</button>
+                <button type="button" class="emoji-chip" data-emoji="🌲" title="Pando Aspen">🌲</button>
+                <button type="button" class="emoji-chip" data-emoji="🐐" title="Mountain Goat">🐐</button>
+                <button type="button" class="emoji-chip" data-emoji="🐋" title="Blue Whale">🐋</button>
+                <button type="button" class="emoji-chip" data-emoji="🦾" title="Bionic Power">🦾</button>
+                <button type="button" class="emoji-chip" data-emoji="⚡" title="Lightning Speed">⚡</button>
+                <button type="button" class="emoji-chip" data-emoji="🏋️" title="Lifter">🏋️</button>
+                <button type="button" class="emoji-chip" data-emoji="🦍" title="Silverback Gorilla">🦍</button>
+                <button type="button" class="emoji-chip" data-emoji="🦅" title="Eagle">🦅</button>
+                <button type="button" class="emoji-chip" data-emoji="🦁" title="Lion">🦁</button>
+                <button type="button" class="emoji-chip" data-emoji="🐯" title="Tiger">🐯</button>
+                <button type="button" class="emoji-chip" data-emoji="🧗" title="Climber">🧗</button>
+                <button type="button" class="emoji-chip" data-emoji="🏃" title="Runner">🏃</button>
+                <button type="button" class="emoji-chip" data-emoji="🥊" title="Boxer">🥊</button>
+                <button type="button" class="emoji-chip" data-emoji="🔥" title="Fire Spirit">🔥</button>
+              </div>
+              <!-- Revealed Initials / Custom Input (hidden by default) -->
+              <div id="initialsContainer" class="initials-reveal-box" style="display: none; margin-top: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <label for="initialsInput" style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap; margin-bottom: 0;">Initials:</label>
+                  <input id="initialsInput" type="text" class="form-input" placeholder="AB" maxlength="4" style="width: 72px; text-align: center; font-weight: 700; font-size: 1.05rem; padding: 6px 8px; text-transform: uppercase;">
+                  <button id="resetInitialsBtn" class="btn btn-secondary" style="font-size: 0.72rem; padding: 6px 10px; white-space: nowrap; flex: 0 0 auto;" type="button" title="Reset to nickname initial">Default</button>
+                </div>
+              </div>
             </div>
-          </div>
-          <div id="profilePwaGroup" class="form-group" style="margin-top: 14px;">
-            <button id="pwaInstallBtn" class="btn btn-secondary" style="width: 100%; display: none; align-items: center; justify-content: center; gap: 8px;" type="button">
-              <span>📲</span> Install App
-            </button>
-          </div>
-          <div style="margin-top: 14px;">
-            <button id="saveProfileBtn" class="btn btn-primary" style="width: 100%;" type="button">Save</button>
+
+            <!-- Color Palette -->
+            <div class="form-group" style="margin-top: 14px;">
+              <div style="margin-bottom: 6px;">
+                <label class="form-label" style="margin-bottom: 0;">Color</label>
+              </div>
+              <div id="colorPickerRow" class="color-picker-grid">
+                <div class="color-option selected" data-color="#10b981" style="background: #10b981;" title="Emerald Green"></div>
+                <div class="color-option" data-color="#3b82f6" style="background: #3b82f6;" title="Ocean Blue"></div>
+                <div class="color-option" data-color="#f59e0b" style="background: #f59e0b;" title="Amber Gold"></div>
+                <div class="color-option" data-color="#ec4899" style="background: #ec4899;" title="Hot Pink"></div>
+                <div class="color-option" data-color="#8b5cf6" style="background: #8b5cf6;" title="Royal Purple"></div>
+                <div class="color-option" data-color="#06b6d4" style="background: #06b6d4;" title="Cyan Neon"></div>
+                <div class="color-option" data-color="#14b8a6" style="background: #14b8a6;" title="Teal Beast"></div>
+                <div class="color-option" data-color="#6366f1" style="background: #6366f1;" title="Indigo Glow"></div>
+                <div class="color-option" data-color="#d946ef" style="background: #d946ef;" title="Fuchsia Power"></div>
+                <div class="color-option" data-color="#f43f5e" style="background: #f43f5e;" title="Rose Red"></div>
+                <div class="color-option" data-color="#84cc16" style="background: #84cc16;" title="Lime Punch"></div>
+                <div class="color-option" data-color="#eab308" style="background: #eab308;" title="Electric Yellow"></div>
+                <div class="color-option" data-color="#f97316" style="background: #f97316;" title="Blaze Orange"></div>
+                <div class="color-option" data-color="#0ea5e9" style="background: #0ea5e9;" title="Sky High"></div>
+                <div class="color-option" data-color="#a855f7" style="background: #a855f7;" title="Violet Flame"></div>
+                <div class="color-option" data-color="#22c55e" style="background: #22c55e;" title="Vibrant Green"></div>
+              </div>
+            </div>
+
+            <!-- Edit Actions -->
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+              <button id="cancelProfileEditBtn" class="btn btn-secondary" style="flex: 1;" type="button">Cancel</button>
+              <button id="saveProfileBtn" class="btn btn-primary" style="flex: 1;" type="button">Save</button>
+            </div>
           </div>
         </section>
 

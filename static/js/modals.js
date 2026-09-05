@@ -1,5 +1,6 @@
 import { FlyToast, FlyTheme } from '/_fly/fly-ui.js';
 import { state, formatNumber } from './state.js';
+import { formatTimeAgo } from './activity-feed.js';
 
 export function setupSheetImporter({ onReloadState } = {}) {
   const importModal = document.getElementById('importModal');
@@ -137,13 +138,32 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   const profileModal = document.getElementById('profileModal');
   const roomModal = document.getElementById('roomModal');
   const aboutModal = document.getElementById('aboutModal');
+  const hubBox = document.querySelector('.hub-modal-box');
   const nickInput = document.getElementById('nickInput');
   let selectedColor = '#10b981';
   let selectedEmoji = '🐻';
 
+  // Profile View vs Edit Panes
+  const profileViewMode = document.getElementById('profileViewMode');
+  const profileEditMode = document.getElementById('profileEditMode');
+  const startEditProfileBtn = document.getElementById('startEditProfileBtn');
+  const cancelProfileEditBtn = document.getElementById('cancelProfileEditBtn');
+
+  // Header & Edit Avatar elements
   const avatarPreviewChip = document.getElementById('avatarPreviewChip');
   const avatarPreviewEmoji = document.getElementById('avatarPreviewEmoji');
   const avatarPreviewName = document.getElementById('avatarPreviewName');
+  const avatarEditChip = document.getElementById('avatarEditChip');
+  const avatarEditEmoji = document.getElementById('avatarEditEmoji');
+  const avatarEditName = document.getElementById('avatarEditName');
+
+  // Personal Telemetry elements
+  const profileStatTonnage = document.getElementById('profileStatTonnage');
+  const profileStatSets = document.getElementById('profileStatSets');
+  const profileStatCardio = document.getElementById('profileStatCardio');
+  const profileStatFeats = document.getElementById('profileStatFeats');
+  const profileRecentList = document.getElementById('profileRecentList');
+
   const toggleInitialsBtn = document.getElementById('toggleInitialsBtn');
   const initialsToggleText = document.getElementById('initialsToggleText');
   const initialsContainer = document.getElementById('initialsContainer');
@@ -163,22 +183,36 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     if (avatarPreviewChip) {
       avatarPreviewChip.style.backgroundColor = selectedColor;
     }
+    if (avatarEditChip) {
+      avatarEditChip.style.backgroundColor = selectedColor;
+    }
     const currentNick = (nickInput ? nickInput.value.trim() : '') || 'Athlete';
     if (avatarPreviewName) {
       avatarPreviewName.textContent = currentNick;
     }
+    if (avatarEditName) {
+      avatarEditName.textContent = currentNick;
+    }
+    const displayContent = selectedEmoji || getDefaultNicknameInitial();
+    const isEmoji = /\p{Extended_Pictographic}/u.test(displayContent);
+    const fontSize = isEmoji
+      ? '1.7rem'
+      : displayContent.length > 2
+      ? '1.1rem'
+      : displayContent.length === 2
+      ? '1.3rem'
+      : '1.5rem';
+    const fontWeight = isEmoji ? 'normal' : '700';
+
     if (avatarPreviewEmoji) {
-      const displayContent = selectedEmoji || getDefaultNicknameInitial();
       avatarPreviewEmoji.textContent = displayContent;
-      const isEmoji = /\p{Extended_Pictographic}/u.test(displayContent);
-      avatarPreviewEmoji.style.fontSize = isEmoji
-        ? '1.7rem'
-        : displayContent.length > 2
-        ? '1.1rem'
-        : displayContent.length === 2
-        ? '1.3rem'
-        : '1.5rem';
-      avatarPreviewEmoji.style.fontWeight = isEmoji ? 'normal' : '700';
+      avatarPreviewEmoji.style.fontSize = fontSize;
+      avatarPreviewEmoji.style.fontWeight = fontWeight;
+    }
+    if (avatarEditEmoji) {
+      avatarEditEmoji.textContent = displayContent;
+      avatarEditEmoji.style.fontSize = fontSize;
+      avatarEditEmoji.style.fontWeight = fontWeight;
     }
   }
 
@@ -209,6 +243,173 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     }
 
     updateAvatarPreview();
+  }
+
+  function showProfileView() {
+    if (profileViewMode) profileViewMode.style.display = 'block';
+    if (profileEditMode) profileEditMode.style.display = 'none';
+    renderProfileTelemetry();
+  }
+
+  function showProfileEdit() {
+    if (profileViewMode) profileViewMode.style.display = 'none';
+    if (profileEditMode) profileEditMode.style.display = 'block';
+    if (state.currentRoomData && state.currentRoomData.user_profile) {
+      if (nickInput) nickInput.value = state.currentRoomData.user_profile.nickname;
+      selectedColor = state.currentRoomData.user_profile.avatar_color || '#10b981';
+      selectedEmoji = state.currentRoomData.user_profile.avatar_emoji || '';
+      document.querySelectorAll('.color-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.color === selectedColor);
+      });
+      syncEmojiSelectionUI();
+    }
+    updateAvatarPreview();
+    if (nickInput) {
+      nickInput.focus();
+    }
+  }
+
+  function cancelProfileEdit() {
+    if (state.currentRoomData && state.currentRoomData.user_profile) {
+      if (nickInput) nickInput.value = state.currentRoomData.user_profile.nickname;
+      selectedColor = state.currentRoomData.user_profile.avatar_color || '#10b981';
+      selectedEmoji = state.currentRoomData.user_profile.avatar_emoji || '';
+      document.querySelectorAll('.color-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.dataset.color === selectedColor);
+      });
+      syncEmojiSelectionUI();
+    }
+    showProfileView();
+  }
+
+  if (startEditProfileBtn) {
+    startEditProfileBtn.addEventListener('click', showProfileEdit);
+  }
+  if (cancelProfileEditBtn) {
+    cancelProfileEditBtn.addEventListener('click', cancelProfileEdit);
+  }
+
+  function renderProfileTelemetry() {
+    if (!state.currentRoomData || !state.currentRoomData.user_profile) return;
+    const user = state.currentRoomData.user_profile;
+    const myToken = user.user_token;
+
+    // Header avatar & streak preview
+    if (avatarPreviewChip) avatarPreviewChip.style.backgroundColor = user.avatar_color || '#10b981';
+    if (avatarPreviewName) avatarPreviewName.textContent = user.nickname || 'Athlete';
+    if (avatarPreviewEmoji) {
+      const displayContent = user.avatar_emoji || ((user.nickname || 'Athlete').substring(0, 1).toUpperCase());
+      avatarPreviewEmoji.textContent = displayContent;
+      const isEmoji = /\p{Extended_Pictographic}/u.test(displayContent);
+      avatarPreviewEmoji.style.fontSize = isEmoji ? '1.7rem' : '1.3rem';
+      avatarPreviewEmoji.style.fontWeight = isEmoji ? 'normal' : '700';
+    }
+    const streakPreview = document.getElementById('avatarPreviewStreak');
+    if (streakPreview) {
+      const sDays = user.streak_days || 0;
+      const sState = user.tardigrade_state || 'cryptobiosis';
+      streakPreview.textContent = `${sDays > 0 ? '🔥' : '💤'} ${sDays}d streak · ${sState === 'hydrated' ? 'Hydrated' : 'Cryptobiosis'}`;
+    }
+
+    // Stats Grid Calculation
+    const myLeaderboard = (state.currentRoomData.leaderboard || []).find(m => m.user_token === myToken);
+    const totalSets = myLeaderboard ? myLeaderboard.total_sets : 0;
+    const totalWeight = myLeaderboard ? myLeaderboard.total_weight : 0;
+    const totalDist = myLeaderboard ? myLeaderboard.total_distance : 0;
+    const totalElev = myLeaderboard ? myLeaderboard.total_elevation : 0;
+
+    if (profileStatTonnage) profileStatTonnage.textContent = `${formatNumber(totalWeight)} lbs`;
+    if (profileStatSets) profileStatSets.textContent = totalSets.toString();
+
+    if (profileStatCardio) {
+      if (totalDist > 0 && totalElev > 0) {
+        profileStatCardio.textContent = `${totalDist} mi · ${formatNumber(totalElev)} ft`;
+      } else if (totalDist > 0) {
+        profileStatCardio.textContent = `${totalDist} mi`;
+      } else if (totalElev > 0) {
+        profileStatCardio.textContent = `${formatNumber(totalElev)} ft`;
+      } else {
+        profileStatCardio.textContent = `0 mi · 0 ft`;
+      }
+    }
+
+    const prs = state.currentRoomData.personal_records || [];
+    if (profileStatFeats) {
+      const mvpBadge = (myLeaderboard && myLeaderboard.is_daily_mvp) ? ' · 👑 MVP' : '';
+      profileStatFeats.textContent = `${prs.length} PR${prs.length === 1 ? '' : 's'}${mvpBadge}`;
+    }
+
+    // Populate PRs Card
+    const prsCard = document.getElementById('profilePrsCard');
+    const prsList = document.getElementById('profilePrsList');
+    if (prsCard && prsList) {
+      if (prs.length > 0) {
+        prsCard.style.display = 'block';
+        prsList.innerHTML = prs.map(pr => {
+          let valStr = '';
+          if (pr.activity_type === 'ability') {
+            valStr = 'Conquered';
+          } else if (pr.activity_type === 'weight') {
+            valStr = pr.max_weight > 0 ? `${formatNumber(pr.max_weight)} lbs` : `${pr.max_reps} reps`;
+          } else if (pr.activity_type === 'distance') {
+            valStr = `${pr.max_distance} mi`;
+          } else if (pr.activity_type === 'elevation') {
+            valStr = `${formatNumber(pr.max_elevation)} ft`;
+          }
+          return `<span class="pr-pill"><span>${FlyToast.escape(pr.exercise_name)}:</span> <strong>${valStr}</strong></span>`;
+        }).join('');
+      } else {
+        prsCard.style.display = 'none';
+      }
+    }
+
+    // Populate Recent Developments (Personal Activity Feed)
+    if (profileRecentList) {
+      const myActivities = (state.currentRoomData.recent_activities || []).filter(
+        act => act.user_token === myToken
+      );
+
+      if (myActivities.length === 0) {
+        profileRecentList.innerHTML = `<div class="profile-recent-empty">No activity logged yet</div>`;
+      } else {
+        profileRecentList.innerHTML = myActivities.slice(0, 4).map(act => {
+          let icon = '🔥';
+          let metricStr = `+${formatNumber(act.total_metric)}`;
+
+          if (act.activity_type === 'ability') {
+            icon = '⚡';
+            metricStr = 'Feat';
+          } else if (act.activity_type === 'weight') {
+            icon = '🏋️';
+            metricStr = `+${formatNumber(act.total_metric)} lbs`;
+          } else if (act.activity_type === 'distance') {
+            icon = '🏃';
+            metricStr = `+${act.distance_val || act.total_metric} mi`;
+          } else if (act.activity_type === 'elevation') {
+            icon = '🧗';
+            metricStr = `+${formatNumber(act.elevation_val || act.total_metric)} ft`;
+          }
+
+          const prHtml = act.is_pr
+            ? `<span class="activity-pr-badge" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">👑 PR</span>`
+            : '';
+
+          return `
+            <div class="profile-recent-item">
+              <div class="profile-recent-main">
+                <span class="profile-recent-icon">${icon}</span>
+                <span class="profile-recent-name" title="${FlyToast.escape(act.exercise_name)}">${FlyToast.escape(act.exercise_name)}</span>
+                ${prHtml}
+              </div>
+              <div class="profile-recent-right">
+                <span class="profile-recent-metric">${metricStr}</span>
+                <span class="profile-recent-time">${formatTimeAgo(act.created_at)}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
   }
 
   const tabBtnProfile = document.getElementById('tabBtnProfile');
@@ -522,6 +723,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       }
       if (hubPaneProfile) hubPaneProfile.style.display = 'flex';
       if (hubPaneSquad) hubPaneSquad.style.display = 'none';
+      showProfileView();
       if (hubBox) hubBox.scrollTop = 0;
     }
   }
@@ -530,46 +732,6 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   if (tabBtnSquad) tabBtnSquad.addEventListener('click', () => selectHubTab('squad'));
 
   function openHub(tab = 'profile') {
-    if (state.currentRoomData && state.currentRoomData.user_profile) {
-      if (nickInput) nickInput.value = state.currentRoomData.user_profile.nickname;
-      selectedColor = state.currentRoomData.user_profile.avatar_color || '#10b981';
-      selectedEmoji = state.currentRoomData.user_profile.avatar_emoji || '';
-      document.querySelectorAll('.color-option').forEach(opt => {
-        opt.classList.toggle('selected', opt.dataset.color === selectedColor);
-      });
-      syncEmojiSelectionUI();
-
-      // Populate Streak & Tardigrade State preview
-      const streakPreview = document.getElementById('avatarPreviewStreak');
-      if (streakPreview) {
-        const sDays = state.currentRoomData.user_profile.streak_days || 0;
-        const sState = state.currentRoomData.user_profile.tardigrade_state || 'cryptobiosis';
-        streakPreview.textContent = `${sDays > 0 ? '🔥' : '💤'} ${sDays}d streak · ${sState === 'hydrated' ? 'Hydrated' : 'Cryptobiosis'}`;
-      }
-
-      // Populate PRs in profile
-      const prsCard = document.getElementById('profilePrsCard');
-      const prsList = document.getElementById('profilePrsList');
-      if (prsCard && prsList) {
-        const prs = state.currentRoomData.personal_records || [];
-        if (prs.length > 0) {
-          prsCard.style.display = 'block';
-          prsList.innerHTML = prs.map(pr => {
-            let valStr = '';
-            if (pr.activity_type === 'weight') {
-              valStr = pr.max_weight > 0 ? `${formatNumber(pr.max_weight)} lbs` : `${pr.max_reps} reps`;
-            } else if (pr.activity_type === 'distance') {
-              valStr = `${pr.max_distance} mi`;
-            } else if (pr.activity_type === 'elevation') {
-              valStr = `${formatNumber(pr.max_elevation)} ft`;
-            }
-            return `<span class="pr-pill"><span>${FlyToast.escape(pr.exercise_name)}:</span> <strong>${valStr}</strong></span>`;
-          }).join('');
-        } else {
-          prsCard.style.display = 'none';
-        }
-      }
-    }
     populateSquadHubFields();
     if (profileModal) profileModal.classList.remove('hidden');
     if (roomModal) roomModal.classList.remove('hidden');
@@ -714,6 +876,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
           avatar_emoji: emojiToSend,
         });
         if (res && res.success) {
+          showProfileView();
           closeHub();
           FlyToast.success('Profile updated!');
           if (onReloadState) await onReloadState();

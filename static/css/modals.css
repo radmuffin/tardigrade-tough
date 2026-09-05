@@ -592,3 +592,107 @@
   margin-bottom: 8px;
 }
 
+/* Profile Telemetry & Personal Stats */
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.profile-stat-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.profile-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.profile-stat-value {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-recent-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  gap: 8px;
+}
+
+.profile-recent-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.profile-recent-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.profile-recent-name {
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.profile-recent-metric {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--accent-green);
+  white-space: nowrap;
+}
+
+.profile-recent-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.profile-recent-time {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.profile-recent-empty {
+  text-align: center;
+  padding: 12px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+

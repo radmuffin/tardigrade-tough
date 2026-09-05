@@ -258,14 +258,48 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#profileModal')).not.toBeVisible();
   });
 
+  test('displays personal telemetry stats, PRs, and recent developments in profile view with toggleable edit mode', async ({ page }) => {
+    // Open profile hub
+    await page.click('#profileBtn');
+    await expect(page.locator('#profileModal')).toBeVisible();
+
+    // Mode A: View mode should be visible by default with personal stats & developments
+    await expect(page.locator('#profileViewMode')).toBeVisible();
+    await expect(page.locator('#profileStatsGrid')).toBeVisible();
+    await expect(page.locator('#profileRecentCard')).toBeVisible();
+    await expect(page.locator('#startEditProfileBtn')).toBeVisible();
+
+    // Mode B: Edit controls should NOT be visible by default
+    await expect(page.locator('#profileEditMode')).not.toBeVisible();
+
+    // Click Edit button to enter edit mode
+    await page.click('#startEditProfileBtn');
+    await expect(page.locator('#profileEditMode')).toBeVisible();
+    await expect(page.locator('#profileViewMode')).not.toBeVisible();
+    await expect(page.locator('#nickInput')).toBeVisible();
+    await expect(page.locator('#cancelProfileEditBtn')).toBeVisible();
+
+    // Cancel edit returns to view mode without persisting changes
+    await page.click('#cancelProfileEditBtn');
+    await expect(page.locator('#profileViewMode')).toBeVisible();
+    await expect(page.locator('#profileEditMode')).not.toBeVisible();
+
+    await page.click('#closeProfileBtn');
+    await expect(page.locator('#profileModal')).not.toBeVisible();
+  });
+
   test('supports customizing avatar emoji and accent color in profile hub', async ({ page }) => {
     // Open profile hub
     await page.click('#profileBtn');
     await expect(page.locator('#profileModal')).toBeVisible();
 
+    // Click Edit button to enter edit mode
+    await page.click('#startEditProfileBtn');
+    await expect(page.locator('#profileEditMode')).toBeVisible();
+
     // Verify avatar preview is present
-    await expect(page.locator('#avatarPreviewChip')).toBeVisible();
-    await expect(page.locator('#avatarPreviewEmoji')).toBeVisible();
+    await expect(page.locator('#avatarEditChip')).toBeVisible();
+    await expect(page.locator('#avatarEditEmoji')).toBeVisible();
 
     // Set nickname
     await page.fill('#nickInput', 'IronTitan');
@@ -274,7 +308,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     const gorillaChip = page.locator('.emoji-chip[data-emoji="🦍"]');
     await gorillaChip.click();
     await expect(gorillaChip).toHaveClass(/selected/);
-    await expect(page.locator('#avatarPreviewEmoji')).toHaveText('🦍');
+    await expect(page.locator('#avatarEditEmoji')).toHaveText('🦍');
 
     // Select Teal Beast color
     const tealColor = page.locator('.color-option[data-color="#14b8a6"]');
@@ -296,6 +330,10 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('#profileBtn');
     await expect(page.locator('#profileModal')).toBeVisible();
 
+    // Click Edit button to enter edit mode
+    await page.click('#startEditProfileBtn');
+    await expect(page.locator('#profileEditMode')).toBeVisible();
+
     // Initials container should be hidden initially when an emoji is active
     await expect(page.locator('#initialsContainer')).not.toBeVisible();
 
@@ -306,7 +344,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     // Enter custom initials
     await page.fill('#initialsInput', 'TT');
-    await expect(page.locator('#avatarPreviewEmoji')).toHaveText('TT');
+    await expect(page.locator('#avatarEditEmoji')).toHaveText('TT');
 
     // Save profile
     await page.click('#saveProfileBtn');
