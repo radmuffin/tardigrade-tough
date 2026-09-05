@@ -197,11 +197,13 @@
                 <input id="stepperWeight" type="number" class="stepper-input" value="135" min="0" step="2.5">
                 <button id="wtPlusBtn" class="stepper-btn">+10</button>
               </div>
-              <div id="stepperMetricPresets" class="quick-presets">
-                <button class="preset-chip" data-delta="-45">-45</button>
-                <button class="preset-chip" data-delta="-5">-5</button>
-                <button class="preset-chip" data-delta="+5">+5</button>
-                <button class="preset-chip" data-delta="+45">+45</button>
+              <div id="stepperMetricPresets" class="quick-presets preset-grid-plates">
+                <button class="preset-chip preset-minus" data-delta="-45">-45</button>
+                <button class="preset-chip preset-minus" data-delta="-25">-25</button>
+                <button class="preset-chip preset-minus" data-delta="-5">-5</button>
+                <button class="preset-chip preset-plus" data-delta="+5">+5</button>
+                <button class="preset-chip preset-plus" data-delta="+25">+25</button>
+                <button class="preset-chip preset-plus" data-delta="+45">+45</button>
               </div>
             </div>
 
@@ -212,11 +214,13 @@
                 <input id="stepperReps" type="number" class="stepper-input" value="10" min="1">
                 <button id="repsPlusBtn" class="stepper-btn">+1</button>
               </div>
-              <div id="stepperCountPresets" class="quick-presets">
+              <div id="stepperCountPresets" class="quick-presets preset-grid-reps">
+                <button class="preset-chip-rep" data-val="3">3</button>
                 <button class="preset-chip-rep" data-val="5">5</button>
                 <button class="preset-chip-rep" data-val="8">8</button>
                 <button class="preset-chip-rep" data-val="10">10</button>
                 <button class="preset-chip-rep" data-val="12">12</button>
+                <button class="preset-chip-rep" data-val="15">15</button>
               </div>
             </div>
           </div>
@@ -368,10 +372,14 @@
     <!-- ===================================================================== -->
     <main id="viewActivity" class="app-view" style="display: none;">
       <div class="view-header-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <h2 class="view-title">📈 Activity & Logs</h2>
-          <button id="openImportModalBtn" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">
-            📥 Import Sheet Data
+        <div class="activity-header-top">
+          <div class="activity-header-text">
+            <h2 class="view-title">📈 Activity & Logs</h2>
+            <p class="view-subtitle">Live squad workout stream and personal log history.</p>
+          </div>
+          <button id="openImportModalBtn" class="activity-import-btn" type="button" title="Import workouts from Google Sheets">
+            <span>📥</span>
+            <span>Import Sheets</span>
           </button>
         </div>
         <div class="activity-filter-tabs">

@@ -58,7 +58,7 @@ Built on **`fly-common`** using Rust, Axum, SQLite (WAL mode), WebSockets, anony
    - **🏛️ The Trophy Room (The Blue Whale)**: Deep ocean diorama with sunbeams, bubbles, and victory wreaths celebrating completed mega-beasts (418,878 lbs).
 
 2. **📱 3-in-1 Mobile-First Workout Logger**:
-   - **⚡ Rapid Stepper**: Plate steppers (`-45 / -10 / +10 / +45`), rep counters, live calculated impact, and a 1-tap `+1 Same Set` repeater.
+   - **⚡ Rapid Stepper**: Full Olympic plate steppers (`-45 / -25 / -10 / -5 / +5 / +10 / +25 / +45`), rep counters, live calculated impact, and a 1-tap `+1 Same Set` repeater.
    - **📋 Full Workout Session**: Multi-exercise batch routine logger with clean placeholders and quick chips (`+ Squat`, `+ Bench`, `+ Deadlift`, `+ Row`).
    - **🚀 Fast-Add**: 1-tap tonnage/distance/elevation punch-in.
 

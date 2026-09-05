@@ -114,6 +114,16 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('.preset-chip-rep[data-val="5"]');
     await expect(repsInput).toHaveValue('5');
     await expect(impactVal).toContainText('725 lbs');
+
+    // Click +25 plate chip
+    await page.click('.preset-chip[data-delta="+25"]');
+    await expect(weightInput).toHaveValue('170');
+    await expect(impactVal).toContainText('850 lbs');
+
+    // Click -25 plate chip
+    await page.click('.preset-chip[data-delta="-25"]');
+    await expect(weightInput).toHaveValue('145');
+    await expect(impactVal).toContainText('725 lbs');
   });
 
   test('opens and parses data in Google Sheet importer modal', async ({ page }) => {

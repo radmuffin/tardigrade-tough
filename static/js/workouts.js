@@ -59,11 +59,14 @@ export function updateStepperForGoal(goal) {
       `;
     }
     if (metricPresets) {
+      metricPresets.className = 'quick-presets preset-grid-plates';
       metricPresets.innerHTML = `
-        <button class="preset-chip" data-delta="-45">-45</button>
-        <button class="preset-chip" data-delta="-5">-5</button>
-        <button class="preset-chip" data-delta="+5">+5</button>
-        <button class="preset-chip" data-delta="+45">+45</button>
+        <button class="preset-chip preset-minus" data-delta="-45">-45</button>
+        <button class="preset-chip preset-minus" data-delta="-25">-25</button>
+        <button class="preset-chip preset-minus" data-delta="-5">-5</button>
+        <button class="preset-chip preset-plus" data-delta="+5">+5</button>
+        <button class="preset-chip preset-plus" data-delta="+25">+25</button>
+        <button class="preset-chip preset-plus" data-delta="+45">+45</button>
       `;
       attachMetricPresetListeners();
     }
@@ -87,11 +90,14 @@ export function updateStepperForGoal(goal) {
       wtInput.value = '100';
     }
     if (metricPresets) {
+      metricPresets.className = 'quick-presets preset-grid-plates';
       metricPresets.innerHTML = `
-        <button class="preset-chip" data-delta="-100">-100</button>
-        <button class="preset-chip" data-delta="-25">-25</button>
-        <button class="preset-chip" data-delta="+25">+25</button>
-        <button class="preset-chip" data-delta="+100">+100</button>
+        <button class="preset-chip preset-minus" data-delta="-100">-100</button>
+        <button class="preset-chip preset-minus" data-delta="-25">-25</button>
+        <button class="preset-chip preset-minus" data-delta="-10">-10</button>
+        <button class="preset-chip preset-plus" data-delta="+10">+10</button>
+        <button class="preset-chip preset-plus" data-delta="+25">+25</button>
+        <button class="preset-chip preset-plus" data-delta="+100">+100</button>
       `;
       attachMetricPresetListeners();
     }
@@ -115,11 +121,14 @@ export function updateStepperForGoal(goal) {
       wtInput.value = '3';
     }
     if (metricPresets) {
+      metricPresets.className = 'quick-presets preset-grid-plates';
       metricPresets.innerHTML = `
-        <button class="preset-chip" data-delta="-2">-2</button>
-        <button class="preset-chip" data-delta="-0.5">-0.5</button>
-        <button class="preset-chip" data-delta="+0.5">+0.5</button>
-        <button class="preset-chip" data-delta="+2">+2</button>
+        <button class="preset-chip preset-minus" data-delta="-2">-2</button>
+        <button class="preset-chip preset-minus" data-delta="-1">-1</button>
+        <button class="preset-chip preset-minus" data-delta="-0.5">-0.5</button>
+        <button class="preset-chip preset-plus" data-delta="+0.5">+0.5</button>
+        <button class="preset-chip preset-plus" data-delta="+1">+1</button>
+        <button class="preset-chip preset-plus" data-delta="+2">+2</button>
       `;
       attachMetricPresetListeners();
     }
@@ -139,11 +148,14 @@ export function updateStepperForGoal(goal) {
       `;
     }
     if (metricPresets) {
+      metricPresets.className = 'quick-presets preset-grid-plates';
       metricPresets.innerHTML = `
-        <button class="preset-chip" data-delta="-50">-50</button>
-        <button class="preset-chip" data-delta="-10">-10</button>
-        <button class="preset-chip" data-delta="+10">+10</button>
-        <button class="preset-chip" data-delta="+50">+50</button>
+        <button class="preset-chip preset-minus" data-delta="-50">-50</button>
+        <button class="preset-chip preset-minus" data-delta="-25">-25</button>
+        <button class="preset-chip preset-minus" data-delta="-10">-10</button>
+        <button class="preset-chip preset-plus" data-delta="+10">+10</button>
+        <button class="preset-chip preset-plus" data-delta="+25">+25</button>
+        <button class="preset-chip preset-plus" data-delta="+50">+50</button>
       `;
       attachMetricPresetListeners();
     }

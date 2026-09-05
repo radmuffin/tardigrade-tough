@@ -37,7 +37,16 @@ export function renderFeed({ onReloadState } = {}) {
   });
 
   if (activities.length === 0) {
-    container.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px;">No ${state.activityFilter === 'my' ? 'personal' : 'crew'} activity recorded yet.</div>`;
+    const isMy = state.activityFilter === 'my';
+    container.innerHTML = `
+      <div class="activity-empty-state">
+        <div class="activity-empty-icon">📊</div>
+        <div class="activity-empty-title">No ${isMy ? 'personal' : 'crew'} activity recorded yet</div>
+        <p class="activity-empty-subtitle">
+          ${isMy ? 'Log a set above or import sheet data to see your history.' : 'Be the first in the squad to log a set or import past workouts!'}
+        </p>
+      </div>
+    `;
     return;
   }
 

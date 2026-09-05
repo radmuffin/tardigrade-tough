@@ -67,7 +67,7 @@ SQLite tables initialized in WAL mode:
 
 ## 📥 Google Sheet Data Importing
 
-Users can copy columns directly from Google Sheets and paste them into the in-app importer (**Activity & Feed** $\rightarrow$ **📥 Import Sheet Data**):
+Users can copy columns directly from Google Sheets and paste them into the in-app importer (**Activity & Feed** $\rightarrow$ **📥 Import Sheets**):
 
 Supported formats (multi-line, tab / comma / space delimited):
 ```

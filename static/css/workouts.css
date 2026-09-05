@@ -94,6 +94,14 @@
   margin-top: 6px;
 }
 
+.preset-grid-plates,
+.preset-grid-reps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-top: 6px;
+}
+
 .preset-chip, .preset-chip-rep, .preset-chip-fast {
   flex: 1;
   background: var(--bg-surface);
@@ -101,11 +109,44 @@
   color: var(--text-primary);
   font-size: 0.75rem;
   font-weight: 700;
-  padding: 5px 8px;
+  padding: 5px 6px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.preset-chip-minus {
+  color: var(--text-secondary);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.preset-chip-minus:hover {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.preset-chip-minus:active {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.preset-chip-plus {
+  color: var(--text-primary);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.preset-chip-plus:hover {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #6ee7b7;
+}
+
+.preset-chip-plus:active {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  color: #ffffff;
 }
 
 .preset-chip:active, .preset-chip-rep:active, .preset-chip-fast:active {

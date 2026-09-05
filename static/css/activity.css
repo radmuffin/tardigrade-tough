@@ -1,8 +1,48 @@
-/* Activity Feed */
+.activity-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.activity-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-import-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: var(--accent-blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  transition: all var(--transition-fast);
+}
+
+.activity-import-btn:hover {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.activity-import-btn:active {
+  transform: translateY(0);
+}
+
 .activity-filter-tabs {
   display: flex;
   gap: 6px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .activity-filter-btn {
@@ -89,3 +129,32 @@
   color: #ef4444;
   background: rgba(239, 68, 68, 0.1);
 }
+
+.activity-empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  margin: 10px 0;
+}
+
+.activity-empty-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.activity-empty-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.activity-empty-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 320px;
+  margin: 0 auto;
+}
+
