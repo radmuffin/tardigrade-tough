@@ -604,25 +604,31 @@ function renderLeaderboard() {
   const categorySections = [
     {
       category: 'weight',
-      title: '🌲 Weight Hoisted — Pando Clone Quest',
+      icon: '🌲',
+      name: 'Weight Hoisted',
+      questSubtitle: 'Pando Aspen Clone Quest',
       unit: wtUnit,
       metricKey: 'total_weight',
       totalVal: totalWeight,
       formatter: (v) => `${formatNumber(v)} ${wtUnit}`,
-      emptyMsg: 'No weight hoisted yet. Be the first to lift!',
+      emptyMsg: 'No weight hoisted yet. Be the first to log a set!',
     },
     {
       category: 'distance',
-      title: '🦌 Distance Traveled — Caribou Migration',
+      icon: '🦌',
+      name: 'Distance Traveled',
+      questSubtitle: 'Caribou Migration Quest',
       unit: distUnit,
       metricKey: 'total_distance',
       totalVal: totalDistance,
       formatter: (v) => `${v.toFixed(1)} ${distUnit}`,
-      emptyMsg: 'No distance recorded yet. Log your run or walk!',
+      emptyMsg: 'No distance recorded yet. Log your run, walk, or cycle!',
     },
     {
       category: 'elevation',
-      title: '🐐 Elevation Climbed — Mt. Everest Ascent',
+      icon: '🐐',
+      name: 'Elevation Climbed',
+      questSubtitle: 'Mt. Everest Ascent Quest',
       unit: elevUnit,
       metricKey: 'total_elevation',
       totalVal: totalElevation,
@@ -643,7 +649,9 @@ function renderLeaderboard() {
 
     categorySections.push({
       category: cg.category,
-      title: `🎯 ${cg.title} (${cg.category.toUpperCase()})`,
+      icon: '🎯',
+      name: cg.title,
+      questSubtitle: `Custom Quest Target: ${formatNumber(cg.target_value)} ${cg.unit}`,
       unit: cg.unit,
       metricKey: null,
       userTotals,
@@ -661,8 +669,17 @@ function renderLeaderboard() {
     const headerEl = document.createElement('div');
     headerEl.className = 'lb-category-header';
     headerEl.innerHTML = `
-      <h3 class="lb-category-title">${sec.title}</h3>
-      <span class="badge-pill">${sec.formatter(sec.totalVal)}</span>
+      <div class="lb-category-heading">
+        <div class="lb-category-title-row">
+          <span class="lb-category-icon">${sec.icon}</span>
+          <h3 class="lb-category-title">${sec.name}</h3>
+        </div>
+        <span class="lb-category-quest-subtitle">${sec.questSubtitle}</span>
+      </div>
+      <div class="lb-category-total-badge ${sec.category}">
+        <span class="total-badge-label">Squad Total</span>
+        <span class="total-badge-val">${sec.formatter(sec.totalVal)}</span>
+      </div>
     `;
     sectionEl.appendChild(headerEl);
 
@@ -679,42 +696,53 @@ function renderLeaderboard() {
     if (catMembers.length === 0) {
       const emptyEl = document.createElement('div');
       emptyEl.className = 'lb-category-empty';
-      emptyEl.textContent = sec.emptyMsg;
+      emptyEl.innerHTML = `
+        <span class="empty-icon">${sec.icon}</span>
+        <span class="empty-text">${sec.emptyMsg}</span>
+      `;
       sectionEl.appendChild(emptyEl);
     } else {
       const listEl = document.createElement('div');
       listEl.className = 'lb-category-list';
 
       catMembers.forEach((member, idx) => {
-        const card = document.createElement('div');
-        card.className = 'leaderboard-card';
-
         const isMe = member.user_token === currentUserId;
         let rankBadge = '';
-        if (idx === 0) rankBadge = '🥇';
-        else if (idx === 1) rankBadge = '🥈';
-        else if (idx === 2) rankBadge = '🥉';
-        else rankBadge = `${idx + 1}.`;
+        let rankClass = '';
+        if (idx === 0) { rankBadge = '🥇'; rankClass = 'rank-gold'; }
+        else if (idx === 1) { rankBadge = '🥈'; rankClass = 'rank-silver'; }
+        else if (idx === 2) { rankBadge = '🥉'; rankClass = 'rank-bronze'; }
+        else { rankBadge = `#${idx + 1}`; rankClass = 'rank-other'; }
 
         const val = sec.metricKey ? (member[sec.metricKey] || 0) : (member.custom_val || 0);
         const pct = sec.totalVal > 0 ? ((val / sec.totalVal) * 100).toFixed(1) : '0.0';
 
+        const card = document.createElement('div');
+        card.className = `leaderboard-card ${isMe ? 'is-me' : ''}`;
+
         card.innerHTML = `
-          <div class="leaderboard-user">
-            <div class="user-avatar" style="background-color: ${member.avatar_color || '#10b981'}">
-              ${(member.nickname || 'L').substring(0, 1).toUpperCase()}
-            </div>
-            <div class="user-details">
-              <div class="user-name-row">
-                <span>${rankBadge} ${FlyToast.escape(member.nickname)}</span>
-                ${isMe ? '<span class="badge-me">YOU</span>' : ''}
-                ${member.is_daily_mvp ? '<span class="mvp-crown" title="Daily Titan">👑</span>' : ''}
+          <div class="lb-card-top-row">
+            <div class="leaderboard-user">
+              <span class="lb-rank-badge ${rankClass}">${rankBadge}</span>
+              <div class="user-avatar" style="background-color: ${member.avatar_color || '#10b981'}">
+                ${(member.nickname || 'L').substring(0, 1).toUpperCase()}
               </div>
-              <span class="user-stats-sub">${member.total_sets || 0} sets logged</span>
+              <div class="user-details">
+                <div class="user-name-row">
+                  <span class="user-nickname-text">${FlyToast.escape(member.nickname)}</span>
+                </div>
+              </div>
+            </div>
+            <div class="leaderboard-score">
+              <div class="score-main ${sec.category}">${sec.formatter(val)}</div>
             </div>
           </div>
-          <div class="leaderboard-score">
-            <div class="score-main">${sec.formatter(val)}</div>
+          <div class="lb-card-bottom-row">
+            <div class="lb-meta-badges">
+              ${isMe ? '<span class="badge-me">YOU</span>' : ''}
+              ${member.is_daily_mvp ? '<span class="mvp-crown" title="Daily Titan">👑 Titan</span>' : ''}
+              <span class="user-stats-sub">${member.total_sets || 0} sets logged</span>
+            </div>
             <div class="score-pct">${pct}% of Crew</div>
           </div>
         `;
