@@ -373,9 +373,14 @@ function renderAll() {
   if (!currentRoomData) return;
 
   // Render Header Profile & Group Chip
-  document.getElementById('profileNick').textContent = currentRoomData.user_profile.nickname;
-  document.getElementById('profileDot').style.backgroundColor = currentRoomData.user_profile.avatar_color;
-  document.getElementById('roomNameLabel').textContent = currentRoomData.room.name;
+  const pNick = document.getElementById('profileNick');
+  if (pNick) pNick.textContent = currentRoomData.user_profile.nickname;
+  const pDot = document.getElementById('profileDot');
+  if (pDot) pDot.style.backgroundColor = currentRoomData.user_profile.avatar_color;
+  const rLabel = document.getElementById('roomNameLabel');
+  if (rLabel) rLabel.textContent = currentRoomData.room.name;
+  const pBtn = document.getElementById('profileBtn');
+  if (pBtn) pBtn.title = `${currentRoomData.user_profile.nickname} · ${currentRoomData.room.name} (Settings)`;
 
   // Render Active Goal Showcase
   renderGoalShowcase();
@@ -1614,8 +1619,10 @@ function setupModals() {
     if (currentRoomSlugLabel) {
       currentRoomSlugLabel.textContent = `slug: ${roomSlug}`;
     }
-    if (currentRoomData && currentRoomData.room && editRoomNameInput) {
-      editRoomNameInput.value = currentRoomData.room.name;
+    if (currentRoomData && currentRoomData.room) {
+      if (editRoomNameInput) editRoomNameInput.value = currentRoomData.room.name;
+      const label = document.getElementById('roomNameLabel');
+      if (label) label.textContent = currentRoomData.room.name;
     }
     const roomUrl = `${window.location.origin}/r/${roomSlug}`;
     if (shareRoomUrlInput) {
@@ -1639,9 +1646,10 @@ function setupModals() {
         tabBtnProfile.classList.remove('active');
         tabBtnProfile.setAttribute('aria-selected', 'false');
       }
-      if (hubPaneSquad) hubPaneSquad.style.display = 'block';
-      if (hubPaneProfile) hubPaneProfile.style.display = 'none';
       populateSquadHubFields();
+      if (hubPaneSquad) {
+        hubPaneSquad.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     } else {
       if (tabBtnProfile) {
         tabBtnProfile.classList.add('active');
@@ -1651,13 +1659,33 @@ function setupModals() {
         tabBtnSquad.classList.remove('active');
         tabBtnSquad.setAttribute('aria-selected', 'false');
       }
-      if (hubPaneProfile) hubPaneProfile.style.display = 'block';
-      if (hubPaneSquad) hubPaneSquad.style.display = 'none';
+      if (hubPaneProfile) {
+        hubPaneProfile.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   }
 
   if (tabBtnProfile) tabBtnProfile.addEventListener('click', () => selectHubTab('profile'));
   if (tabBtnSquad) tabBtnSquad.addEventListener('click', () => selectHubTab('squad'));
+
+  // Sync active nav pill when user scrolls within consolidated hub
+  const hubBox = profileModal ? profileModal.querySelector('.hub-modal-box') : null;
+  if (hubBox && hubPaneSquad && tabBtnProfile && tabBtnSquad) {
+    hubBox.addEventListener('scroll', () => {
+      const squadTop = hubPaneSquad.offsetTop - hubBox.scrollTop;
+      if (squadTop <= 110) {
+        tabBtnSquad.classList.add('active');
+        tabBtnSquad.setAttribute('aria-selected', 'true');
+        tabBtnProfile.classList.remove('active');
+        tabBtnProfile.setAttribute('aria-selected', 'false');
+      } else {
+        tabBtnProfile.classList.add('active');
+        tabBtnProfile.setAttribute('aria-selected', 'true');
+        tabBtnSquad.classList.remove('active');
+        tabBtnSquad.setAttribute('aria-selected', 'false');
+      }
+    }, { passive: true });
+  }
 
   function openHub(tab = 'profile') {
     if (currentRoomData && currentRoomData.user_profile) {
@@ -1667,9 +1695,23 @@ function setupModals() {
         opt.classList.toggle('selected', opt.dataset.color === selectedColor);
       });
     }
-    selectHubTab(tab);
+    populateSquadHubFields();
     if (profileModal) profileModal.classList.remove('hidden');
     if (roomModal) roomModal.classList.remove('hidden');
+
+    if (tab === 'squad') {
+      selectHubTab('squad');
+    } else {
+      if (tabBtnProfile) {
+        tabBtnProfile.classList.add('active');
+        tabBtnProfile.setAttribute('aria-selected', 'true');
+      }
+      if (tabBtnSquad) {
+        tabBtnSquad.classList.remove('active');
+        tabBtnSquad.setAttribute('aria-selected', 'false');
+      }
+      if (hubBox) hubBox.scrollTop = 0;
+    }
   }
 
   function closeHub() {

@@ -9,7 +9,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   test('loads home page with brand icon and title', async ({ page }) => {
     await expect(page.locator('.brand-title')).toHaveText('TARDIGRADE TOUGH');
     await expect(page.locator('.brand .brand-icon-svg')).toBeVisible();
-    await expect(page.locator('#roomNameLabel')).toBeVisible();
+    await expect(page.locator('#profileBtn')).toBeVisible();
   });
 
   test('switches between primary navigation views', async ({ page }) => {
@@ -31,9 +31,9 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#trophyCanvas')).toBeVisible();
   });
 
-  test('renders organized, clean header with squad and user profile chips', async ({ page }) => {
-    await expect(page.locator('#roomNameLabel')).toContainText('Pando Squad');
+  test('renders organized, clean header with user profile hub chip', async ({ page }) => {
     await expect(page.locator('#profileNick')).toBeVisible();
+    await expect(page.locator('#profileDot')).toBeVisible();
     await expect(page.locator('.brand-title')).toHaveText('TARDIGRADE TOUGH');
   });
 
