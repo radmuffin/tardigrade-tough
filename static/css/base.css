@@ -194,7 +194,6 @@ body {
 }
 
 .btn-primary {
-  flex: 2;
   background: linear-gradient(135deg, #10b981, #059669);
   color: #ffffff;
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
@@ -205,10 +204,17 @@ body {
 }
 
 .btn-secondary {
-  flex: 1;
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
+}
+
+.action-buttons-row > .btn-primary {
+  flex: 2;
+}
+
+.action-buttons-row > .btn-secondary {
+  flex: 1;
 }
 
 @keyframes highlightPulse {

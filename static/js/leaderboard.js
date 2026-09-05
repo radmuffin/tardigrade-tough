@@ -43,12 +43,16 @@ export function renderLeaderboard() {
   const isSolo = state.roomSlug.startsWith('solo-');
   const squadNameLabel = document.getElementById('lbSquadNameLabel');
   const squadMembersCount = document.getElementById('lbSquadMembersCount');
+  const manageSquadBtn = document.getElementById('lbManageSquadBtn');
   if (squadNameLabel && state.currentRoomData?.room) {
     squadNameLabel.textContent = isSolo ? 'Solo Quest' : state.currentRoomData.room.name;
   }
   if (squadMembersCount) {
     const memberCount = state.currentRoomData?.members?.length || 0;
-    squadMembersCount.textContent = isSolo ? 'Private Solo' : `${memberCount} member${memberCount === 1 ? '' : 's'}`;
+    squadMembersCount.textContent = isSolo ? 'Private' : `${memberCount} member${memberCount === 1 ? '' : 's'}`;
+  }
+  if (manageSquadBtn) {
+    manageSquadBtn.textContent = isSolo ? 'Squads' : 'Squad';
   }
 
   const currentUserId = state.currentRoomData.user_profile?.user_token;

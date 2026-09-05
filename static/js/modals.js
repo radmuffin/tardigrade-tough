@@ -235,6 +235,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   // Multi-squad & dual sharing elements
   const userSquadCount = document.getElementById('userSquadCount');
   const userSquadsList = document.getElementById('userSquadsList');
+  const currentSquadCard = document.getElementById('currentSquadCard');
   const quickSoloBtn = document.getElementById('quickSoloBtn');
   const renameSquadControls = document.getElementById('renameSquadControls');
   const soloStatusNotice = document.getElementById('soloStatusNotice');
@@ -280,55 +281,86 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     const userSquads = state.currentRoomData?.user_squads || [];
     if (userSquadCount) userSquadCount.textContent = userSquads.length;
 
+    const soloItemHtml = `
+      <div class="user-squad-item ${isSolo ? 'active' : ''}" data-slug="__solo__" role="button" tabindex="0">
+        <div class="user-squad-name-row">
+          <span class="user-squad-icon">🧘</span>
+          <div style="min-width: 0;">
+            <strong class="user-squad-name">Solo</strong>
+            <div class="user-squad-meta">Personal Space</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          ${isSolo ? '<span class="member-pill pill-active">Active</span>' : '<span style="font-size: 0.75rem; color: var(--accent-green); font-weight: 700;">Switch ›</span>'}
+        </div>
+      </div>
+    `;
+
     if (userSquadsList) {
+      const squadCardsHtml = userSquads.map(s => {
+        const isActive = s.slug === state.roomSlug;
+        return `
+          <div class="user-squad-item ${isActive ? 'active' : ''}" data-slug="${FlyToast.escape(s.slug)}" role="button" tabindex="0">
+            <div class="user-squad-name-row">
+              <span class="user-squad-icon">${s.is_creator ? '👑' : '👥'}</span>
+              <div style="min-width: 0;">
+                <strong class="user-squad-name">${FlyToast.escape(s.name)}</strong>
+                <div class="user-squad-meta">${s.member_count} member${s.member_count === 1 ? '' : 's'} · ${s.is_creator ? 'Creator' : 'Member'}</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              ${isActive ? '<span class="member-pill pill-active">Active</span>' : '<span style="font-size: 0.75rem; color: var(--accent-green); font-weight: 700;">Switch ›</span>'}
+            </div>
+          </div>
+        `;
+      }).join('');
+
       if (userSquads.length === 0) {
-        userSquadsList.innerHTML = `
-          <div style="text-align: center; padding: 10px; color: var(--text-muted); font-size: 0.78rem;">
-            No squads yet.
+        userSquadsList.innerHTML = soloItemHtml + `
+          <div style="text-align: center; padding: 10px; color: var(--text-muted); font-size: 0.76rem;">
+            No squads yet. Create one below to invite friends!
           </div>
         `;
       } else {
-        userSquadsList.innerHTML = userSquads.map(s => {
-          const isActive = s.slug === state.roomSlug;
-          return `
-            <div class="user-squad-item ${isActive ? 'active' : ''}" data-slug="${FlyToast.escape(s.slug)}" role="button" tabindex="0">
-              <div class="user-squad-name-row">
-                <span class="user-squad-icon">${s.is_creator ? '👑' : '👥'}</span>
-                <div style="min-width: 0;">
-                  <strong class="user-squad-name">${FlyToast.escape(s.name)}</strong>
-                  <div class="user-squad-meta">${s.member_count} member${s.member_count === 1 ? '' : 's'} · ${s.is_creator ? 'Creator' : 'Member'}</div>
-                </div>
-              </div>
-              <div style="display: flex; align-items: center; gap: 6px;">
-                ${isActive ? '<span class="member-pill pill-me">Active</span>' : '<span style="font-size: 0.75rem; color: var(--accent-green);">Switch ›</span>'}
-              </div>
-            </div>
-          `;
-        }).join('');
-
-        userSquadsList.querySelectorAll('.user-squad-item').forEach(item => {
-          item.addEventListener('click', () => {
-            const slug = item.dataset.slug;
-            if (slug && slug !== state.roomSlug) {
-              try {
-                localStorage.setItem('tardigrade_current_room', slug);
-              } catch (_) {}
-              window.location.href = `/r/${slug}`;
-            }
-          });
-        });
+        userSquadsList.innerHTML = soloItemHtml + squadCardsHtml;
       }
+
+      userSquadsList.querySelectorAll('.user-squad-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const slug = item.dataset.slug;
+          if (slug === '__solo__') {
+            if (!isSolo) {
+              try {
+                localStorage.removeItem('tardigrade_current_room');
+              } catch (_) {}
+              window.location.href = '/';
+            }
+          } else if (slug && slug !== state.roomSlug) {
+            try {
+              localStorage.setItem('tardigrade_current_room', slug);
+            } catch (_) {}
+            window.location.href = `/r/${slug}`;
+          }
+        });
+      });
     }
 
     // Quick Solo Button Status
     if (quickSoloBtn) {
       if (isSolo) {
-        quickSoloBtn.style.opacity = '0.55';
-        quickSoloBtn.textContent = 'Solo (Active)';
+        quickSoloBtn.classList.add('active');
+        quickSoloBtn.style.opacity = '0.9';
+        quickSoloBtn.innerHTML = '<span class="solo-badge-icon">🧘</span><span class="solo-badge-text">Solo (Active)</span>';
       } else {
+        quickSoloBtn.classList.remove('active');
         quickSoloBtn.style.opacity = '1';
-        quickSoloBtn.textContent = 'Solo';
+        quickSoloBtn.innerHTML = '<span class="solo-badge-icon">🧘</span><span class="solo-badge-text">Go Solo</span>';
       }
+    }
+
+    // Current Squad Rename Card (hide when in private Solo mode)
+    if (currentSquadCard) {
+      currentSquadCard.style.display = isSolo ? 'none' : 'block';
     }
 
     // Section 2D: Share Your Squad (or Solo Prompt)
@@ -475,10 +507,10 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
         tabBtnProfile.classList.remove('active');
         tabBtnProfile.setAttribute('aria-selected', 'false');
       }
+      if (hubPaneSquad) hubPaneSquad.style.display = 'flex';
+      if (hubPaneProfile) hubPaneProfile.style.display = 'none';
       populateSquadHubFields();
-      if (hubPaneSquad) {
-        hubPaneSquad.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      if (hubBox) hubBox.scrollTop = 0;
     } else {
       if (tabBtnProfile) {
         tabBtnProfile.classList.add('active');
@@ -488,33 +520,14 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
         tabBtnSquad.classList.remove('active');
         tabBtnSquad.setAttribute('aria-selected', 'false');
       }
-      if (hubPaneProfile) {
-        hubPaneProfile.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      if (hubPaneProfile) hubPaneProfile.style.display = 'flex';
+      if (hubPaneSquad) hubPaneSquad.style.display = 'none';
+      if (hubBox) hubBox.scrollTop = 0;
     }
   }
 
   if (tabBtnProfile) tabBtnProfile.addEventListener('click', () => selectHubTab('profile'));
   if (tabBtnSquad) tabBtnSquad.addEventListener('click', () => selectHubTab('squad'));
-
-  // Sync active nav pill when user scrolls within consolidated hub
-  const hubBox = profileModal ? profileModal.querySelector('.hub-modal-box') : null;
-  if (hubBox && hubPaneSquad && tabBtnProfile && tabBtnSquad) {
-    hubBox.addEventListener('scroll', () => {
-      const squadTop = hubPaneSquad.offsetTop - hubBox.scrollTop;
-      if (squadTop <= 110) {
-        tabBtnSquad.classList.add('active');
-        tabBtnSquad.setAttribute('aria-selected', 'true');
-        tabBtnProfile.classList.remove('active');
-        tabBtnProfile.setAttribute('aria-selected', 'false');
-      } else {
-        tabBtnProfile.classList.add('active');
-        tabBtnProfile.setAttribute('aria-selected', 'true');
-        tabBtnSquad.classList.remove('active');
-        tabBtnSquad.setAttribute('aria-selected', 'false');
-      }
-    }, { passive: true });
-  }
 
   function openHub(tab = 'profile') {
     if (state.currentRoomData && state.currentRoomData.user_profile) {
@@ -530,19 +543,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     if (profileModal) profileModal.classList.remove('hidden');
     if (roomModal) roomModal.classList.remove('hidden');
 
-    if (tab === 'squad') {
-      selectHubTab('squad');
-    } else {
-      if (tabBtnProfile) {
-        tabBtnProfile.classList.add('active');
-        tabBtnProfile.setAttribute('aria-selected', 'true');
-      }
-      if (tabBtnSquad) {
-        tabBtnSquad.classList.remove('active');
-        tabBtnSquad.setAttribute('aria-selected', 'false');
-      }
-      if (hubBox) hubBox.scrollTop = 0;
-    }
+    selectHubTab(tab);
   }
 
   function closeHub() {

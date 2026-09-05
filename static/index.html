@@ -183,7 +183,7 @@
               <button id="addCustomExerciseBtn" type="button" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px; height: 38px;">
                 + Add
               </button>
-              <button id="cancelCustomExerciseBtn" type="button" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0 10px; height: 38px;" title="Cancel">
+              <button id="cancelCustomExerciseBtn" type="button" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0 10px; height: 38px; flex: 0 0 auto;" title="Cancel">
                 ✕
               </button>
             </div>
@@ -322,7 +322,7 @@
 
         <div class="leaderboard-squad-banner" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; margin-bottom: 12px; padding: 6px 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); font-size: 0.8rem;">
           <span id="lbSquadBannerText" style="color: var(--text-muted);">👥 <strong id="lbSquadNameLabel" style="color: var(--text-primary);">Pando Squad</strong> (<span id="lbSquadMembersCount">0 members</span>)</span>
-          <button id="lbManageSquadBtn" class="btn btn-secondary" style="font-size: 0.74rem; padding: 3px 10px; border-radius: 999px;" type="button">👥 Crew</button>
+          <button id="lbManageSquadBtn" class="btn btn-secondary" style="font-size: 0.74rem; padding: 3px 10px; border-radius: 999px; flex: 0 0 auto;" type="button">Squad</button>
         </div>
 
         <!-- All-Categories Multi-Metric Hero Grid -->
@@ -418,7 +418,7 @@
             <span class="goal-hero-pct" style="color: var(--accent-blue);">100.0%</span>
           </div>
           <div class="goal-progress-sub">
-            <span>418,878 lbs Lifted</span>
+            <span>418,878 lbs</span>
             <span>Target: 418,878 lbs</span>
           </div>
           <p class="goal-hero-desc">
@@ -548,11 +548,6 @@
       <div class="hub-consolidated-content">
         <!-- Section 1: User Profile -->
         <section id="hubPaneProfile" class="hub-section">
-          <div class="hub-section-header">
-            <span class="hub-section-icon">👤</span>
-            <h4 class="hub-section-title">Profile</h4>
-          </div>
-
           <!-- Live Avatar Preview -->
           <div class="avatar-preview-wrapper" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 12px 14px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
             <div id="avatarPreviewChip" class="user-avatar-large" style="width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.2); flex-shrink: 0; background-color: #10b981; line-height: 1;">
@@ -599,7 +594,7 @@
               <div style="display: flex; align-items: center; gap: 8px;">
                 <label for="initialsInput" style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap; margin-bottom: 0;">Initials:</label>
                 <input id="initialsInput" type="text" class="form-input" placeholder="AB" maxlength="4" style="width: 72px; text-align: center; font-weight: 700; font-size: 1.05rem; padding: 6px 8px; text-transform: uppercase;">
-                <button id="resetInitialsBtn" class="btn btn-secondary" style="font-size: 0.72rem; padding: 6px 10px; white-space: nowrap;" type="button" title="Reset to nickname initial">Default</button>
+                <button id="resetInitialsBtn" class="btn btn-secondary" style="font-size: 0.72rem; padding: 6px 10px; white-space: nowrap; flex: 0 0 auto;" type="button" title="Reset to nickname initial">Default</button>
               </div>
             </div>
           </div>
@@ -645,23 +640,17 @@
           </div>
         </section>
 
-        <div class="hub-divider"></div>
-
         <!-- Section 2: Squad Settings & Sharing -->
-        <section id="hubPaneSquad" class="hub-section">
-          <div class="hub-section-header">
-            <span class="hub-section-icon">👥</span>
-            <h4 class="hub-section-title">Squad</h4>
-          </div>
-
+        <section id="hubPaneSquad" class="hub-section" style="display: none;">
           <!-- Section 2A: Your Squads & Switcher -->
           <div class="hub-card" id="userSquadsCard">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <label class="form-label" style="color: var(--accent-green); margin-bottom: 0;">
                 Your Squads (<span id="userSquadCount">0</span>)
               </label>
-              <button id="quickSoloBtn" class="btn btn-secondary" style="font-size: 0.74rem; padding: 2px 8px; border-radius: 999px;" type="button" title="Switch to private solo quest">
-                Solo
+              <button id="quickSoloBtn" class="btn-solo-badge" type="button" title="Switch to private solo quest">
+                <span class="solo-badge-icon">🧘</span>
+                <span class="solo-badge-text">Go Solo</span>
               </button>
             </div>
             <div id="userSquadsList" class="user-squads-list">
@@ -672,7 +661,7 @@
           <!-- Section 2B: Current Squad Info / Rename -->
           <div class="hub-card" id="currentSquadCard">
             <label class="form-label" style="color: var(--accent-green); display: flex; justify-content: space-between; align-items: center;">
-              <span>Room: <strong id="roomNameLabel" class="room-name-highlight">Solo Quest</strong></span>
+              <span>Squad Name: <strong id="roomNameLabel" class="room-name-highlight">Solo Quest</strong></span>
             </label>
             <div id="renameSquadControls" style="display: flex; gap: 6px;">
               <input id="editRoomNameInput" type="text" class="form-input" placeholder="Squad Name" maxlength="50" aria-label="Edit squad name">
