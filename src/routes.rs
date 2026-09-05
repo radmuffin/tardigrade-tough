@@ -409,8 +409,9 @@ async fn update_profile(
 async fn log_activity(
     user: UserToken,
     State(state): State<AppState>,
-    Json(payload): Json<LogActivityRequest>,
+    Json(mut payload): Json<LogActivityRequest>,
 ) -> (StatusCode, Json<ApiResponse<Activity>>) {
+    payload.parent_activity_id = None;
     let mut conn = state.db.lock().unwrap();
     let default_room = match get_user_current_room(&conn, user.as_str()) {
         Ok(Some(slug)) => slug,
@@ -447,6 +448,55 @@ async fn log_activity(
                     "leaderboard": leaderboard,
                 }),
             });
+
+            // If logged in a solo room, auto-forward to all squads the user belongs to
+            if room_slug.starts_with("solo-") {
+                if let Ok(squads) = get_user_squads(&conn, user.as_str()) {
+                    for squad in squads {
+                        let forwarded_req = LogActivityRequest {
+                            room_slug: Some(squad.slug.clone()),
+                            user_nickname: Some(activity.user_nickname.clone()),
+                            user_avatar_color: Some(activity.user_avatar_color.clone()),
+                            user_avatar_emoji: Some(activity.user_avatar_emoji.clone()),
+                            activity_type: activity.activity_type.clone(),
+                            exercise_name: Some(activity.exercise_name.clone()),
+                            sets: Some(activity.sets),
+                            reps: Some(activity.reps),
+                            weight_per_rep: Some(activity.weight_per_rep),
+                            distance_val: Some(activity.distance_val),
+                            elevation_val: Some(activity.elevation_val),
+                            total_metric: Some(activity.total_metric),
+                            notes: Some(activity.notes.clone()),
+                            goal_id: None,
+                            created_at: Some(activity.created_at.clone()),
+                            parent_activity_id: Some(activity.id),
+                        };
+
+                        if let Ok(fwd_activity) = log_single_activity(
+                            &mut conn,
+                            &user_profile,
+                            &squad.slug,
+                            &forwarded_req,
+                        ) {
+                            let (sq_goals, _) =
+                                get_goals_for_room(&conn, &squad.slug).unwrap_or_default();
+                            let sq_leaderboard =
+                                get_leaderboard(&conn, &squad.slug).unwrap_or_default();
+
+                            let _ = state.hub.broadcast(WsMessage {
+                                room: squad.slug.clone(),
+                                event: "activity_logged".to_string(),
+                                sender_token: Some(user.as_str().to_string()),
+                                payload: serde_json::json!({
+                                    "activity": fwd_activity,
+                                    "active_goals": sq_goals,
+                                    "leaderboard": sq_leaderboard,
+                                }),
+                            });
+                        }
+                    }
+                }
+            }
 
             (StatusCode::CREATED, Json(ApiResponse::ok(activity)))
         }
@@ -492,6 +542,7 @@ async fn log_batch_activities(
     let mut created = Vec::new();
 
     for mut req in payload.activities {
+        req.parent_activity_id = None;
         if req.user_nickname.is_none() && payload.user_nickname.is_some() {
             req.user_nickname = payload.user_nickname.clone();
         }
@@ -526,6 +577,55 @@ async fn log_batch_activities(
         }),
     });
 
+    // If logged in a solo room, auto-forward batch to all squads the user belongs to
+    if room_slug.starts_with("solo-") && !created.is_empty() {
+        if let Ok(squads) = get_user_squads(&conn, user.as_str()) {
+            for squad in squads {
+                let mut squad_created = Vec::new();
+                for solo_act in &created {
+                    let fwd_req = LogActivityRequest {
+                        room_slug: Some(squad.slug.clone()),
+                        user_nickname: Some(solo_act.user_nickname.clone()),
+                        user_avatar_color: Some(solo_act.user_avatar_color.clone()),
+                        user_avatar_emoji: Some(solo_act.user_avatar_emoji.clone()),
+                        activity_type: solo_act.activity_type.clone(),
+                        exercise_name: Some(solo_act.exercise_name.clone()),
+                        sets: Some(solo_act.sets),
+                        reps: Some(solo_act.reps),
+                        weight_per_rep: Some(solo_act.weight_per_rep),
+                        distance_val: Some(solo_act.distance_val),
+                        elevation_val: Some(solo_act.elevation_val),
+                        total_metric: Some(solo_act.total_metric),
+                        notes: Some(solo_act.notes.clone()),
+                        goal_id: None,
+                        created_at: Some(solo_act.created_at.clone()),
+                        parent_activity_id: Some(solo_act.id),
+                    };
+                    if let Ok(sq_act) =
+                        log_single_activity(&mut conn, &user_profile, &squad.slug, &fwd_req)
+                    {
+                        squad_created.push(sq_act);
+                    }
+                }
+                if !squad_created.is_empty() {
+                    let (sq_goals, _) = get_goals_for_room(&conn, &squad.slug).unwrap_or_default();
+                    let sq_leaderboard = get_leaderboard(&conn, &squad.slug).unwrap_or_default();
+
+                    let _ = state.hub.broadcast(WsMessage {
+                        room: squad.slug.clone(),
+                        event: "batch_activities_logged".to_string(),
+                        sender_token: Some(user.as_str().to_string()),
+                        payload: serde_json::json!({
+                            "count": squad_created.len(),
+                            "active_goals": sq_goals,
+                            "leaderboard": sq_leaderboard,
+                        }),
+                    });
+                }
+            }
+        }
+    }
+
     (StatusCode::CREATED, Json(ApiResponse::ok(created)))
 }
 
@@ -537,20 +637,22 @@ async fn delete_activity_handler(
     let mut conn = state.db.lock().unwrap();
 
     match delete_activity(&mut conn, id, user.as_str()) {
-        Ok(Some(room_slug)) => {
-            let (active_goals, _) = get_goals_for_room(&conn, &room_slug).unwrap_or_default();
-            let leaderboard = get_leaderboard(&conn, &room_slug).unwrap_or_default();
+        Ok(Some(affected_rooms)) => {
+            for room_slug in affected_rooms {
+                let (active_goals, _) = get_goals_for_room(&conn, &room_slug).unwrap_or_default();
+                let leaderboard = get_leaderboard(&conn, &room_slug).unwrap_or_default();
 
-            let _ = state.hub.broadcast(WsMessage {
-                room: room_slug,
-                event: "activity_deleted".to_string(),
-                sender_token: Some(user.as_str().to_string()),
-                payload: serde_json::json!({
-                    "activity_id": id,
-                    "active_goals": active_goals,
-                    "leaderboard": leaderboard,
-                }),
-            });
+                let _ = state.hub.broadcast(WsMessage {
+                    room: room_slug,
+                    event: "activity_deleted".to_string(),
+                    sender_token: Some(user.as_str().to_string()),
+                    payload: serde_json::json!({
+                        "activity_id": id,
+                        "active_goals": active_goals,
+                        "leaderboard": leaderboard,
+                    }),
+                });
+            }
 
             (StatusCode::OK, Json(ApiResponse::ok(true)))
         }

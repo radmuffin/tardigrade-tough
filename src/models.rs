@@ -109,6 +109,8 @@ pub struct Activity {
     pub total_metric: f64,
     pub notes: String,
     pub created_at: String,
+    #[serde(default)]
+    pub parent_activity_id: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -128,6 +130,8 @@ pub struct LogActivityRequest {
     pub notes: Option<String>,
     pub goal_id: Option<i64>,
     pub created_at: Option<String>,
+    #[serde(default)]
+    pub parent_activity_id: Option<i64>,
 }
 
 #[derive(Debug, Deserialize, Default)]

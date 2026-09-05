@@ -62,7 +62,8 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
             elevation_val REAL DEFAULT 0,
             total_metric REAL NOT NULL,
             notes TEXT DEFAULT '',
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            parent_activity_id INTEGER DEFAULT NULL
         );
 
         CREATE TABLE IF NOT EXISTS goal_wishlists (
@@ -82,6 +83,7 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_activities_room ON activities(room_slug, id DESC);
         CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_token);
         CREATE INDEX IF NOT EXISTS idx_activities_goal ON activities(goal_id);
+        CREATE INDEX IF NOT EXISTS idx_activities_parent ON activities(parent_activity_id);
         CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_slug);
         CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(user_token);
     "#,
@@ -96,6 +98,12 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
     // Ensure user_avatar_emoji column exists in activities
     let _ = conn.execute(
         "ALTER TABLE activities ADD COLUMN user_avatar_emoji TEXT NOT NULL DEFAULT ''",
+        [],
+    );
+
+    // Ensure parent_activity_id column exists in activities
+    let _ = conn.execute(
+        "ALTER TABLE activities ADD COLUMN parent_activity_id INTEGER DEFAULT NULL",
         [],
     );
 
@@ -859,11 +867,12 @@ pub fn log_single_activity(
         .as_deref()
         .unwrap_or(&user.avatar_emoji);
     let notes = req.notes.as_deref().unwrap_or("").trim();
+    let parent_activity_id = req.parent_activity_id;
 
     tx.execute(
         r#"INSERT INTO activities 
-           (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+           (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
         params![
             room_slug,
             user.user_token,
@@ -880,7 +889,8 @@ pub fn log_single_activity(
             elevation_val,
             total_metric,
             notes,
-            activity_time
+            activity_time,
+            parent_activity_id
         ],
     )?;
 
@@ -905,6 +915,7 @@ pub fn log_single_activity(
         total_metric,
         notes: notes.to_string(),
         created_at: activity_time.to_string(),
+        parent_activity_id,
     })
 }
 
@@ -912,7 +923,7 @@ pub fn delete_activity(
     conn: &mut Connection,
     activity_id: i64,
     user_token: &str,
-) -> Result<Option<String>> {
+) -> Result<Option<Vec<String>>> {
     let tx = conn.transaction()?;
 
     let found = {
@@ -935,6 +946,44 @@ pub fn delete_activity(
             return Ok(None);
         }
 
+        let mut affected_rooms = vec![room_slug];
+
+        // Find any child activities forwarded from this parent activity
+        let child_rows = {
+            let mut child_stmt = tx.prepare(
+                "SELECT id, goal_id, total_metric, room_slug FROM activities WHERE parent_activity_id = ? AND user_token = ?",
+            )?;
+            let rows = child_stmt
+                .query_map(params![activity_id, user_token], |r| {
+                    Ok((
+                        r.get::<_, i64>(0)?,
+                        r.get::<_, Option<i64>>(1)?,
+                        r.get::<_, f64>(2)?,
+                        r.get::<_, String>(3)?,
+                    ))
+                })?
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>();
+            rows
+        };
+
+        for (c_id, c_goal_id, c_metric, c_room) in child_rows {
+            if let Some(gid) = c_goal_id {
+                tx.execute(
+                    "UPDATE goals SET current_value = MAX(0, current_value - ?) WHERE id = ?",
+                    params![c_metric, gid],
+                )?;
+                tx.execute(
+                    "UPDATE goals SET status = 'active' WHERE id = ? AND current_value < target_value AND status = 'completed'",
+                    params![gid],
+                )?;
+            }
+            tx.execute("DELETE FROM activities WHERE id = ?", params![c_id])?;
+            if !affected_rooms.contains(&c_room) {
+                affected_rooms.push(c_room);
+            }
+        }
+
         if let Some(gid) = goal_id {
             tx.execute(
                 "UPDATE goals SET current_value = MAX(0, current_value - ?) WHERE id = ?",
@@ -950,7 +999,7 @@ pub fn delete_activity(
 
         tx.execute("DELETE FROM activities WHERE id = ?", params![activity_id])?;
         tx.commit()?;
-        Ok(Some(room_slug))
+        Ok(Some(affected_rooms))
     } else {
         Ok(None)
     }
@@ -962,7 +1011,7 @@ pub fn get_recent_activities(
     limit: i64,
 ) -> Result<Vec<Activity>> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at
+        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id
            FROM activities WHERE room_slug = ? ORDER BY id DESC LIMIT ?"#,
     )?;
 
@@ -985,6 +1034,7 @@ pub fn get_recent_activities(
             total_metric: row.get(14)?,
             notes: row.get(15)?,
             created_at: row.get(16)?,
+            parent_activity_id: row.get(17)?,
         })
     })?;
 

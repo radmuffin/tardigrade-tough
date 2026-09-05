@@ -79,6 +79,7 @@ fn test_multi_room_isolation_and_cross_contamination() {
             notes: None,
             goal_id: None,
             created_at: None,
+            parent_activity_id: None,
         },
     )
     .expect("log user a");
@@ -124,6 +125,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             notes: None,
             goal_id: None,
             created_at: None,
+            parent_activity_id: None,
         },
     )
     .expect("weight log");
@@ -148,6 +150,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             notes: None,
             goal_id: None,
             created_at: None,
+            parent_activity_id: None,
         },
     )
     .expect("distance log");
@@ -172,6 +175,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             notes: None,
             goal_id: None,
             created_at: None,
+            parent_activity_id: None,
         },
     )
     .expect("elevation log");
@@ -218,6 +222,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             notes: None,
             goal_id: None,
             created_at: None,
+            parent_activity_id: None,
         },
         LogActivityRequest {
             room_slug: Some("main".to_string()),
@@ -235,6 +240,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             notes: None,
             goal_id: None,
             created_at: None,
+            parent_activity_id: None,
         },
     ];
 
@@ -273,6 +279,7 @@ fn test_activity_deletion_and_rollback() {
             notes: None,
             goal_id: None,
             created_at: None,
+            parent_activity_id: None,
         },
     )
     .expect("log");
@@ -288,7 +295,7 @@ fn test_activity_deletion_and_rollback() {
     assert!(unauthorized_del.is_none());
 
     let authorized_del = delete_activity(&mut conn, act.id, "token_del").expect("delete ok");
-    assert_eq!(authorized_del.as_deref(), Some("main"));
+    assert_eq!(authorized_del, Some(vec!["main".to_string()]));
 
     let (active_2, _) = get_goals_for_room(&conn, "main").expect("goals");
     let val_2 = active_2
@@ -423,6 +430,7 @@ fn test_goal_completion_transition() {
             notes: None,
             goal_id: None,
             created_at: None,
+            parent_activity_id: None,
         },
     )
     .expect("trek log");
@@ -436,7 +444,7 @@ fn test_goal_completion_transition() {
     // Rollback: Deleting the activity must revert the goal back to 'active'
     let deleted_room =
         delete_activity(&mut conn, act.id, &user.user_token).expect("delete activity");
-    assert_eq!(deleted_room, Some("solo_quest".to_string()));
+    assert_eq!(deleted_room, Some(vec!["solo_quest".to_string()]));
 
     let (active_after, completed_after) =
         get_goals_for_room(&conn, "solo_quest").expect("goals after delete");
@@ -791,6 +799,7 @@ fn test_custom_quest_category_proposal_promotion_and_activity_logging() {
             notes: Some("Strict form".to_string()),
             goal_id: None,
             created_at: None,
+            parent_activity_id: None,
         },
     )
     .expect("log pushups");
@@ -1191,4 +1200,224 @@ async fn test_avatar_emoji_customization_and_activity_propagation() {
     let lb = room_json["data"]["leaderboard"].as_array().unwrap();
     assert_eq!(lb[0]["avatar_emoji"], "🦍");
     assert_eq!(lb[0]["avatar_color"], "#14b8a6");
+}
+
+#[tokio::test]
+async fn test_solo_activity_auto_forwards_to_user_squads_and_cascades_delete() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState { db, hub };
+    let app = create_routes(state);
+    let server = TestServer::new(app).unwrap();
+
+    let user_token = "solo_forward_user_tok";
+
+    // 1. User visits /room/current and gets private solo room
+    let res = server
+        .get("/room/current")
+        .add_header("X-Device-Token", user_token)
+        .await;
+    res.assert_status_ok();
+    let solo_data: serde_json::Value = res.json();
+    let solo_slug = solo_data["data"]["room"]["slug"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(solo_slug.starts_with("solo-"));
+
+    // 2. User creates a squad "Alpha Crew"
+    let create_res = server
+        .post("/room/create")
+        .add_header("X-Device-Token", user_token)
+        .json(&json!({ "name": "Alpha Crew" }))
+        .await;
+    create_res.assert_status_ok();
+    let squad_data: serde_json::Value = create_res.json();
+    let squad_slug = squad_data["data"]["slug"].as_str().unwrap().to_string();
+    assert!(squad_slug.starts_with("alpha-crew"));
+
+    // Verify initial squad goal (Pando Aspen Clone) has current_value = 0
+    let squad_res_init = server
+        .get(&format!("/room/{}", squad_slug))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    squad_res_init.assert_status_ok();
+    let squad_init_json: serde_json::Value = squad_res_init.json();
+    let pando_goal = squad_init_json["data"]["active_goals"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["theme_key"] == "pando")
+        .unwrap();
+    assert_eq!(pando_goal["current_value"], 0.0);
+
+    // 3. User logs a single activity in their private solo room
+    let log_res = server
+        .post("/activities")
+        .add_header("X-Device-Token", user_token)
+        .json(&json!({
+            "room_slug": solo_slug,
+            "activity_type": "weight",
+            "exercise_name": "Deadlift",
+            "sets": 5,
+            "reps": 5,
+            "weight_per_rep": 300.0,
+            "total_metric": 7500.0
+        }))
+        .await;
+    assert_eq!(log_res.status_code(), axum::http::StatusCode::CREATED);
+    let log_json: serde_json::Value = log_res.json();
+    let solo_act_id = log_json["data"]["id"].as_i64().unwrap();
+
+    // Check solo room: goal is updated, activity is present
+    let solo_check = server
+        .get(&format!("/room/{}", solo_slug))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    let solo_check_json: serde_json::Value = solo_check.json();
+    let solo_pando = solo_check_json["data"]["active_goals"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["theme_key"] == "pando")
+        .unwrap();
+    assert_eq!(solo_pando["current_value"], 7500.0);
+    assert_eq!(
+        solo_check_json["data"]["recent_activities"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+
+    // 4. Check squad room: activity was automatically forwarded!
+    // Squad goal is incremented, activity is in feed, and user has stats on leaderboard
+    let squad_check = server
+        .get(&format!("/room/{}", squad_slug))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    let squad_check_json: serde_json::Value = squad_check.json();
+    let squad_pando = squad_check_json["data"]["active_goals"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["theme_key"] == "pando")
+        .unwrap();
+    assert_eq!(
+        squad_pando["current_value"], 7500.0,
+        "Squad goal must auto-increment from solo workout"
+    );
+
+    let squad_acts = squad_check_json["data"]["recent_activities"]
+        .as_array()
+        .unwrap();
+    assert_eq!(squad_acts.len(), 1, "Squad must have 1 forwarded activity");
+    assert_eq!(squad_acts[0]["exercise_name"], "Deadlift");
+    assert_eq!(squad_acts[0]["parent_activity_id"], solo_act_id);
+
+    let squad_lb = squad_check_json["data"]["leaderboard"].as_array().unwrap();
+    assert_eq!(squad_lb.len(), 1);
+    assert_eq!(squad_lb[0]["total_weight"], 7500.0);
+    assert_eq!(squad_lb[0]["total_sets"], 5);
+
+    // 5. Test batch logging in solo room auto-forwards to squad
+    let batch_res = server
+        .post("/activities/batch")
+        .add_header("X-Device-Token", user_token)
+        .json(&json!({
+            "room_slug": solo_slug,
+            "activities": [
+                {
+                    "activity_type": "weight",
+                    "exercise_name": "Bench Press",
+                    "sets": 3,
+                    "reps": 10,
+                    "weight_per_rep": 150.0,
+                    "total_metric": 4500.0
+                },
+                {
+                    "activity_type": "distance",
+                    "exercise_name": "Treadmill Run",
+                    "sets": 1,
+                    "reps": 1,
+                    "distance_val": 5.0,
+                    "total_metric": 5.0
+                }
+            ]
+        }))
+        .await;
+    assert_eq!(batch_res.status_code(), axum::http::StatusCode::CREATED);
+
+    // Check squad room after batch: weight goal is 7500 + 4500 = 12000, distance goal (caribou) is 5.0
+    let squad_check_batch = server
+        .get(&format!("/room/{}", squad_slug))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    let squad_batch_json: serde_json::Value = squad_check_batch.json();
+    let squad_pando_batch = squad_batch_json["data"]["active_goals"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["theme_key"] == "pando")
+        .unwrap();
+    assert_eq!(squad_pando_batch["current_value"], 12000.0);
+
+    let squad_caribou_batch = squad_batch_json["data"]["active_goals"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["theme_key"] == "caribou")
+        .unwrap();
+    assert_eq!(squad_caribou_batch["current_value"], 5.0);
+
+    // 6. Test cascading delete: Delete the initial deadlift from solo room
+    let del_res = server
+        .delete(&format!("/activities/{}", solo_act_id))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    del_res.assert_status_ok();
+
+    // Solo room goal decremented from 12000 to 4500
+    let solo_after_del = server
+        .get(&format!("/room/{}", solo_slug))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    let solo_del_json: serde_json::Value = solo_after_del.json();
+    let solo_pando_del = solo_del_json["data"]["active_goals"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["theme_key"] == "pando")
+        .unwrap();
+    assert_eq!(solo_pando_del["current_value"], 4500.0);
+
+    // Squad room goal also decremented from 12000 to 4500, and child activity deleted!
+    let squad_after_del = server
+        .get(&format!("/room/{}", squad_slug))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    let squad_del_json: serde_json::Value = squad_after_del.json();
+    let squad_pando_del = squad_del_json["data"]["active_goals"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["theme_key"] == "pando")
+        .unwrap();
+    assert_eq!(
+        squad_pando_del["current_value"], 4500.0,
+        "Squad goal must roll back when solo parent activity is deleted"
+    );
+
+    let remaining_squad_acts = squad_del_json["data"]["recent_activities"]
+        .as_array()
+        .unwrap();
+    assert_eq!(
+        remaining_squad_acts.len(),
+        2,
+        "Child forwarded activity should be removed from squad"
+    );
+    assert!(remaining_squad_acts
+        .iter()
+        .all(|a| a["exercise_name"] != "Deadlift"));
 }
