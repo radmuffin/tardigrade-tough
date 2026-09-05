@@ -206,7 +206,8 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
   test('supports squad renaming and updates squad name label in real-time', async ({ page }) => {
     // Navigate to dedicated test squad room to isolate state
-    await page.goto('/r/test-squad-rename');
+    const squadSlug = `test-rename-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    await page.goto(`/r/${squadSlug}`);
     await page.waitForSelector('body[data-state="ready"]');
 
     // Open Crew Hub via profile button and switch to Squad tab
@@ -231,6 +232,10 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   });
 
   test('provides squad invite link and QR code in share section', async ({ page }) => {
+    const squadSlug = `test-share-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    await page.goto(`/r/${squadSlug}`);
+    await page.waitForSelector('body[data-state="ready"]');
+
     // Open room modal via footer share button
     await page.click('#footerShareBtn');
     await expect(page.locator('#profileModal')).toBeVisible();
@@ -251,6 +256,39 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     await page.click('#closeRoomBtn');
     await expect(page.locator('#profileModal')).not.toBeVisible();
+  });
+
+  test('supports customizing avatar emoji and accent color in profile hub', async ({ page }) => {
+    // Open profile hub
+    await page.click('#profileBtn');
+    await expect(page.locator('#profileModal')).toBeVisible();
+
+    // Verify avatar preview is present
+    await expect(page.locator('#avatarPreviewChip')).toBeVisible();
+    await expect(page.locator('#avatarPreviewEmoji')).toBeVisible();
+
+    // Set nickname
+    await page.fill('#nickInput', 'IronTitan');
+
+    // Click Gorilla emoji chip
+    const gorillaChip = page.locator('.emoji-chip[data-emoji="🦍"]');
+    await gorillaChip.click();
+    await expect(gorillaChip).toHaveClass(/selected/);
+    await expect(page.locator('#avatarPreviewEmoji')).toHaveText('🦍');
+
+    // Select Teal Beast color
+    const tealColor = page.locator('.color-option[data-color="#14b8a6"]');
+    await tealColor.click();
+    await expect(tealColor).toHaveClass(/selected/);
+
+    // Save profile
+    await page.click('#saveProfileBtn');
+    await expect(page.locator('#profileModal')).not.toBeVisible();
+
+    // Verify header profile chip reflects new nickname and emoji
+    await expect(page.locator('#profileNick')).toHaveText('IronTitan');
+    await expect(page.locator('#profileDot')).toHaveText('🦍');
+    await expect(page.locator('#profileDot')).toHaveClass(/has-emoji/);
   });
 
   test('navigates seamlessly using connective action cards across screens', async ({ page }) => {
@@ -403,7 +441,8 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   });
 
   test('displays squad crew members, leave squad option, and creator controls', async ({ page }) => {
-    await page.goto('/r/test-squad-crew');
+    const squadSlug = `test-crew-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    await page.goto(`/r/${squadSlug}`);
     await page.waitForSelector('body[data-state="ready"]');
 
     // Check leaderboard squad banner is present

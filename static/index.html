@@ -569,19 +569,75 @@
             <h4 class="hub-section-title">My Profile & Appearance</h4>
           </div>
 
+          <!-- Live Avatar Preview -->
+          <div class="avatar-preview-wrapper" style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 12px 14px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <div id="avatarPreviewChip" class="user-avatar-large" style="width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.2); flex-shrink: 0; background-color: #10b981; line-height: 1;">
+              <span id="avatarPreviewEmoji">🐻</span>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; margin-bottom: 2px;">Avatar Preview</div>
+              <div id="avatarPreviewName" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Athlete</div>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label" for="nickInput">Display Nickname</label>
             <input id="nickInput" type="text" class="form-input" placeholder="Your Name or Call-sign" maxlength="24">
           </div>
+
+          <!-- Avatar Emoji Selection (Exactly One Emoji) -->
           <div class="form-group">
-            <label class="form-label">Avatar Accent Color</label>
-            <div id="colorPickerRow" class="color-picker-row">
-              <div class="color-option selected" data-color="#10b981" style="background: #10b981;"></div>
-              <div class="color-option" data-color="#3b82f6" style="background: #3b82f6;"></div>
-              <div class="color-option" data-color="#f59e0b" style="background: #f59e0b;"></div>
-              <div class="color-option" data-color="#ec4899" style="background: #ec4899;"></div>
-              <div class="color-option" data-color="#8b5cf6" style="background: #8b5cf6;"></div>
-              <div class="color-option" data-color="#06b6d4" style="background: #06b6d4;"></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin-bottom: 0;">Avatar Emoji (One Emoji)</label>
+              <span style="font-size: 0.74rem; color: var(--text-muted);">Pick or paste 1 emoji</span>
+            </div>
+            <div id="emojiPickerGrid" class="emoji-picker-grid">
+              <button type="button" class="emoji-chip selected" data-emoji="🐻" title="Bear">🐻</button>
+              <button type="button" class="emoji-chip" data-emoji="🦔" title="Tardigrade / Hedgehog">🦔</button>
+              <button type="button" class="emoji-chip" data-emoji="🌲" title="Pando Aspen">🌲</button>
+              <button type="button" class="emoji-chip" data-emoji="🐐" title="Mountain Goat">🐐</button>
+              <button type="button" class="emoji-chip" data-emoji="🐋" title="Blue Whale">🐋</button>
+              <button type="button" class="emoji-chip" data-emoji="🦾" title="Bionic Power">🦾</button>
+              <button type="button" class="emoji-chip" data-emoji="⚡" title="Lightning Speed">⚡</button>
+              <button type="button" class="emoji-chip" data-emoji="🏋️" title="Lifter">🏋️</button>
+              <button type="button" class="emoji-chip" data-emoji="🦍" title="Silverback Gorilla">🦍</button>
+              <button type="button" class="emoji-chip" data-emoji="🦅" title="Eagle">🦅</button>
+              <button type="button" class="emoji-chip" data-emoji="🦁" title="Lion">🦁</button>
+              <button type="button" class="emoji-chip" data-emoji="🐯" title="Tiger">🐯</button>
+              <button type="button" class="emoji-chip" data-emoji="🧗" title="Climber">🧗</button>
+              <button type="button" class="emoji-chip" data-emoji="🏃" title="Runner">🏃</button>
+              <button type="button" class="emoji-chip" data-emoji="🥊" title="Boxer">🥊</button>
+              <button type="button" class="emoji-chip" data-emoji="🔥" title="Fire Spirit">🔥</button>
+            </div>
+            <div class="custom-emoji-row" style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+              <input id="customEmojiInput" type="text" class="form-input" placeholder="Or type any single emoji (e.g. 🦊)" maxlength="4" style="font-size: 1.05rem; text-align: center; flex: 1;">
+              <button id="clearEmojiBtn" class="btn btn-secondary" style="font-size: 0.74rem; white-space: nowrap; padding: 7px 10px;" type="button" title="Use nickname initial only">Initials Only</button>
+            </div>
+          </div>
+
+          <!-- Expanded 16-Color Palette -->
+          <div class="form-group" style="margin-top: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin-bottom: 0;">Avatar Accent Color</label>
+              <span style="font-size: 0.74rem; color: var(--text-muted);">16 vibrant shades</span>
+            </div>
+            <div id="colorPickerRow" class="color-picker-grid">
+              <div class="color-option selected" data-color="#10b981" style="background: #10b981;" title="Emerald Green"></div>
+              <div class="color-option" data-color="#3b82f6" style="background: #3b82f6;" title="Ocean Blue"></div>
+              <div class="color-option" data-color="#f59e0b" style="background: #f59e0b;" title="Amber Gold"></div>
+              <div class="color-option" data-color="#ec4899" style="background: #ec4899;" title="Hot Pink"></div>
+              <div class="color-option" data-color="#8b5cf6" style="background: #8b5cf6;" title="Royal Purple"></div>
+              <div class="color-option" data-color="#06b6d4" style="background: #06b6d4;" title="Cyan Neon"></div>
+              <div class="color-option" data-color="#14b8a6" style="background: #14b8a6;" title="Teal Beast"></div>
+              <div class="color-option" data-color="#6366f1" style="background: #6366f1;" title="Indigo Glow"></div>
+              <div class="color-option" data-color="#d946ef" style="background: #d946ef;" title="Fuchsia Power"></div>
+              <div class="color-option" data-color="#f43f5e" style="background: #f43f5e;" title="Rose Red"></div>
+              <div class="color-option" data-color="#84cc16" style="background: #84cc16;" title="Lime Punch"></div>
+              <div class="color-option" data-color="#eab308" style="background: #eab308;" title="Electric Yellow"></div>
+              <div class="color-option" data-color="#f97316" style="background: #f97316;" title="Blaze Orange"></div>
+              <div class="color-option" data-color="#0ea5e9" style="background: #0ea5e9;" title="Sky High"></div>
+              <div class="color-option" data-color="#a855f7" style="background: #a855f7;" title="Violet Flame"></div>
+              <div class="color-option" data-color="#22c55e" style="background: #22c55e;" title="Vibrant Green"></div>
             </div>
           </div>
           <div class="form-group" style="margin-top: 14px;">

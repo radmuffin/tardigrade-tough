@@ -17,6 +17,7 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
             user_token TEXT PRIMARY KEY,
             nickname TEXT NOT NULL,
             avatar_color TEXT NOT NULL,
+            avatar_emoji TEXT NOT NULL DEFAULT '',
             current_room_slug TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -50,6 +51,7 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
             user_token TEXT NOT NULL,
             user_nickname TEXT NOT NULL,
             user_avatar_color TEXT NOT NULL,
+            user_avatar_emoji TEXT NOT NULL DEFAULT '',
             goal_id INTEGER REFERENCES goals(id),
             activity_type TEXT NOT NULL,
             exercise_name TEXT NOT NULL,
@@ -84,6 +86,18 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(user_token);
     "#,
     )?;
+
+    // Ensure avatar_emoji column exists in users
+    let _ = conn.execute(
+        "ALTER TABLE users ADD COLUMN avatar_emoji TEXT NOT NULL DEFAULT ''",
+        [],
+    );
+
+    // Ensure user_avatar_emoji column exists in activities
+    let _ = conn.execute(
+        "ALTER TABLE activities ADD COLUMN user_avatar_emoji TEXT NOT NULL DEFAULT ''",
+        [],
+    );
 
     // Ensure user_nickname column exists in goal_wishlists for existing tables
     let _ = conn.execute(
@@ -297,6 +311,7 @@ pub fn get_room_members(conn: &Connection, room_slug: &str) -> Result<Vec<RoomMe
             rm.user_token,
             COALESCE(u.nickname, 'Athlete') AS nickname,
             COALESCE(u.avatar_color, '#10b981') AS avatar_color,
+            COALESCE(u.avatar_emoji, '') AS avatar_emoji,
             rm.role,
             rm.joined_at,
             COALESCE((SELECT SUM(a.total_metric) FROM activities a WHERE a.room_slug = rm.room_slug AND a.user_token = rm.user_token), 0.0) AS total_metric,
@@ -312,10 +327,11 @@ pub fn get_room_members(conn: &Connection, room_slug: &str) -> Result<Vec<RoomMe
         let user_token: String = row.get(0)?;
         let nickname: String = row.get(1)?;
         let avatar_color: String = row.get(2)?;
-        let db_role: String = row.get(3)?;
-        let joined_at: String = row.get(4)?;
-        let total_metric: f64 = row.get(5)?;
-        let total_sets: i64 = row.get(6)?;
+        let avatar_emoji: String = row.get(3)?;
+        let db_role: String = row.get(4)?;
+        let joined_at: String = row.get(5)?;
+        let total_metric: f64 = row.get(6)?;
+        let total_sets: i64 = row.get(7)?;
 
         let is_creator = (user_token == room_creator && !room_creator.is_empty())
             || db_role == "creator"
@@ -330,6 +346,7 @@ pub fn get_room_members(conn: &Connection, room_slug: &str) -> Result<Vec<RoomMe
             user_token,
             nickname,
             avatar_color,
+            avatar_emoji,
             role,
             is_creator,
             joined_at,
@@ -598,15 +615,16 @@ pub fn get_or_create_user(
     default_room: &str,
 ) -> Result<UserProfile> {
     let mut stmt = conn.prepare(
-        "SELECT user_token, nickname, avatar_color, current_room_slug, updated_at FROM users WHERE user_token = ?",
+        "SELECT user_token, nickname, avatar_color, COALESCE(avatar_emoji, ''), current_room_slug, updated_at FROM users WHERE user_token = ?",
     )?;
     let found = stmt.query_row(params![token], |row| {
         Ok(UserProfile {
             user_token: row.get(0)?,
             nickname: row.get(1)?,
             avatar_color: row.get(2)?,
-            current_room_slug: row.get(3)?,
-            updated_at: row.get(4)?,
+            avatar_emoji: row.get(3)?,
+            current_room_slug: row.get(4)?,
+            updated_at: row.get(5)?,
         })
     });
 
@@ -621,7 +639,12 @@ pub fn get_or_create_user(
                 "CaribouRunner",
             ];
             let default_colors = [
-                "#10b981", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4",
+                "#10b981", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#14b8a6",
+                "#6366f1", "#d946ef", "#f43f5e", "#84cc16", "#eab308", "#f97316", "#0ea5e9",
+                "#a855f7", "#22c55e",
+            ];
+            let default_emojis = [
+                "🐻", "🦔", "🌲", "🐐", "🐋", "🦾", "⚡", "🏋️", "🦍", "🦅", "🦁", "🐯",
             ];
 
             // Derive consistent index from token hash
@@ -632,17 +655,19 @@ pub fn get_or_create_user(
                 &token[..4.min(token.len())]
             );
             let avatar_color = default_colors[hash % default_colors.len()].to_string();
+            let avatar_emoji = default_emojis[hash % default_emojis.len()].to_string();
             let now = Utc::now().to_rfc3339();
 
             conn.execute(
-                "INSERT INTO users (user_token, nickname, avatar_color, current_room_slug, updated_at) VALUES (?, ?, ?, ?, ?)",
-                params![token, nickname, avatar_color, default_room, now],
+                "INSERT INTO users (user_token, nickname, avatar_color, avatar_emoji, current_room_slug, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                params![token, nickname, avatar_color, avatar_emoji, default_room, now],
             )?;
 
             Ok(UserProfile {
                 user_token: token.to_string(),
                 nickname,
                 avatar_color,
+                avatar_emoji,
                 current_room_slug: default_room.to_string(),
                 updated_at: now,
             })
@@ -665,6 +690,13 @@ pub fn update_user_profile(
         nickname
     };
     let color = req.avatar_color.as_deref().unwrap_or(&current.avatar_color);
+    let emoji = match &req.avatar_emoji {
+        Some(e) => {
+            let trimmed = e.trim();
+            trimmed.chars().take(8).collect::<String>()
+        }
+        None => current.avatar_emoji.clone(),
+    };
     let room = req
         .current_room_slug
         .as_deref()
@@ -672,14 +704,15 @@ pub fn update_user_profile(
     let now = Utc::now().to_rfc3339();
 
     conn.execute(
-        "UPDATE users SET nickname = ?, avatar_color = ?, current_room_slug = ?, updated_at = ? WHERE user_token = ?",
-        params![nickname, color, room, now, token],
+        "UPDATE users SET nickname = ?, avatar_color = ?, avatar_emoji = ?, current_room_slug = ?, updated_at = ? WHERE user_token = ?",
+        params![nickname, color, emoji, room, now, token],
     )?;
 
     Ok(UserProfile {
         user_token: token.to_string(),
         nickname: nickname.to_string(),
         avatar_color: color.to_string(),
+        avatar_emoji: emoji,
         current_room_slug: room.to_string(),
         updated_at: now,
     })
@@ -821,17 +854,22 @@ pub fn log_single_activity(
         .user_avatar_color
         .as_deref()
         .unwrap_or(&user.avatar_color);
+    let avatar_emoji = req
+        .user_avatar_emoji
+        .as_deref()
+        .unwrap_or(&user.avatar_emoji);
     let notes = req.notes.as_deref().unwrap_or("").trim();
 
     tx.execute(
         r#"INSERT INTO activities 
-           (room_slug, user_token, user_nickname, user_avatar_color, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+           (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
         params![
             room_slug,
             user.user_token,
             nickname,
             avatar_color,
+            avatar_emoji,
             goal_id,
             activity_type,
             exercise_name,
@@ -855,6 +893,7 @@ pub fn log_single_activity(
         user_token: user.user_token.clone(),
         user_nickname: nickname.to_string(),
         user_avatar_color: avatar_color.to_string(),
+        user_avatar_emoji: avatar_emoji.to_string(),
         goal_id,
         activity_type,
         exercise_name: exercise_name.to_string(),
@@ -923,7 +962,7 @@ pub fn get_recent_activities(
     limit: i64,
 ) -> Result<Vec<Activity>> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at
+        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at
            FROM activities WHERE room_slug = ? ORDER BY id DESC LIMIT ?"#,
     )?;
 
@@ -934,17 +973,18 @@ pub fn get_recent_activities(
             user_token: row.get(2)?,
             user_nickname: row.get(3)?,
             user_avatar_color: row.get(4)?,
-            goal_id: row.get(5)?,
-            activity_type: row.get(6)?,
-            exercise_name: row.get(7)?,
-            sets: row.get(8)?,
-            reps: row.get(9)?,
-            weight_per_rep: row.get(10)?,
-            distance_val: row.get(11)?,
-            elevation_val: row.get(12)?,
-            total_metric: row.get(13)?,
-            notes: row.get(14)?,
-            created_at: row.get(15)?,
+            user_avatar_emoji: row.get(5)?,
+            goal_id: row.get(6)?,
+            activity_type: row.get(7)?,
+            exercise_name: row.get(8)?,
+            sets: row.get(9)?,
+            reps: row.get(10)?,
+            weight_per_rep: row.get(11)?,
+            distance_val: row.get(12)?,
+            elevation_val: row.get(13)?,
+            total_metric: row.get(14)?,
+            notes: row.get(15)?,
+            created_at: row.get(16)?,
         })
     })?;
 
@@ -957,6 +997,7 @@ pub fn get_leaderboard(conn: &Connection, room_slug: &str) -> Result<Vec<Leaderb
             a.user_token,
             COALESCE(NULLIF(a.user_nickname, ''), u.nickname, 'Lifter') as nick,
             COALESCE(NULLIF(a.user_avatar_color, ''), u.avatar_color, '#10b981') as col,
+            COALESCE(NULLIF(a.user_avatar_emoji, ''), u.avatar_emoji, '') as emoji,
             SUM(CASE WHEN a.activity_type = 'weight' THEN a.total_metric ELSE 0 END) as total_wt,
             SUM(CASE WHEN a.activity_type = 'distance' THEN a.total_metric ELSE 0 END) as total_dist,
             SUM(CASE WHEN a.activity_type = 'elevation' THEN a.total_metric ELSE 0 END) as total_elev,
@@ -974,21 +1015,24 @@ pub fn get_leaderboard(conn: &Connection, room_slug: &str) -> Result<Vec<Leaderb
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
-                row.get::<_, f64>(3)?,
+                row.get::<_, String>(3)?,
                 row.get::<_, f64>(4)?,
                 row.get::<_, f64>(5)?,
-                row.get::<_, i32>(6)?,
+                row.get::<_, f64>(6)?,
+                row.get::<_, i32>(7)?,
             ))
         })?
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
-    let grand_total_weight: f64 = members_raw.iter().map(|m| m.3).sum();
-    let grand_total_distance: f64 = members_raw.iter().map(|m| m.4).sum();
-    let grand_total_elevation: f64 = members_raw.iter().map(|m| m.5).sum();
+    let grand_total_weight: f64 = members_raw.iter().map(|m| m.4).sum();
+    let grand_total_distance: f64 = members_raw.iter().map(|m| m.5).sum();
+    let grand_total_elevation: f64 = members_raw.iter().map(|m| m.6).sum();
     let mut leaderboard = Vec::new();
 
-    for (idx, (token, nick, color, wt, dist, elev, sets)) in members_raw.into_iter().enumerate() {
+    for (idx, (token, nick, color, emoji, wt, dist, elev, sets)) in
+        members_raw.into_iter().enumerate()
+    {
         let wt_pct = if grand_total_weight > 0.0 {
             (wt / grand_total_weight) * 100.0
         } else {
@@ -1009,6 +1053,7 @@ pub fn get_leaderboard(conn: &Connection, room_slug: &str) -> Result<Vec<Leaderb
             user_token: token,
             nickname: nick,
             avatar_color: color,
+            avatar_emoji: emoji,
             total_weight: wt,
             total_distance: dist,
             total_elevation: elev,

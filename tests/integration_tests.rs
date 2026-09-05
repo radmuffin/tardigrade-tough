@@ -67,6 +67,7 @@ fn test_multi_room_isolation_and_cross_contamination() {
             room_slug: Some("sally-squad".to_string()),
             user_nickname: Some("Sally".to_string()),
             user_avatar_color: None,
+            user_avatar_emoji: None,
             activity_type: "weight".to_string(),
             exercise_name: Some("Leg Press".to_string()),
             sets: Some(5),
@@ -111,6 +112,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             room_slug: Some("main".to_string()),
             user_nickname: None,
             user_avatar_color: None,
+            user_avatar_emoji: None,
             activity_type: "weight".to_string(),
             exercise_name: Some("Squats".to_string()),
             sets: Some(1),
@@ -134,6 +136,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             room_slug: Some("main".to_string()),
             user_nickname: None,
             user_avatar_color: None,
+            user_avatar_emoji: None,
             activity_type: "distance".to_string(),
             exercise_name: Some("Long Run".to_string()),
             sets: None,
@@ -157,6 +160,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             room_slug: Some("main".to_string()),
             user_nickname: None,
             user_avatar_color: None,
+            user_avatar_emoji: None,
             activity_type: "elevation".to_string(),
             exercise_name: Some("Stair Climber".to_string()),
             sets: None,
@@ -202,6 +206,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             room_slug: Some("main".to_string()),
             user_nickname: Some("Samantha".to_string()),
             user_avatar_color: Some("#ec4899".to_string()),
+            user_avatar_emoji: None,
             activity_type: "weight".to_string(),
             exercise_name: Some("Sheet Row 1".to_string()),
             sets: Some(1),
@@ -218,6 +223,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             room_slug: Some("main".to_string()),
             user_nickname: Some("Samantha".to_string()),
             user_avatar_color: Some("#ec4899".to_string()),
+            user_avatar_emoji: None,
             activity_type: "weight".to_string(),
             exercise_name: Some("Sheet Row 2".to_string()),
             sets: Some(1),
@@ -255,6 +261,7 @@ fn test_activity_deletion_and_rollback() {
             room_slug: Some("main".to_string()),
             user_nickname: None,
             user_avatar_color: None,
+            user_avatar_emoji: None,
             activity_type: "weight".to_string(),
             exercise_name: Some("Bench Press".to_string()),
             sets: Some(1),
@@ -306,6 +313,7 @@ fn test_user_profile_customization_persistence() {
         &UpdateProfileRequest {
             nickname: Some("IronBear".to_string()),
             avatar_color: Some("#ec4899".to_string()),
+            avatar_emoji: Some("🐻".to_string()),
             current_room_slug: None,
         },
     )
@@ -403,6 +411,7 @@ fn test_goal_completion_transition() {
             room_slug: Some("solo_quest".to_string()),
             user_nickname: None,
             user_avatar_color: None,
+            user_avatar_emoji: None,
             activity_type: "distance".to_string(),
             exercise_name: Some("Trans-Continental Trek".to_string()),
             sets: None,
@@ -770,6 +779,7 @@ fn test_custom_quest_category_proposal_promotion_and_activity_logging() {
             room_slug: Some("squad-custom".to_string()),
             user_nickname: Some("CustomTitan".to_string()),
             user_avatar_color: None,
+            user_avatar_emoji: None,
             activity_type: "pushups".to_string(),
             exercise_name: Some("Diamond Pushups".to_string()),
             sets: Some(5),
@@ -1114,4 +1124,71 @@ async fn test_create_squad_defaults_to_username_and_lists_user_squads() {
     assert_eq!(guest_squads[0]["slug"], slug_1);
     assert_eq!(guest_squads[0]["is_creator"], false);
     assert_eq!(guest_squads[0]["member_count"], 2);
+}
+
+#[tokio::test]
+async fn test_avatar_emoji_customization_and_activity_propagation() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState { db, hub };
+    let app = create_routes(state);
+    let server = TestServer::new(app).unwrap();
+    let user_token = "token_emoji_gorilla_99";
+    let room_slug = "squad-gorilla-power";
+
+    // 1. Update user profile to choose emoji "🦍" and color "#14b8a6"
+    let res_profile = server
+        .post("/users/profile")
+        .add_header("X-Device-Token", user_token)
+        .json(&json!({
+            "nickname": "Silverback",
+            "avatar_color": "#14b8a6",
+            "avatar_emoji": "🦍",
+            "current_room_slug": room_slug
+        }))
+        .await;
+    res_profile.assert_status_ok();
+    let profile_json: serde_json::Value = res_profile.json();
+    assert_eq!(profile_json["data"]["nickname"], "Silverback");
+    assert_eq!(profile_json["data"]["avatar_color"], "#14b8a6");
+    assert_eq!(profile_json["data"]["avatar_emoji"], "🦍");
+
+    // 2. Log activity without explicit avatar_emoji (should auto-populate from profile)
+    let res_act = server
+        .post("/activities")
+        .add_header("X-Device-Token", user_token)
+        .json(&json!({
+            "room_slug": room_slug,
+            "activity_type": "weight",
+            "exercise_name": "Heavy Deadlift",
+            "sets": 3,
+            "reps": 5,
+            "weight_per_rep": 405.0
+        }))
+        .await;
+    assert_eq!(res_act.status_code(), axum::http::StatusCode::CREATED);
+    let act_json: serde_json::Value = res_act.json();
+    assert_eq!(act_json["data"]["user_avatar_emoji"], "🦍");
+    assert_eq!(act_json["data"]["user_avatar_color"], "#14b8a6");
+
+    // 3. Fetch room data and check leaderboard and room_members
+    let res_room = server
+        .get(&format!("/room/{}", room_slug))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    res_room.assert_status_ok();
+    let room_json: serde_json::Value = res_room.json();
+
+    let members = room_json["data"]["members"].as_array().unwrap();
+    let me = members
+        .iter()
+        .find(|m| m["user_token"] == user_token)
+        .unwrap();
+    assert_eq!(me["avatar_emoji"], "🦍");
+    assert_eq!(me["avatar_color"], "#14b8a6");
+
+    let lb = room_json["data"]["leaderboard"].as_array().unwrap();
+    assert_eq!(lb[0]["avatar_emoji"], "🦍");
+    assert_eq!(lb[0]["avatar_color"], "#14b8a6");
 }

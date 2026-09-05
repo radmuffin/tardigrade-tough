@@ -107,7 +107,16 @@ export function renderAll() {
   const pNick = document.getElementById('profileNick');
   if (pNick) pNick.textContent = state.currentRoomData.user_profile.nickname;
   const pDot = document.getElementById('profileDot');
-  if (pDot) pDot.style.backgroundColor = state.currentRoomData.user_profile.avatar_color;
+  if (pDot) {
+    pDot.style.backgroundColor = state.currentRoomData.user_profile.avatar_color;
+    if (state.currentRoomData.user_profile.avatar_emoji) {
+      pDot.textContent = state.currentRoomData.user_profile.avatar_emoji;
+      pDot.classList.add('has-emoji');
+    } else {
+      pDot.textContent = '';
+      pDot.classList.remove('has-emoji');
+    }
+  }
   const rLabel = document.getElementById('roomNameLabel');
   if (rLabel) rLabel.textContent = state.currentRoomData.room.name;
   const pBtn = document.getElementById('profileBtn');

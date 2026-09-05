@@ -89,6 +89,18 @@
   border-radius: 50%;
   background-color: var(--accent-green);
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.profile-dot.has-emoji {
+  width: 22px;
+  height: 22px;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 #profileNick {

@@ -139,6 +139,58 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   const aboutModal = document.getElementById('aboutModal');
   const nickInput = document.getElementById('nickInput');
   let selectedColor = '#10b981';
+  let selectedEmoji = '🐻';
+
+  const customEmojiInput = document.getElementById('customEmojiInput');
+  const clearEmojiBtn = document.getElementById('clearEmojiBtn');
+  const avatarPreviewChip = document.getElementById('avatarPreviewChip');
+  const avatarPreviewEmoji = document.getElementById('avatarPreviewEmoji');
+  const avatarPreviewName = document.getElementById('avatarPreviewName');
+
+  function extractSingleEmoji(input) {
+    if (!input) return '';
+    const trimmed = input.trim();
+    if (!trimmed) return '';
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+      const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+      const segments = Array.from(segmenter.segment(trimmed));
+      if (segments.length > 0) {
+        return segments[0].segment;
+      }
+    }
+    const chars = Array.from(trimmed);
+    return chars.slice(0, 2).join('');
+  }
+
+  function updateAvatarPreview() {
+    if (avatarPreviewChip) {
+      avatarPreviewChip.style.backgroundColor = selectedColor;
+    }
+    const currentNick = (nickInput ? nickInput.value.trim() : '') || 'Athlete';
+    if (avatarPreviewName) {
+      avatarPreviewName.textContent = currentNick;
+    }
+    if (avatarPreviewEmoji) {
+      if (selectedEmoji) {
+        avatarPreviewEmoji.textContent = selectedEmoji;
+      } else {
+        avatarPreviewEmoji.textContent = currentNick.substring(0, 1).toUpperCase();
+      }
+    }
+  }
+
+  function syncEmojiSelectionUI() {
+    document.querySelectorAll('.emoji-chip').forEach(chip => {
+      chip.classList.toggle('selected', chip.dataset.emoji === selectedEmoji);
+    });
+    if (customEmojiInput) {
+      const matchesChip = Array.from(document.querySelectorAll('.emoji-chip')).some(
+        c => c.dataset.emoji === selectedEmoji
+      );
+      customEmojiInput.value = matchesChip ? '' : selectedEmoji;
+    }
+    updateAvatarPreview();
+  }
 
   const tabBtnProfile = document.getElementById('tabBtnProfile');
   const tabBtnSquad = document.getElementById('tabBtnSquad');
@@ -339,7 +391,9 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
           return `
             <div class="squad-member-item" data-token="${FlyToast.escape(m.user_token)}">
               <div class="member-left">
-                <span class="member-dot" style="background-color: ${avatarColor};"></span>
+                <span class="member-dot" style="background-color: ${avatarColor}; font-size: ${m.avatar_emoji ? '12px' : '9px'};">
+                  ${m.avatar_emoji ? FlyToast.escape(m.avatar_emoji) : nick.substring(0, 1).toUpperCase()}
+                </span>
                 <div class="member-info">
                   <div class="member-name-row">
                     <strong class="member-nick">${nick}</strong>
@@ -440,10 +494,12 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   function openHub(tab = 'profile') {
     if (state.currentRoomData && state.currentRoomData.user_profile) {
       if (nickInput) nickInput.value = state.currentRoomData.user_profile.nickname;
-      selectedColor = state.currentRoomData.user_profile.avatar_color;
+      selectedColor = state.currentRoomData.user_profile.avatar_color || '#10b981';
+      selectedEmoji = state.currentRoomData.user_profile.avatar_emoji || '';
       document.querySelectorAll('.color-option').forEach(opt => {
         opt.classList.toggle('selected', opt.dataset.color === selectedColor);
       });
+      syncEmojiSelectionUI();
     }
     populateSquadHubFields();
     if (profileModal) profileModal.classList.remove('hidden');
@@ -505,8 +561,42 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       document.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
       opt.classList.add('selected');
       selectedColor = opt.dataset.color;
+      updateAvatarPreview();
     });
   });
+
+  document.querySelectorAll('.emoji-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      selectedEmoji = chip.dataset.emoji;
+      syncEmojiSelectionUI();
+    });
+  });
+
+  if (customEmojiInput) {
+    customEmojiInput.addEventListener('input', () => {
+      const single = extractSingleEmoji(customEmojiInput.value);
+      selectedEmoji = single;
+      document.querySelectorAll('.emoji-chip').forEach(chip => {
+        chip.classList.toggle('selected', chip.dataset.emoji === selectedEmoji);
+      });
+      updateAvatarPreview();
+    });
+  }
+
+  if (clearEmojiBtn) {
+    clearEmojiBtn.addEventListener('click', () => {
+      selectedEmoji = '';
+      if (customEmojiInput) customEmojiInput.value = '';
+      document.querySelectorAll('.emoji-chip').forEach(c => c.classList.remove('selected'));
+      updateAvatarPreview();
+    });
+  }
+
+  if (nickInput) {
+    nickInput.addEventListener('input', () => {
+      updateAvatarPreview();
+    });
+  }
 
   const saveProfileBtn = document.getElementById('saveProfileBtn');
   if (saveProfileBtn) {
@@ -516,6 +606,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
         const res = await state.client.post('/users/profile', {
           nickname: nick,
           avatar_color: selectedColor,
+          avatar_emoji: selectedEmoji,
         });
         if (res && res.success) {
           closeHub();

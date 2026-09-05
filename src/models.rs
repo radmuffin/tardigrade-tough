@@ -15,6 +15,8 @@ pub struct RoomMember {
     pub user_token: String,
     pub nickname: String,
     pub avatar_color: String,
+    #[serde(default)]
+    pub avatar_emoji: String,
     pub role: String, // "creator" | "member"
     pub is_creator: bool,
     pub joined_at: String,
@@ -47,14 +49,17 @@ pub struct UserProfile {
     pub user_token: String,
     pub nickname: String,
     pub avatar_color: String,
+    #[serde(default)]
+    pub avatar_emoji: String,
     pub current_room_slug: String,
     pub updated_at: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct UpdateProfileRequest {
     pub nickname: Option<String>,
     pub avatar_color: Option<String>,
+    pub avatar_emoji: Option<String>,
     pub current_room_slug: Option<String>,
 }
 
@@ -91,6 +96,8 @@ pub struct Activity {
     pub user_token: String,
     pub user_nickname: String,
     pub user_avatar_color: String,
+    #[serde(default)]
+    pub user_avatar_emoji: String,
     pub goal_id: Option<i64>,
     pub activity_type: String, // "weight", "distance", "elevation"
     pub exercise_name: String,
@@ -104,11 +111,12 @@ pub struct Activity {
     pub created_at: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct LogActivityRequest {
     pub room_slug: Option<String>,
     pub user_nickname: Option<String>,
     pub user_avatar_color: Option<String>,
+    pub user_avatar_emoji: Option<String>,
     pub activity_type: String, // "weight", "distance", "elevation"
     pub exercise_name: Option<String>,
     pub sets: Option<i32>,
@@ -122,11 +130,12 @@ pub struct LogActivityRequest {
     pub created_at: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct BatchLogActivityRequest {
     pub room_slug: Option<String>,
     pub user_nickname: Option<String>,
     pub user_avatar_color: Option<String>,
+    pub user_avatar_emoji: Option<String>,
     pub activities: Vec<LogActivityRequest>,
 }
 
@@ -168,6 +177,8 @@ pub struct LeaderboardMember {
     pub user_token: String,
     pub nickname: String,
     pub avatar_color: String,
+    #[serde(default)]
+    pub avatar_emoji: String,
     pub total_weight: f64,
     pub total_distance: f64,
     pub total_elevation: f64,

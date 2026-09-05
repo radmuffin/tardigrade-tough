@@ -76,8 +76,8 @@ export function renderFeed({ onReloadState } = {}) {
 
     item.innerHTML = `
       <div class="activity-left">
-        <div class="user-avatar" style="background-color: ${act.user_avatar_color}; width: 32px; height: 32px; font-size: 0.85rem;">
-          ${(act.user_nickname || 'L').substring(0, 1).toUpperCase()}
+        <div class="user-avatar" style="background-color: ${act.user_avatar_color}; width: 32px; height: 32px; font-size: ${act.user_avatar_emoji ? '1.1rem' : '0.85rem'};">
+          ${act.user_avatar_emoji ? FlyToast.escape(act.user_avatar_emoji) : (act.user_nickname || 'L').substring(0, 1).toUpperCase()}
         </div>
         <div class="activity-text">
           <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)} (${detailStr})</span></div>

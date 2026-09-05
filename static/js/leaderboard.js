@@ -177,8 +177,8 @@ export function renderLeaderboard() {
           <div class="lb-card-top-row">
             <div class="leaderboard-user">
               <span class="lb-rank-badge ${rankClass}">${rankBadge}</span>
-              <div class="user-avatar" style="background-color: ${member.avatar_color || '#10b981'}">
-                ${(member.nickname || 'L').substring(0, 1).toUpperCase()}
+              <div class="user-avatar" style="background-color: ${member.avatar_color || '#10b981'}; font-size: ${member.avatar_emoji ? '1.15rem' : '0.9rem'};">
+                ${member.avatar_emoji ? FlyToast.escape(member.avatar_emoji) : (member.nickname || 'L').substring(0, 1).toUpperCase()}
               </div>
               <div class="user-details">
                 <div class="user-name-row">

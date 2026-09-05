@@ -180,6 +180,7 @@ async fn get_room_data(
                 let update_req = UpdateProfileRequest {
                     nickname: None,
                     avatar_color: None,
+                    avatar_emoji: None,
                     current_room_slug: Some(target_slug.clone()),
                 };
                 if let Ok(updated) = update_user_profile(&conn, user.as_str(), &update_req) {
@@ -497,6 +498,9 @@ async fn log_batch_activities(
         if req.user_avatar_color.is_none() && payload.user_avatar_color.is_some() {
             req.user_avatar_color = payload.user_avatar_color.clone();
         }
+        if req.user_avatar_emoji.is_none() && payload.user_avatar_emoji.is_some() {
+            req.user_avatar_emoji = payload.user_avatar_emoji.clone();
+        }
         match log_single_activity(&mut conn, &user_profile, &room_slug, &req) {
             Ok(act) => created.push(act),
             Err(e) => {
@@ -573,6 +577,7 @@ async fn cheer_handler(
                 user_token: user.as_str().to_string(),
                 nickname: "GymMate".to_string(),
                 avatar_color: "#10b981".to_string(),
+                avatar_emoji: "🐻".to_string(),
                 current_room_slug: payload.room_slug.clone(),
                 updated_at: "".to_string(),
             }
@@ -586,6 +591,7 @@ async fn cheer_handler(
             "emoji": payload.emoji,
             "user_nickname": user_profile.nickname,
             "user_avatar_color": user_profile.avatar_color,
+            "user_avatar_emoji": user_profile.avatar_emoji,
         }),
     });
 
