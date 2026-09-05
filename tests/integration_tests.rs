@@ -659,3 +659,81 @@ fn test_room_renaming_and_persistence() {
     // 4. Verify invalid empty names are rejected
     assert!(update_room_name(&conn, "main", "   ").is_err());
 }
+
+#[test]
+fn test_custom_quest_category_proposal_promotion_and_activity_logging() {
+    let mut conn = setup_test_db();
+    let user = get_or_create_user(&conn, "token_custom_titan", "squad-custom").expect("user");
+
+    // 1. Propose custom category quest (e.g. "pushups" / "reps")
+    let wishlist_req = CreateGoalWishlistRequest {
+        room_slug: "squad-custom".to_string(),
+        title: "100k Pushup Challenge".to_string(),
+        category: "pushups".to_string(),
+        target_value: 100_000.0,
+        unit: "reps".to_string(),
+        notes: Some("Pushing the Earth down together".to_string()),
+    };
+
+    let item =
+        create_goal_wishlist(&conn, &user.user_token, &wishlist_req).expect("create wishlist");
+    assert_eq!(item.category, "pushups");
+    assert_eq!(item.unit, "reps");
+    assert_eq!(item.target_value, 100_000.0);
+
+    // 2. Retrieve wishlist and verify custom category is intact
+    let list = get_wishlists(&conn, "squad-custom").expect("wishlists");
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0].category, "pushups");
+    assert_eq!(list[0].unit, "reps");
+
+    // 3. Promote wishlist proposal to active quest
+    let goal_req = CreateGoalRequest {
+        room_slug: Some("squad-custom".to_string()),
+        title: item.title,
+        category: item.category,
+        target_value: item.target_value,
+        unit: item.unit,
+        theme_key: Some("custom".to_string()),
+        description: Some(item.notes),
+    };
+
+    let goal = create_custom_goal(&conn, "squad-custom", &goal_req).expect("create custom goal");
+    assert_eq!(goal.category, "pushups");
+    assert_eq!(goal.current_value, 0.0);
+    assert_eq!(goal.status, "active");
+
+    // 4. Log an activity under this custom category (auto-routes to active pushups goal)
+    let act = log_single_activity(
+        &mut conn,
+        &user,
+        "squad-custom",
+        &LogActivityRequest {
+            room_slug: Some("squad-custom".to_string()),
+            user_nickname: Some("CustomTitan".to_string()),
+            user_avatar_color: None,
+            activity_type: "pushups".to_string(),
+            exercise_name: Some("Diamond Pushups".to_string()),
+            sets: Some(5),
+            reps: Some(20),
+            weight_per_rep: None,
+            distance_val: None,
+            elevation_val: None,
+            total_metric: None, // Falls back to sets * reps = 100
+            notes: Some("Strict form".to_string()),
+            goal_id: None,
+            created_at: None,
+        },
+    )
+    .expect("log pushups");
+
+    assert_eq!(act.total_metric, 100.0);
+
+    // 5. Verify goal was updated with 100 reps
+    let (active_goals, _) = get_goals_for_room(&conn, "squad-custom").expect("goals");
+    let pushup_goal = active_goals
+        .iter()
+        .find(|g| g.category == "pushups")
+        .expect("pushup goal");
+    assert_eq!(pushup_goal.current_value, 100.0);
+}

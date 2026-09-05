@@ -372,7 +372,17 @@ pub fn log_single_activity(
             "weight" => (sets as f64) * (reps as f64) * weight_per_rep,
             "distance" => distance_val,
             "elevation" => elevation_val,
-            _ => 0.0,
+            _ => {
+                if weight_per_rep > 0.0 {
+                    (sets as f64) * (reps as f64) * weight_per_rep
+                } else if distance_val > 0.0 {
+                    distance_val
+                } else if elevation_val > 0.0 {
+                    elevation_val
+                } else {
+                    (sets as f64) * (reps as f64)
+                }
+            }
         }
     };
 

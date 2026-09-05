@@ -409,24 +409,35 @@ function renderGoalShowcase() {
   const currentGoal = activeGoals[selectedGoalIndex];
 
   // Highlight active segment button & sync ARIA tabs
-  const pandoBtn = document.getElementById('goalTabPando');
-  const everestBtn = document.getElementById('goalTabEverest');
-  const caribouBtn = document.getElementById('goalTabCaribou');
+  const segControl = document.getElementById('goalSegmentedControl');
+  if (segControl) {
+    activeGoals.forEach((g, idx) => {
+      let btnId = '';
+      if (g.theme_key === 'pando') btnId = 'goalTabPando';
+      else if (g.theme_key === 'everest') btnId = 'goalTabEverest';
+      else if (g.theme_key === 'caribou') btnId = 'goalTabCaribou';
+      else btnId = `goalTab_${g.id}`;
 
-  if (pandoBtn) {
-    const isPando = currentGoal.theme_key === 'pando';
-    pandoBtn.classList.toggle('active', isPando);
-    pandoBtn.setAttribute('aria-selected', isPando ? 'true' : 'false');
-  }
-  if (everestBtn) {
-    const isEverest = currentGoal.theme_key === 'everest';
-    everestBtn.classList.toggle('active', isEverest);
-    everestBtn.setAttribute('aria-selected', isEverest ? 'true' : 'false');
-  }
-  if (caribouBtn) {
-    const isCaribou = currentGoal.theme_key === 'caribou';
-    caribouBtn.classList.toggle('active', isCaribou);
-    caribouBtn.setAttribute('aria-selected', isCaribou ? 'true' : 'false');
+      let btn = document.getElementById(btnId);
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.id = btnId;
+        btn.className = 'goal-segment-btn';
+        btn.setAttribute('role', 'tab');
+        btn.dataset.theme = g.theme_key;
+        const emoji = g.theme_key === 'whale' ? '🐋' : (g.category === 'weight' ? '🌲' : g.category === 'distance' ? '🦌' : g.category === 'elevation' ? '🐐' : '🎯');
+        const shortName = g.title.split(' ')[0];
+        btn.innerHTML = `<span class="segment-emoji">${emoji}</span> <span class="segment-title">${FlyToast.escape(shortName)}</span>`;
+        btn.addEventListener('click', () => {
+          selectedGoalIndex = idx;
+          renderGoalShowcase();
+        });
+        segControl.appendChild(btn);
+      }
+      const isActive = idx === selectedGoalIndex;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
   }
 
   // Update Hero Stats
@@ -506,7 +517,7 @@ function renderWishlists() {
 
   container.innerHTML = list.map(item => {
     const cat = item.category || 'weight';
-    const catEmoji = cat === 'weight' ? '🏋️' : cat === 'distance' ? '🏃' : '🧗';
+    const catEmoji = cat === 'weight' ? '🏋️' : cat === 'distance' ? '🏃' : (cat === 'elevation' ? '🧗' : '🎯');
     const safeTitle = FlyToast.escape(item.title);
     const safeNotes = item.notes ? FlyToast.escape(item.notes) : '';
     const safeUnit = FlyToast.escape(item.unit);
@@ -523,13 +534,13 @@ function renderWishlists() {
       `---\n` +
       `*Submitted via Tardigrade Tough app.*`
     );
-    const ghIssueUrl = `https://github.com/radmuffin/tardigrade-tough/issues/new?title=${ghTitle}&body=${ghBody}&labels=quest-proposal,${cat}`;
+    const ghIssueUrl = `https://github.com/radmuffin/tardigrade-tough/issues/new?title=${ghTitle}&body=${ghBody}&labels=quest-proposal`;
 
     return `
       <div class="wishlist-card">
         <div class="wishlist-header-row">
           <span class="wishlist-card-title">${safeTitle}</span>
-          <span class="wishlist-cat-badge ${cat}">${catEmoji} ${cat}</span>
+          <span class="wishlist-cat-badge ${FlyToast.escape(cat)}">${catEmoji} ${FlyToast.escape(cat)}</span>
         </div>
         <div class="wishlist-meta-row">
           <span>Target: <span class="wishlist-target-num">${formatNumber(item.target_value)} ${safeUnit}</span></span>
@@ -615,6 +626,28 @@ function renderLeaderboard() {
     },
   ];
 
+  // Append any custom active categories from active goals
+  const customGoals = activeGoals.filter(g => !['weight', 'distance', 'elevation'].includes(g.category));
+  customGoals.forEach(cg => {
+    const catActs = (currentRoomData.recent_activities || []).filter(a => a.activity_type === cg.category);
+    const catTotal = catActs.reduce((sum, a) => sum + (a.total_metric || 0), 0);
+    const userTotals = {};
+    catActs.forEach(a => {
+      userTotals[a.user_token] = (userTotals[a.user_token] || 0) + (a.total_metric || 0);
+    });
+
+    categorySections.push({
+      category: cg.category,
+      title: `🎯 ${cg.title} (${cg.category.toUpperCase()})`,
+      unit: cg.unit,
+      metricKey: null,
+      userTotals,
+      totalVal: Math.max(cg.current_value || 0, catTotal),
+      formatter: (v) => `${formatNumber(v)} ${cg.unit}`,
+      emptyMsg: `No activity logged for ${cg.title} yet. Be the first!`,
+    });
+  });
+
   categorySections.forEach(sec => {
     const sectionEl = document.createElement('section');
     sectionEl.className = 'lb-category-section';
@@ -629,9 +662,14 @@ function renderLeaderboard() {
     sectionEl.appendChild(headerEl);
 
     // Filter members with contributions in this category, sorted descending
-    const catMembers = [...rawMembers]
-      .filter(m => (m[sec.metricKey] || 0) > 0)
-      .sort((a, b) => (b[sec.metricKey] || 0) - (a[sec.metricKey] || 0));
+    const catMembers = sec.metricKey
+      ? [...rawMembers]
+          .filter(m => (m[sec.metricKey] || 0) > 0)
+          .sort((a, b) => (b[sec.metricKey] || 0) - (a[sec.metricKey] || 0))
+      : [...rawMembers]
+          .map(m => ({ ...m, custom_val: sec.userTotals?.[m.user_token] || 0 }))
+          .filter(m => m.custom_val > 0)
+          .sort((a, b) => b.custom_val - a.custom_val);
 
     if (catMembers.length === 0) {
       const emptyEl = document.createElement('div');
@@ -653,7 +691,7 @@ function renderLeaderboard() {
         else if (idx === 2) rankBadge = '🥉';
         else rankBadge = `${idx + 1}.`;
 
-        const val = member[sec.metricKey] || 0;
+        const val = sec.metricKey ? (member[sec.metricKey] || 0) : (member.custom_val || 0);
         const pct = sec.totalVal > 0 ? ((val / sec.totalVal) * 100).toFixed(1) : '0.0';
 
         card.innerHTML = `
@@ -711,13 +749,19 @@ function renderFeed() {
       metricText = `+${formatNumber(act.total_metric)} lbs`;
     } else if (act.activity_type === 'distance') {
       metricText = `+${act.total_metric} mi`;
-    } else {
+    } else if (act.activity_type === 'elevation') {
       metricText = `+${formatNumber(act.total_metric)} ft`;
+    } else {
+      const matchGoal = (currentRoomData.active_goals || []).find(g => g.id === act.goal_id || g.category === act.activity_type);
+      const unit = matchGoal?.unit || '';
+      metricText = `+${formatNumber(act.total_metric)} ${unit}`.trim();
     }
 
     let detailStr = act.activity_type === 'weight'
       ? `${act.sets}x${act.reps} @ ${act.weight_per_rep}lbs`
-      : `${act.exercise_name}`;
+      : (act.sets > 1 || act.reps > 1
+          ? `${act.exercise_name} (${act.sets}x${act.reps})`
+          : `${act.exercise_name}`);
 
     item.innerHTML = `
       <div class="activity-left">
@@ -859,6 +903,34 @@ function setupSteppers() {
   const repsInput = document.getElementById('stepperReps');
   const impactVal = document.getElementById('computedImpactVal');
 
+  function getCustomExercises() {
+    try {
+      const stored = localStorage.getItem('tardigrade_custom_exercises');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveCustomExercise(name) {
+    if (!name || typeof name !== 'string') return;
+    const clean = name.trim();
+    if (!clean) return;
+    const list = getCustomExercises();
+    if (!list.some(e => e.toLowerCase() === clean.toLowerCase())) {
+      list.push(clean);
+      try {
+        localStorage.setItem('tardigrade_custom_exercises', JSON.stringify(list));
+      } catch (e) {}
+    }
+  }
+
+  function getCustomExerciseOptionsHtml() {
+    const customList = getCustomExercises();
+    if (customList.length === 0) return '';
+    return customList.map(ex => `<option value="${FlyToast.escape(ex)}">✨ ${FlyToast.escape(ex)}</option>`).join('');
+  }
+
   window.updateStepperForGoal = function(goal) {
     const exSelect = document.getElementById('stepperExercise');
     const exLabel = document.getElementById('stepperExerciseLabel');
@@ -866,12 +938,13 @@ function setupSteppers() {
     const countLabel = document.getElementById('stepperCountLabel');
     const routeLabel = document.getElementById('computedImpactRoute');
     const metricPresets = document.getElementById('stepperMetricPresets');
+    const customOpts = getCustomExerciseOptionsHtml();
 
     if (!goal || goal.category === 'weight') {
       if (exLabel) exLabel.textContent = 'Exercise';
-      if (metricLabel) metricLabel.textContent = 'Weight (lbs)';
+      if (metricLabel) metricLabel.textContent = `Weight (${goal?.unit || 'lbs'})`;
       if (countLabel) countLabel.textContent = 'Reps';
-      if (routeLabel) routeLabel.textContent = '→ Auto-Routes to Pando 🌲';
+      if (routeLabel) routeLabel.textContent = `→ Auto-Routes to ${FlyToast.escape(goal?.title || 'Pando')} 🌲`;
       if (exSelect) {
         exSelect.innerHTML = `
           <option value="Back Squat">🏋️ Back Squat</option>
@@ -882,7 +955,8 @@ function setupSteppers() {
           <option value="Barbell Row">🏋️ Barbell Row</option>
           <option value="Dumbbell Lunge">🏋️ Dumbbell Lunge</option>
           <option value="Bicep Curl">🏋️ Bicep Curl</option>
-          <option value="Custom Lift">✨ Custom Lift</option>
+          ${customOpts}
+          <option value="__add_custom__">✨ + Add Custom Exercise...</option>
         `;
       }
       if (metricPresets) {
@@ -896,9 +970,9 @@ function setupSteppers() {
       }
     } else if (goal.category === 'elevation') {
       if (exLabel) exLabel.textContent = 'Climb / Elevation Exercise';
-      if (metricLabel) metricLabel.textContent = 'Elevation Gain (ft)';
+      if (metricLabel) metricLabel.textContent = `Elevation Gain (${goal.unit || 'ft'})`;
       if (countLabel) countLabel.textContent = 'Sets / Floors';
-      if (routeLabel) routeLabel.textContent = '→ Auto-Routes to Mt. Everest 🐐';
+      if (routeLabel) routeLabel.textContent = `→ Auto-Routes to ${FlyToast.escape(goal.title)} 🐐`;
       if (exSelect) {
         exSelect.innerHTML = `
           <option value="Stair Climber">🧗 Stair Climber</option>
@@ -906,7 +980,8 @@ function setupSteppers() {
           <option value="Mountain Hike">🥾 Mountain Hike</option>
           <option value="Box Step-ups">📦 Box Step-ups</option>
           <option value="Hill Sprints">🏃 Hill Sprints</option>
-          <option value="Custom Climb">✨ Custom Climb</option>
+          ${customOpts}
+          <option value="__add_custom__">✨ + Add Custom Exercise...</option>
         `;
       }
       if (wtInput.value === '135' || parseFloat(wtInput.value) <= 0) {
@@ -923,9 +998,9 @@ function setupSteppers() {
       }
     } else if (goal.category === 'distance') {
       if (exLabel) exLabel.textContent = 'Distance / Cardio Exercise';
-      if (metricLabel) metricLabel.textContent = 'Distance (mi)';
+      if (metricLabel) metricLabel.textContent = `Distance (${goal.unit || 'mi'})`;
       if (countLabel) countLabel.textContent = 'Laps / Sets';
-      if (routeLabel) routeLabel.textContent = '→ Auto-Routes to Caribou 🦌';
+      if (routeLabel) routeLabel.textContent = `→ Auto-Routes to ${FlyToast.escape(goal.title)} 🦌`;
       if (exSelect) {
         exSelect.innerHTML = `
           <option value="Outdoor Run">🏃 Outdoor Run</option>
@@ -933,7 +1008,8 @@ function setupSteppers() {
           <option value="Road Cycling">🚴 Road Cycling</option>
           <option value="Rowing Machine">🚣 Rowing Machine</option>
           <option value="Treadmill Run">🏃 Treadmill Run</option>
-          <option value="Custom Cardio">✨ Custom Cardio</option>
+          ${customOpts}
+          <option value="__add_custom__">✨ + Add Custom Exercise...</option>
         `;
       }
       if (wtInput.value === '135' || parseFloat(wtInput.value) <= 0) {
@@ -945,6 +1021,30 @@ function setupSteppers() {
           <button class="preset-chip" data-delta="-0.5">-0.5</button>
           <button class="preset-chip" data-delta="+0.5">+0.5</button>
           <button class="preset-chip" data-delta="+2">+2</button>
+        `;
+        attachMetricPresetListeners();
+      }
+    } else {
+      // Custom Quest Category
+      if (exLabel) exLabel.textContent = `${goal.category.toUpperCase()} Movement`;
+      if (metricLabel) metricLabel.textContent = `${goal.unit || 'Metric'}`;
+      if (countLabel) countLabel.textContent = 'Sets / Reps';
+      if (routeLabel) routeLabel.textContent = `→ Auto-Routes to ${FlyToast.escape(goal.title)} 🎯`;
+      if (exSelect) {
+        exSelect.innerHTML = `
+          <option value="${FlyToast.escape(goal.title)}">${FlyToast.escape(goal.title)}</option>
+          <option value="Custom Movement">⚡ Custom Movement</option>
+          <option value="Rep Count">🔢 Rep Count</option>
+          ${customOpts}
+          <option value="__add_custom__">✨ + Add Custom Exercise...</option>
+        `;
+      }
+      if (metricPresets) {
+        metricPresets.innerHTML = `
+          <button class="preset-chip" data-delta="-50">-50</button>
+          <button class="preset-chip" data-delta="-10">-10</button>
+          <button class="preset-chip" data-delta="+10">+10</button>
+          <button class="preset-chip" data-delta="+50">+50</button>
         `;
         attachMetricPresetListeners();
       }
@@ -1017,8 +1117,108 @@ function setupSteppers() {
   wtInput.addEventListener('input', updateImpact);
   repsInput.addEventListener('input', updateImpact);
 
+  // Custom Exercise Dropdown & Input Controls
+  const toggleCustomExBtn = document.getElementById('toggleCustomExBtn');
+  const customExRow = document.getElementById('customExerciseRow');
+  const customExInput = document.getElementById('customExerciseInput');
+  const addCustomExBtn = document.getElementById('addCustomExerciseBtn');
+  const cancelCustomExBtn = document.getElementById('cancelCustomExerciseBtn');
+  const stepperExSelect = document.getElementById('stepperExercise');
+
+  let lastSelectedEx = stepperExSelect ? stepperExSelect.value : '';
+
+  if (stepperExSelect) {
+    stepperExSelect.addEventListener('change', () => {
+      if (stepperExSelect.value === '__add_custom__') {
+        showCustomExerciseInput();
+      } else {
+        lastSelectedEx = stepperExSelect.value;
+      }
+    });
+  }
+
+  function showCustomExerciseInput() {
+    if (customExRow) {
+      customExRow.style.display = 'flex';
+      if (customExInput) {
+        customExInput.value = '';
+        setTimeout(() => customExInput.focus(), 60);
+      }
+    }
+  }
+
+  function hideCustomExerciseInput() {
+    if (customExRow) {
+      customExRow.style.display = 'none';
+      if (customExInput) customExInput.value = '';
+    }
+    if (stepperExSelect && stepperExSelect.value === '__add_custom__') {
+      stepperExSelect.value = lastSelectedEx || (stepperExSelect.options[0] ? stepperExSelect.options[0].value : '');
+    }
+  }
+
+  function handleAddCustomExercise() {
+    const rawName = customExInput ? customExInput.value.trim() : '';
+    if (!rawName) {
+      FlyToast.error('Please enter an exercise name');
+      return;
+    }
+    saveCustomExercise(rawName);
+
+    // Add to dropdown if not present
+    let opt = Array.from(stepperExSelect.options).find(o => o.value.toLowerCase() === rawName.toLowerCase());
+    if (!opt) {
+      opt = document.createElement('option');
+      opt.value = rawName;
+      opt.textContent = `✨ ${rawName}`;
+      const customOpt = stepperExSelect.querySelector('option[value="__add_custom__"]');
+      if (customOpt) {
+        stepperExSelect.insertBefore(opt, customOpt);
+      } else {
+        stepperExSelect.appendChild(opt);
+      }
+    }
+    stepperExSelect.value = opt.value;
+    lastSelectedEx = opt.value;
+    hideCustomExerciseInput();
+    FlyToast.success(`Added "${rawName}" to exercises!`);
+  }
+
+  if (toggleCustomExBtn) {
+    toggleCustomExBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (customExRow && customExRow.style.display === 'flex') {
+        hideCustomExerciseInput();
+      } else {
+        showCustomExerciseInput();
+      }
+    });
+  }
+
+  if (addCustomExBtn) {
+    addCustomExBtn.addEventListener('click', handleAddCustomExercise);
+  }
+
+  if (customExInput) {
+    customExInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAddCustomExercise();
+      } else if (e.key === 'Escape') {
+        hideCustomExerciseInput();
+      }
+    });
+  }
+
+  if (cancelCustomExBtn) {
+    cancelCustomExBtn.addEventListener('click', hideCustomExerciseInput);
+  }
+
   document.getElementById('logSetBtn').addEventListener('click', async () => {
-    const exercise = document.getElementById('stepperExercise').value;
+    let exercise = document.getElementById('stepperExercise').value;
+    if (exercise === '__add_custom__') {
+      exercise = 'Custom Exercise';
+    }
     const metricVal = parseFloat(wtInput.value) || 0;
     const reps = parseInt(repsInput.value, 10) || 1;
     const activeGoals = currentRoomData?.active_goals || [];
@@ -1036,6 +1236,7 @@ function setupSteppers() {
       distance_val: currentGoal.category === 'distance' ? totalMetric : 0,
       elevation_val: currentGoal.category === 'elevation' ? totalMetric : 0,
       total_metric: totalMetric,
+      goal_id: currentGoal.id,
     });
   });
 
@@ -1636,7 +1837,10 @@ function setupModals() {
   const wishlistModal = document.getElementById('wishlistModal');
   const wishlistCatSelect = document.getElementById('wishlistCategorySelect');
   const wishlistUnitSelect = document.getElementById('wishlistUnitSelect');
-  const wishlistForm = document.getElementById('wishlistForm');
+  const customCatRow = document.getElementById('wishlistCustomCategoryRow');
+  const customCatInput = document.getElementById('wishlistCustomCategoryInput');
+  const customUnitRow = document.getElementById('wishlistCustomUnitRow');
+  const customUnitInput = document.getElementById('wishlistCustomUnitInput');
 
   function openWishlistModal() {
     if (wishlistModal) {
@@ -1650,6 +1854,12 @@ function setupModals() {
       if (targetInput) targetInput.value = '';
       const notesInput = document.getElementById('wishlistNotesInput');
       if (notesInput) notesInput.value = '';
+      if (customCatInput) customCatInput.value = '';
+      if (customUnitInput) customUnitInput.value = '';
+      if (customCatRow) customCatRow.style.display = 'none';
+      if (customUnitRow) customUnitRow.style.display = 'none';
+      if (wishlistCatSelect) wishlistCatSelect.value = 'weight';
+      if (wishlistUnitSelect) wishlistUnitSelect.value = 'lbs';
     }
   }
 
@@ -1660,9 +1870,27 @@ function setupModals() {
   if (wishlistCatSelect && wishlistUnitSelect) {
     wishlistCatSelect.addEventListener('change', () => {
       const cat = wishlistCatSelect.value;
-      if (cat === 'weight') wishlistUnitSelect.value = 'lbs';
-      else if (cat === 'distance') wishlistUnitSelect.value = 'mi';
-      else if (cat === 'elevation') wishlistUnitSelect.value = 'ft';
+      if (cat === 'custom') {
+        if (customCatRow) customCatRow.style.display = 'block';
+        if (customCatInput) setTimeout(() => customCatInput.focus(), 50);
+        wishlistUnitSelect.value = 'custom_unit';
+        if (customUnitRow) customUnitRow.style.display = 'block';
+      } else {
+        if (customCatRow) customCatRow.style.display = 'none';
+        if (customUnitRow) customUnitRow.style.display = 'none';
+        if (cat === 'weight') wishlistUnitSelect.value = 'lbs';
+        else if (cat === 'distance') wishlistUnitSelect.value = 'mi';
+        else if (cat === 'elevation') wishlistUnitSelect.value = 'ft';
+      }
+    });
+
+    wishlistUnitSelect.addEventListener('change', () => {
+      if (wishlistUnitSelect.value === 'custom_unit') {
+        if (customUnitRow) customUnitRow.style.display = 'block';
+        if (customUnitInput) setTimeout(() => customUnitInput.focus(), 50);
+      } else {
+        if (customUnitRow) customUnitRow.style.display = 'none';
+      }
     });
   }
 
@@ -1670,10 +1898,28 @@ function setupModals() {
     wishlistForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const title = document.getElementById('wishlistTitleInput')?.value?.trim();
-      const category = wishlistCatSelect?.value || 'weight';
-      const unit = wishlistUnitSelect?.value || 'lbs';
+      let category = wishlistCatSelect?.value || 'weight';
+      let unit = wishlistUnitSelect?.value || 'lbs';
       const targetVal = parseFloat(document.getElementById('wishlistTargetInput')?.value);
       const notes = document.getElementById('wishlistNotesInput')?.value?.trim() || '';
+
+      if (category === 'custom') {
+        const customCatVal = customCatInput?.value?.trim();
+        if (!customCatVal) {
+          FlyToast.error('Please enter a custom category name');
+          return;
+        }
+        category = customCatVal.toLowerCase();
+      }
+
+      if (unit === 'custom_unit') {
+        const customUnitVal = customUnitInput?.value?.trim();
+        if (!customUnitVal) {
+          FlyToast.error('Please enter a custom unit');
+          return;
+        }
+        unit = customUnitVal;
+      }
 
       if (!title) {
         FlyToast.error('Please enter a quest title');
@@ -1766,7 +2012,7 @@ function setupModals() {
       if (!window.confirm(confirmMsg)) return;
 
       actBtn.disabled = true;
-      const themeKey = category === 'weight' ? 'pando' : category === 'distance' ? 'caribou' : 'everest';
+      const themeKey = category === 'weight' ? 'pando' : category === 'distance' ? 'caribou' : (category === 'elevation' ? 'everest' : 'custom');
       client.post('/goals', {
         room_slug: roomSlug,
         title,

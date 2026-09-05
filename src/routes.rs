@@ -410,10 +410,21 @@ async fn create_wishlist_handler(
 }
 
 async fn dispatch_github_issue_if_configured(item: &GoalWishlistItem) {
-    let token = match std::env::var("GITHUB_TOKEN").or_else(|_| std::env::var("GH_TOKEN")) {
+    let raw_token = match std::env::var("GITHUB_TOKEN")
+        .or_else(|_| std::env::var("GH_TOKEN"))
+        .or_else(|_| std::env::var("GITHUB_PAT"))
+        .or_else(|_| std::env::var("GH_PAT"))
+    {
         Ok(t) if !t.trim().is_empty() => t,
         _ => return,
     };
+
+    let token = raw_token
+        .trim()
+        .strip_prefix("Bearer ")
+        .or_else(|| raw_token.trim().strip_prefix("token "))
+        .unwrap_or(raw_token.trim())
+        .trim();
 
     let repo =
         std::env::var("GITHUB_REPO").unwrap_or_else(|_| "radmuffin/tardigrade-tough".to_string());
@@ -447,26 +458,61 @@ async fn dispatch_github_issue_if_configured(item: &GoalWishlistItem) {
     );
 
     let client = reqwest::Client::new();
+    let auth_header = format!("Bearer {token}");
+
+    // First attempt: include quest-proposal label
     let payload = serde_json::json!({
         "title": title,
         "body": body,
-        "labels": ["quest-proposal", &item.category]
+        "labels": ["quest-proposal"]
     });
 
-    match client
+    let res = client
         .post(&url)
-        .header("Authorization", format!("Bearer {token}"))
+        .header("Authorization", &auth_header)
         .header("User-Agent", "tardigrade-tough-app")
         .header("Accept", "application/vnd.github+json")
         .json(&payload)
         .send()
-        .await
-    {
+        .await;
+
+    match res {
         Ok(resp) if resp.status().is_success() => {
             println!(
                 "Successfully created GitHub issue for quest: {}",
                 item.title
             );
+        }
+        Ok(resp) if resp.status() == reqwest::StatusCode::UNPROCESSABLE_ENTITY => {
+            // Label might not exist on the repo; retry cleanly without labels
+            let retry_payload = serde_json::json!({
+                "title": title,
+                "body": body
+            });
+            match client
+                .post(&url)
+                .header("Authorization", &auth_header)
+                .header("User-Agent", "tardigrade-tough-app")
+                .header("Accept", "application/vnd.github+json")
+                .json(&retry_payload)
+                .send()
+                .await
+            {
+                Ok(retry_resp) if retry_resp.status().is_success() => {
+                    println!(
+                        "Successfully created GitHub issue for quest (without labels): {}",
+                        item.title
+                    );
+                }
+                Ok(retry_resp) => {
+                    let status = retry_resp.status();
+                    let err_body = retry_resp.text().await.unwrap_or_default();
+                    eprintln!("GitHub API returned {status} on retry: {err_body}");
+                }
+                Err(e) => {
+                    eprintln!("Failed to dispatch GitHub issue on retry: {e}");
+                }
+            }
         }
         Ok(resp) => {
             let status = resp.status();
