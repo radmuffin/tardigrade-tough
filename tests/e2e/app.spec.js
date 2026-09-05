@@ -401,5 +401,29 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#viewQuests')).toBeVisible();
     await expect(page.locator('#navQuestsBtn')).toHaveClass(/active/);
   });
+
+  test('displays squad crew members, leave squad option, and creator controls', async ({ page }) => {
+    await page.goto('/r/test-squad-crew');
+    await page.waitForSelector('body[data-state="ready"]');
+
+    // Check leaderboard squad banner is present
+    await page.click('#navLeaderboardBtn');
+    await expect(page.locator('#lbSquadBannerText')).toBeVisible();
+    await expect(page.locator('#lbManageSquadBtn')).toBeVisible();
+
+    // Click manage squad button to open Squad tab
+    await page.click('#lbManageSquadBtn');
+    await expect(page.locator('#profileModal')).toBeVisible();
+
+    // Verify crew members roster is visible
+    await expect(page.locator('#squadMembersCard')).toBeVisible();
+    await expect(page.locator('#squadMemberCount')).toHaveText('1');
+    await expect(page.locator('#squadMembersList')).toBeVisible();
+    await expect(page.locator('#leaveSquadBtn')).toBeVisible();
+
+    // Close modal
+    await page.click('#closeRoomBtn');
+    await expect(page.locator('#profileModal')).not.toBeVisible();
+  });
 });
 

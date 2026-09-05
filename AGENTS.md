@@ -54,15 +54,23 @@ All activity logs, goals, and leaderboards are partitioned by `room_slug`:
 - `slug` (TEXT UNIQUE NOT NULL)
 - `name` (TEXT NOT NULL)
 - `created_at` (TEXT NOT NULL)
+- `creator_token` (TEXT NOT NULL DEFAULT '')
 
-### 2. `users`
+### 2. `room_members`
+- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
+- `room_slug` (TEXT NOT NULL)
+- `user_token` (TEXT NOT NULL)
+- `role` (TEXT NOT NULL DEFAULT 'member') — `'creator'` | `'member'`
+- `joined_at` (TEXT NOT NULL)
+
+### 3. `users`
 - `user_token` (TEXT PRIMARY KEY)
 - `nickname` (TEXT NOT NULL)
 - `avatar_color` (TEXT NOT NULL)
 - `current_room_slug` (TEXT NOT NULL)
 - `updated_at` (TEXT NOT NULL)
 
-### 3. `goals`
+### 4. `goals`
 - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
 - `room_slug` (TEXT NOT NULL)
 - `title` (TEXT NOT NULL)
@@ -75,7 +83,7 @@ All activity logs, goals, and leaderboards are partitioned by `room_slug`:
 - `description` (TEXT NOT NULL)
 - `created_at` (TEXT NOT NULL)
 
-### 4. `activities`
+### 5. `activities`
 - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
 - `room_slug` (TEXT NOT NULL)
 - `user_token` (TEXT NOT NULL)
@@ -93,7 +101,7 @@ All activity logs, goals, and leaderboards are partitioned by `room_slug`:
 - `notes` (TEXT DEFAULT '')
 - `created_at` (TEXT NOT NULL)
 
-### 5. `goal_wishlists`
+### 6. `goal_wishlists`
 - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
 - `user_token` (TEXT NOT NULL)
 - `user_nickname` (TEXT NOT NULL DEFAULT '')

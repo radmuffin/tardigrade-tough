@@ -867,3 +867,164 @@ async fn test_new_visitor_gets_isolated_solo_room_not_main() {
     let json_return: serde_json::Value = res_return.json();
     assert_eq!(json_return["data"]["room"]["slug"], "champions-crew");
 }
+
+#[tokio::test]
+async fn test_squad_membership_view_everyone_leave_and_creator_remove_member() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState { db, hub };
+    let app = create_routes(state);
+    let mut server = TestServer::new(app).unwrap();
+
+    let alice_token = "alice_token_1";
+    let bob_token = "bob_token_2";
+    let charlie_token = "charlie_token_3";
+
+    // 1. Alice creates / joins squad "alpha-squad"
+    let res_alice = server
+        .get("/room/alpha-squad")
+        .add_header("X-Device-Token", alice_token)
+        .await;
+    res_alice.assert_status_ok();
+    let data_alice: serde_json::Value = res_alice.json();
+    assert_eq!(data_alice["data"]["room"]["slug"], "alpha-squad");
+
+    // Alice updates her nickname
+    server
+        .post("/users/profile")
+        .add_header("X-Device-Token", alice_token)
+        .json(&serde_json::json!({ "nickname": "Alice The Founder" }))
+        .await
+        .assert_status_ok();
+
+    // 2. Bob joins alpha-squad
+    server.clear_cookies();
+    let res_bob = server
+        .get("/room/alpha-squad")
+        .add_header("X-Device-Token", bob_token)
+        .await;
+    res_bob.assert_status_ok();
+    server
+        .post("/users/profile")
+        .add_header("X-Device-Token", bob_token)
+        .json(&serde_json::json!({ "nickname": "Bob The Lifter" }))
+        .await
+        .assert_status_ok();
+
+    // 3. Charlie joins alpha-squad
+    server.clear_cookies();
+    let res_charlie = server
+        .get("/room/alpha-squad")
+        .add_header("X-Device-Token", charlie_token)
+        .await;
+    res_charlie.assert_status_ok();
+    server
+        .post("/users/profile")
+        .add_header("X-Device-Token", charlie_token)
+        .json(&serde_json::json!({ "nickname": "Charlie Runner" }))
+        .await
+        .assert_status_ok();
+
+    // 4. Alice views room: should see everyone (3 members) with roles
+    server.clear_cookies();
+    let res_roster = server
+        .get("/room/alpha-squad")
+        .add_header("X-Device-Token", alice_token)
+        .await;
+    res_roster.assert_status_ok();
+    let data_roster: serde_json::Value = res_roster.json();
+    let members = data_roster["data"]["members"].as_array().unwrap();
+    assert_eq!(members.len(), 3, "Squad roster must show all 3 members");
+
+    // Alice is creator
+    let alice_member = members
+        .iter()
+        .find(|m| m["user_token"] == alice_token)
+        .unwrap();
+    assert_eq!(alice_member["is_creator"], true);
+    assert_eq!(alice_member["role"], "creator");
+
+    // Bob & Charlie are members
+    let bob_member = members
+        .iter()
+        .find(|m| m["user_token"] == bob_token)
+        .unwrap();
+    assert_eq!(bob_member["is_creator"], false);
+    assert_eq!(bob_member["role"], "member");
+
+    // 5. Bob (non-creator) attempts to remove Charlie -> Must be 403 FORBIDDEN
+    server.clear_cookies();
+    let res_unauth_remove = server
+        .post(&format!(
+            "/room/alpha-squad/members/{}/remove",
+            charlie_token
+        ))
+        .add_header("X-Device-Token", bob_token)
+        .await;
+    assert_eq!(
+        res_unauth_remove.status_code(),
+        axum::http::StatusCode::FORBIDDEN
+    );
+
+    // 6. Alice (creator) removes Bob -> Must succeed 200 OK
+    server.clear_cookies();
+    let res_creator_remove = server
+        .post(&format!("/room/alpha-squad/members/{}/remove", bob_token))
+        .add_header("X-Device-Token", alice_token)
+        .await;
+    res_creator_remove.assert_status_ok();
+    let remove_json: serde_json::Value = res_creator_remove.json();
+    assert_eq!(remove_json["success"], true);
+    assert_eq!(remove_json["data"]["removed_token"], bob_token);
+
+    // Bob visits /room/current -> he is now in his private solo room, NOT alpha-squad!
+    server.clear_cookies();
+    let res_bob_solo = server
+        .get("/room/current")
+        .add_header("X-Device-Token", bob_token)
+        .await;
+    res_bob_solo.assert_status_ok();
+    let bob_solo_data: serde_json::Value = res_bob_solo.json();
+    let bob_curr_slug = bob_solo_data["data"]["room"]["slug"].as_str().unwrap();
+    assert_ne!(bob_curr_slug, "alpha-squad");
+    assert!(bob_curr_slug.starts_with("solo-"));
+
+    // 7. Charlie voluntarily leaves alpha-squad
+    server.clear_cookies();
+    let res_charlie_leave = server
+        .post("/room/alpha-squad/leave")
+        .add_header("X-Device-Token", charlie_token)
+        .await;
+    res_charlie_leave.assert_status_ok();
+    let leave_json: serde_json::Value = res_charlie_leave.json();
+    assert_eq!(leave_json["success"], true);
+
+    // Charlie visits /room/current -> he is now in his private solo room
+    server.clear_cookies();
+    let res_charlie_solo = server
+        .get("/room/current")
+        .add_header("X-Device-Token", charlie_token)
+        .await;
+    res_charlie_solo.assert_status_ok();
+    let charlie_curr_slug = res_charlie_solo.json::<serde_json::Value>()["data"]["room"]["slug"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_ne!(charlie_curr_slug, "alpha-squad");
+    assert!(charlie_curr_slug.starts_with("solo-"));
+
+    // 8. Alice views alpha-squad -> only Alice remains
+    server.clear_cookies();
+    let res_final = server
+        .get("/room/alpha-squad")
+        .add_header("X-Device-Token", alice_token)
+        .await;
+    res_final.assert_status_ok();
+    let final_members = res_final.json::<serde_json::Value>()["data"]["members"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_eq!(final_members.len(), 1);
+    assert_eq!(final_members[0]["user_token"], alice_token);
+}

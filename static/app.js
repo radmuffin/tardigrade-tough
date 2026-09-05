@@ -113,6 +113,17 @@ export function renderAll() {
   const pBtn = document.getElementById('profileBtn');
   if (pBtn) pBtn.title = `${state.currentRoomData.user_profile.nickname} · ${state.currentRoomData.room.name} (Settings)`;
 
+  // Leaderboard Squad Banner
+  const lbSquadName = document.getElementById('lbSquadNameLabel');
+  if (lbSquadName && state.currentRoomData.room) {
+    lbSquadName.textContent = state.currentRoomData.room.name;
+  }
+  const lbSquadCount = document.getElementById('lbSquadMembersCount');
+  if (lbSquadCount) {
+    const count = state.currentRoomData.members?.length || 0;
+    lbSquadCount.textContent = `${count} ${count === 1 ? 'member' : 'members'}`;
+  }
+
   // Active Goal Showcase
   renderGoalShowcase({ onUpdateStepper: updateStepperForGoal });
 

@@ -66,5 +66,24 @@ export function handleWsEvent(msg, { onReloadState } = {}) {
     if (msg.payload && msg.sender_token !== state.client.token) {
       FlyToast.success(`🚀 New quest activated: "${msg.payload.title}"!`);
     }
+  } else if (msg.event === 'member_removed') {
+    if (msg.payload && msg.payload.removed_token === state.client.token) {
+      FlyToast.warning('You were removed from this squad by the creator.');
+      try {
+        localStorage.removeItem('tardigrade_current_room');
+      } catch (_) {}
+      const targetUrl = msg.payload.solo_slug ? `/r/${msg.payload.solo_slug}` : '/';
+      setTimeout(() => {
+        window.location.href = targetUrl;
+      }, 1000);
+      return;
+    }
+    FlyToast.info('A crew member was removed from the squad.');
+    if (onReloadState) onReloadState();
+  } else if (msg.event === 'member_left') {
+    if (msg.sender_token !== state.client.token) {
+      FlyToast.info('A crew member left the squad.');
+      if (onReloadState) onReloadState();
+    }
   }
 }

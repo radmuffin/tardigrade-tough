@@ -18,7 +18,7 @@ use axum::{
 use fly_common::prelude::{ApiResponse, DbPool, UserToken as FlyUserToken};
 use fly_common::qr::generate_qr_svg;
 use fly_common::ws::{BroadcastHub, WsMessage};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// Anonymous user token extracted from incoming request headers or queries.
@@ -121,6 +121,12 @@ pub fn create_routes(state: AppState) -> Router {
         .route("/room", get(get_default_room_data))
         .route("/room/:slug", get(get_room_data))
         .route("/room/:slug/name", post(rename_room_handler))
+        .route("/room/:slug/leave", post(leave_room_handler))
+        .route(
+            "/room/:slug/members/:token/remove",
+            post(remove_member_handler),
+        )
+        .route("/room/:slug/members/:token", delete(remove_member_handler))
         .route("/users/profile", post(update_profile))
         .route("/activities", post(log_activity))
         .route("/activities/batch", post(log_batch_activities))
@@ -189,6 +195,8 @@ async fn get_room_data(
         }
     };
 
+    ensure_room_member(&conn, &target_slug, user.as_str()).ok();
+
     let (active_goals, completed_goals) = match get_goals_for_room(&conn, &target_slug) {
         Ok(g) => g,
         Err(e) => {
@@ -202,6 +210,7 @@ async fn get_room_data(
     let recent_activities = get_recent_activities(&conn, &target_slug, 50).unwrap_or_default();
     let leaderboard = get_leaderboard(&conn, &target_slug).unwrap_or_default();
     let wishlists = get_wishlists(&conn, &target_slug).unwrap_or_default();
+    let members = get_room_members(&conn, &target_slug).unwrap_or_default();
 
     (
         StatusCode::OK,
@@ -213,6 +222,7 @@ async fn get_room_data(
             recent_activities,
             leaderboard,
             wishlists,
+            members,
         })),
     )
 }
@@ -256,6 +266,88 @@ async fn rename_room_handler(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ApiResponse::err(e.to_string())),
         ),
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct LeaveRoomResponse {
+    pub solo_slug: String,
+}
+
+async fn leave_room_handler(
+    user: UserToken,
+    Path(slug): Path<String>,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<LeaveRoomResponse>>) {
+    let clean_slug = slug.trim().to_lowercase();
+    let conn = state.db.lock().unwrap();
+
+    match leave_room(&conn, &clean_slug, user.as_str()) {
+        Ok(solo_slug) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: clean_slug.clone(),
+                event: "member_left".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "user_token": user.as_str(),
+                    "room": clean_slug,
+                }),
+            });
+            (
+                StatusCode::OK,
+                Json(ApiResponse::ok(LeaveRoomResponse { solo_slug })),
+            )
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct RemoveMemberResponse {
+    pub removed_token: String,
+    pub solo_slug: String,
+}
+
+async fn remove_member_handler(
+    user: UserToken,
+    Path((slug, target_token)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<RemoveMemberResponse>>) {
+    let clean_slug = slug.trim().to_lowercase();
+    let clean_target = target_token.trim().to_string();
+    let conn = state.db.lock().unwrap();
+
+    match remove_room_member(&conn, &clean_slug, user.as_str(), &clean_target) {
+        Ok(solo_slug) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: clean_slug.clone(),
+                event: "member_removed".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "removed_token": clean_target,
+                    "solo_slug": solo_slug,
+                    "room": clean_slug,
+                }),
+            });
+            (
+                StatusCode::OK,
+                Json(ApiResponse::ok(RemoveMemberResponse {
+                    removed_token: clean_target,
+                    solo_slug,
+                })),
+            )
+        }
+        Err(err_msg) => {
+            let status = if err_msg.contains("Only the squad creator") {
+                StatusCode::FORBIDDEN
+            } else {
+                StatusCode::BAD_REQUEST
+            };
+            (status, Json(ApiResponse::err(err_msg)))
+        }
     }
 }
 

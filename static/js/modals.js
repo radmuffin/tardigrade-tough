@@ -154,6 +154,10 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   const copyRoomUrlBtn = document.getElementById('copyRoomUrlBtn');
   const nativeShareBtn = document.getElementById('nativeShareBtn');
   const currentRoomSlugLabel = document.getElementById('currentRoomSlugLabel');
+  const squadMembersList = document.getElementById('squadMembersList');
+  const squadMemberCount = document.getElementById('squadMemberCount');
+  const squadRoleBadge = document.getElementById('squadRoleBadge');
+  const leaveSquadBtn = document.getElementById('leaveSquadBtn');
 
   function populateSquadHubFields() {
     if (roomSlugInput) roomSlugInput.value = state.roomSlug;
@@ -174,6 +178,99 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     }
     if (nativeShareBtn && typeof navigator.share === 'function') {
       nativeShareBtn.style.display = 'block';
+    }
+
+    // Populate Squad Members Roster
+    const members = state.currentRoomData?.members || [];
+    const creatorToken = state.currentRoomData?.room?.creator_token || '';
+    const isSolo = state.roomSlug.startsWith('solo-');
+    const isCreator = (!isSolo && creatorToken && creatorToken === state.client.token)
+      || (!isSolo && members.length === 1 && members[0]?.user_token === state.client.token)
+      || (!isSolo && !creatorToken);
+
+    if (squadMemberCount) {
+      squadMemberCount.textContent = members.length;
+    }
+
+    if (squadRoleBadge) {
+      if (isSolo) {
+        squadRoleBadge.textContent = 'Solo Quest';
+        squadRoleBadge.style.color = 'var(--accent-cyan)';
+      } else if (isCreator) {
+        squadRoleBadge.textContent = '👑 You are Squad Creator';
+        squadRoleBadge.style.color = 'var(--accent-amber)';
+      } else {
+        squadRoleBadge.textContent = 'Crew Member';
+        squadRoleBadge.style.color = 'var(--text-muted)';
+      }
+    }
+
+    if (leaveSquadBtn) {
+      if (isSolo) {
+        leaveSquadBtn.style.display = 'none';
+      } else {
+        leaveSquadBtn.style.display = 'block';
+      }
+    }
+
+    if (squadMembersList) {
+      if (members.length === 0) {
+        squadMembersList.innerHTML = `<div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.8rem;">No members recorded yet.</div>`;
+      } else {
+        squadMembersList.innerHTML = members.map(m => {
+          const isMe = m.user_token === state.client.token;
+          const isThisCreator = m.is_creator || (creatorToken && m.user_token === creatorToken);
+          const canRemove = isCreator && !isMe;
+          const avatarColor = FlyToast.escape(m.avatar_color || '#10b981');
+          const nick = FlyToast.escape(m.nickname || 'Athlete');
+
+          return `
+            <div class="squad-member-item" data-token="${FlyToast.escape(m.user_token)}">
+              <div class="member-left">
+                <span class="member-dot" style="background-color: ${avatarColor};"></span>
+                <div class="member-info">
+                  <div class="member-name-row">
+                    <strong class="member-nick">${nick}</strong>
+                    ${isMe ? '<span class="member-pill pill-me">You</span>' : ''}
+                    ${isThisCreator ? '<span class="member-pill pill-creator">👑 Creator</span>' : ''}
+                  </div>
+                  <span class="member-metric-label">${m.total_sets || 0} sets logged</span>
+                </div>
+              </div>
+              ${canRemove ? `
+                <button class="btn-remove-member" data-token="${FlyToast.escape(m.user_token)}" data-nick="${nick}" type="button" title="Remove member from squad">
+                  Remove
+                </button>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+
+        // Attach remove handlers
+        squadMembersList.querySelectorAll('.btn-remove-member').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const targetToken = btn.dataset.token;
+            const targetNick = btn.dataset.nick || 'this member';
+            if (!confirm(`Are you sure you want to remove "${targetNick}" from this squad?`)) {
+              return;
+            }
+            try {
+              const res = await state.client.post(`/room/${state.roomSlug}/members/${targetToken}/remove`);
+              if (res && res.success) {
+                FlyToast.success(`Removed "${targetNick}" from squad`);
+                if (onReloadState) await onReloadState();
+                populateSquadHubFields();
+              } else {
+                FlyToast.error(res?.error || 'Failed to remove member');
+              }
+            } catch (err) {
+              console.error('Remove member error:', err);
+              FlyToast.error('Failed to remove member');
+            }
+          });
+        });
+      }
     }
   }
 
@@ -419,6 +516,42 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
         window.location.href = `/r/${targetSlug}`;
       }
     });
+  }
+
+  // Leave Squad Button
+  if (leaveSquadBtn) {
+    leaveSquadBtn.addEventListener('click', async () => {
+      const squadName = state.currentRoomData?.room?.name || 'this squad';
+      if (!confirm(`Are you sure you want to leave "${squadName}"? You will return to your own private solo quest.`)) {
+        return;
+      }
+      try {
+        const res = await state.client.post(`/room/${state.roomSlug}/leave`);
+        if (res && res.success) {
+          try {
+            localStorage.removeItem('tardigrade_current_room');
+          } catch (_) {}
+          FlyToast.info(`Left "${squadName}". Returned to Solo Quest.`);
+          const soloSlug = res.data?.solo_slug;
+          if (soloSlug) {
+            window.location.href = `/r/${soloSlug}`;
+          } else {
+            window.location.href = '/';
+          }
+        } else {
+          FlyToast.error(res?.error || 'Failed to leave squad');
+        }
+      } catch (err) {
+        console.error('Leave squad error:', err);
+        FlyToast.error('Failed to leave squad');
+      }
+    });
+  }
+
+  // Manage Squad button from Leaderboard banner
+  const lbManageSquadBtn = document.getElementById('lbManageSquadBtn');
+  if (lbManageSquadBtn) {
+    lbManageSquadBtn.addEventListener('click', () => openHub('squad'));
   }
 
   // Wishlist Modal Handling

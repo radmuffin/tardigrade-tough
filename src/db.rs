@@ -9,7 +9,8 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             slug TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            creator_token TEXT NOT NULL DEFAULT ''
         );
 
         CREATE TABLE IF NOT EXISTS users (
@@ -18,6 +19,15 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
             avatar_color TEXT NOT NULL,
             current_room_slug TEXT NOT NULL,
             updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS room_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_slug TEXT NOT NULL,
+            user_token TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member',
+            joined_at TEXT NOT NULL,
+            UNIQUE(room_slug, user_token)
         );
 
         CREATE TABLE IF NOT EXISTS goals (
@@ -70,12 +80,52 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_activities_room ON activities(room_slug, id DESC);
         CREATE INDEX IF NOT EXISTS idx_activities_user ON activities(user_token);
         CREATE INDEX IF NOT EXISTS idx_activities_goal ON activities(goal_id);
+        CREATE INDEX IF NOT EXISTS idx_room_members_room ON room_members(room_slug);
+        CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(user_token);
     "#,
     )?;
 
     // Ensure user_nickname column exists in goal_wishlists for existing tables
     let _ = conn.execute(
         "ALTER TABLE goal_wishlists ADD COLUMN user_nickname TEXT NOT NULL DEFAULT ''",
+        [],
+    );
+
+    // Ensure creator_token column exists in rooms for existing tables
+    let _ = conn.execute(
+        "ALTER TABLE rooms ADD COLUMN creator_token TEXT NOT NULL DEFAULT ''",
+        [],
+    );
+
+    // Backfill room_members from existing users table
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO room_members (room_slug, user_token, role, joined_at)
+         SELECT current_room_slug, user_token, 'member', updated_at
+         FROM users
+         WHERE current_room_slug != '' AND user_token != ''",
+        [],
+    );
+
+    // If room creator is empty, backfill creator_token from first room member (except solo rooms)
+    let _ = conn.execute(
+        "UPDATE rooms
+         SET creator_token = (
+             SELECT user_token FROM room_members
+             WHERE room_members.room_slug = rooms.slug
+             ORDER BY joined_at ASC LIMIT 1
+         )
+         WHERE (creator_token = '' OR creator_token IS NULL) AND slug NOT LIKE 'solo-%'",
+        [],
+    );
+
+    // Sync role = 'creator' in room_members for rooms where creator_token is known
+    let _ = conn.execute(
+        "UPDATE room_members
+         SET role = 'creator'
+         WHERE user_token = (
+             SELECT creator_token FROM rooms
+             WHERE rooms.slug = room_members.room_slug AND rooms.creator_token != ''
+         )",
         [],
     );
 
@@ -149,13 +199,16 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
 }
 
 pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
-    let mut stmt = conn.prepare("SELECT id, slug, name, created_at FROM rooms WHERE slug = ?")?;
+    let mut stmt = conn.prepare(
+        "SELECT id, slug, name, created_at, COALESCE(creator_token, '') FROM rooms WHERE slug = ?",
+    )?;
     let found = stmt.query_row(params![slug], |row| {
         Ok(Room {
             id: row.get(0)?,
             slug: row.get(1)?,
             name: row.get(2)?,
             created_at: row.get(3)?,
+            creator_token: row.get(4)?,
         })
     });
 
@@ -169,7 +222,7 @@ pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
                 format!("{} Crew", slug.replace('-', " "))
             };
             conn.execute(
-                "INSERT INTO rooms (slug, name, created_at) VALUES (?, ?, ?)",
+                "INSERT INTO rooms (slug, name, created_at, creator_token) VALUES (?, ?, ?, '')",
                 params![slug, pretty_name, now],
             )?;
             let id = conn.last_insert_rowid();
@@ -196,6 +249,7 @@ pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
                 slug: slug.to_string(),
                 name: pretty_name,
                 created_at: now,
+                creator_token: String::new(),
             })
         }
         Err(e) => Err(e),
@@ -224,6 +278,200 @@ pub fn update_room_name(conn: &Connection, slug: &str, new_name: &str) -> Result
     )?;
 
     get_or_create_room(conn, slug)
+}
+
+pub fn ensure_room_member(conn: &Connection, room_slug: &str, user_token: &str) -> Result<()> {
+    let tok = user_token.trim();
+    if tok.is_empty() {
+        return Ok(());
+    }
+
+    let creator_token: String = conn
+        .query_row(
+            "SELECT COALESCE(creator_token, '') FROM rooms WHERE slug = ?",
+            params![room_slug],
+            |r| r.get(0),
+        )
+        .unwrap_or_default();
+
+    let mut role = "member";
+    if creator_token.is_empty() && !room_slug.starts_with("solo-") {
+        let _ = conn.execute(
+            "UPDATE rooms SET creator_token = ? WHERE slug = ?",
+            params![tok, room_slug],
+        );
+        role = "creator";
+    } else if creator_token == tok || room_slug.starts_with("solo-") {
+        role = "creator";
+    }
+
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO room_members (room_slug, user_token, role, joined_at)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(room_slug, user_token) DO UPDATE SET role = CASE WHEN room_members.role = 'creator' THEN 'creator' ELSE excluded.role END",
+        params![room_slug, tok, role, now],
+    )?;
+
+    Ok(())
+}
+
+pub fn get_room_members(conn: &Connection, room_slug: &str) -> Result<Vec<RoomMember>> {
+    // Backfill any users currently assigned to this room who aren't yet in room_members
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO room_members (room_slug, user_token, role, joined_at)
+         SELECT current_room_slug, user_token, 'member', updated_at
+         FROM users
+         WHERE current_room_slug = ? AND user_token != ''",
+        params![room_slug],
+    );
+
+    let room_creator: String = conn
+        .query_row(
+            "SELECT COALESCE(creator_token, '') FROM rooms WHERE slug = ?",
+            params![room_slug],
+            |r| r.get(0),
+        )
+        .unwrap_or_default();
+
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT
+            rm.user_token,
+            COALESCE(u.nickname, 'Athlete') AS nickname,
+            COALESCE(u.avatar_color, '#10b981') AS avatar_color,
+            rm.role,
+            rm.joined_at,
+            COALESCE((SELECT SUM(a.total_metric) FROM activities a WHERE a.room_slug = rm.room_slug AND a.user_token = rm.user_token), 0.0) AS total_metric,
+            COALESCE((SELECT COUNT(*) FROM activities a WHERE a.room_slug = rm.room_slug AND a.user_token = rm.user_token), 0) AS total_sets
+        FROM room_members rm
+        LEFT JOIN users u ON u.user_token = rm.user_token
+        WHERE rm.room_slug = ?
+        ORDER BY (rm.user_token = ? OR rm.role = 'creator') DESC, rm.joined_at ASC
+    "#,
+    )?;
+
+    let rows = stmt.query_map(params![room_slug, room_creator], |row| {
+        let user_token: String = row.get(0)?;
+        let nickname: String = row.get(1)?;
+        let avatar_color: String = row.get(2)?;
+        let db_role: String = row.get(3)?;
+        let joined_at: String = row.get(4)?;
+        let total_metric: f64 = row.get(5)?;
+        let total_sets: i64 = row.get(6)?;
+
+        let is_creator = (user_token == room_creator && !room_creator.is_empty())
+            || db_role == "creator"
+            || room_slug.starts_with("solo-");
+        let role = if is_creator {
+            "creator".to_string()
+        } else {
+            "member".to_string()
+        };
+
+        Ok(RoomMember {
+            user_token,
+            nickname,
+            avatar_color,
+            role,
+            is_creator,
+            joined_at,
+            total_metric,
+            total_sets,
+        })
+    })?;
+
+    let mut members = Vec::new();
+    for m in rows {
+        members.push(m?);
+    }
+    Ok(members)
+}
+
+pub fn leave_room(conn: &Connection, room_slug: &str, user_token: &str) -> Result<String> {
+    let _ = conn.execute(
+        "DELETE FROM room_members WHERE room_slug = ? AND user_token = ?",
+        params![room_slug, user_token],
+    );
+
+    let solo_slug = generate_solo_room_slug(user_token);
+    conn.execute(
+        "UPDATE users SET current_room_slug = ? WHERE user_token = ?",
+        params![solo_slug, user_token],
+    )?;
+
+    // If leaving user was the room creator, transfer ownership to next member
+    let room_creator: String = conn
+        .query_row(
+            "SELECT COALESCE(creator_token, '') FROM rooms WHERE slug = ?",
+            params![room_slug],
+            |r| r.get(0),
+        )
+        .unwrap_or_default();
+
+    if room_creator == user_token {
+        let mut next_stmt = conn.prepare(
+            "SELECT user_token FROM room_members WHERE room_slug = ? ORDER BY joined_at ASC LIMIT 1",
+        )?;
+        let next_owner: rusqlite::Result<String> =
+            next_stmt.query_row(params![room_slug], |r| r.get(0));
+
+        if let Ok(new_creator) = next_owner {
+            conn.execute(
+                "UPDATE rooms SET creator_token = ? WHERE slug = ?",
+                params![new_creator, room_slug],
+            )?;
+            conn.execute(
+                "UPDATE room_members SET role = 'creator' WHERE room_slug = ? AND user_token = ?",
+                params![room_slug, new_creator],
+            )?;
+        } else {
+            conn.execute(
+                "UPDATE rooms SET creator_token = '' WHERE slug = ?",
+                params![room_slug],
+            )?;
+        }
+    }
+
+    Ok(solo_slug)
+}
+
+pub fn remove_room_member(
+    conn: &Connection,
+    room_slug: &str,
+    creator_token: &str,
+    target_token: &str,
+) -> std::result::Result<String, String> {
+    let current_creator: String = conn
+        .query_row(
+            "SELECT COALESCE(creator_token, '') FROM rooms WHERE slug = ?",
+            params![room_slug],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    if current_creator != creator_token {
+        return Err("Only the squad creator can remove members from this squad".to_string());
+    }
+
+    if creator_token == target_token {
+        return Err("Squad creator cannot remove themselves; use leave squad instead".to_string());
+    }
+
+    conn.execute(
+        "DELETE FROM room_members WHERE room_slug = ? AND user_token = ?",
+        params![room_slug, target_token],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let solo_slug = generate_solo_room_slug(target_token);
+    conn.execute(
+        "UPDATE users SET current_room_slug = ? WHERE user_token = ? AND current_room_slug = ?",
+        params![solo_slug, target_token, room_slug],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(solo_slug)
 }
 
 pub fn get_user_current_room(conn: &Connection, token: &str) -> Result<Option<String>> {

@@ -6,6 +6,20 @@ pub struct Room {
     pub slug: String,
     pub name: String,
     pub created_at: String,
+    #[serde(default)]
+    pub creator_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoomMember {
+    pub user_token: String,
+    pub nickname: String,
+    pub avatar_color: String,
+    pub role: String, // "creator" | "member"
+    pub is_creator: bool,
+    pub joined_at: String,
+    pub total_metric: f64,
+    pub total_sets: i64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -160,4 +174,6 @@ pub struct RoomDataResponse {
     pub recent_activities: Vec<Activity>,
     pub leaderboard: Vec<LeaderboardMember>,
     pub wishlists: Vec<GoalWishlistItem>,
+    #[serde(default)]
+    pub members: Vec<RoomMember>,
 }

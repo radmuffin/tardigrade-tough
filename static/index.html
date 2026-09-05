@@ -325,6 +325,11 @@
         </div>
         <p class="view-subtitle">Squad milestones and friendly competition across all workout categories.</p>
 
+        <div class="leaderboard-squad-banner" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; margin-bottom: 12px; padding: 6px 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); font-size: 0.8rem;">
+          <span id="lbSquadBannerText" style="color: var(--text-muted);">👥 <strong id="lbSquadNameLabel" style="color: var(--text-primary);">Pando Squad</strong> (<span id="lbSquadMembersCount">0 members</span>)</span>
+          <button id="lbManageSquadBtn" class="btn btn-secondary" style="font-size: 0.74rem; padding: 3px 10px; border-radius: 999px;" type="button">👥 View Crew</button>
+        </div>
+
         <!-- All-Categories Multi-Metric Hero Grid -->
         <div id="lbSummaryAll" class="lb-metrics-grid">
           <div class="lb-metric-tile">
@@ -620,7 +625,21 @@
             </div>
           </div>
 
-          <!-- Section 2: Share Current Squad -->
+          <!-- Section 2: Squad Members Roster -->
+          <div class="hub-card" id="squadMembersCard">
+            <label class="form-label" style="color: var(--accent-green); display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span>👥 Crew Members (<strong id="squadMemberCount">0</strong>)</span>
+              <span id="squadRoleBadge" class="squad-role-tag" style="font-size: 0.72rem; color: var(--text-muted);"></span>
+            </label>
+            <div id="squadMembersList" class="squad-members-list">
+              <!-- Populated dynamically -->
+            </div>
+            <button id="leaveSquadBtn" class="btn btn-danger-outline leave-squad-btn" style="width: 100%; margin-top: 10px; display: none;" type="button">
+              🚪 Leave Squad
+            </button>
+          </div>
+
+          <!-- Section 3: Share Current Squad -->
           <div class="hub-card">
             <label class="form-label" style="color: #60a5fa;">🔗 Share Squad Invite Link</label>
             <div style="display: flex; gap: 6px; margin-bottom: 8px;">
