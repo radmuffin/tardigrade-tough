@@ -521,6 +521,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
           target_value: targetVal,
           unit,
           notes,
+          user_nickname: state.userProfile?.nickname || '',
         });
 
         if (res && res.success) {

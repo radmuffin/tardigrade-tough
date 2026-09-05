@@ -409,6 +409,40 @@ async fn create_wishlist_handler(
     }
 }
 
+pub fn format_github_issue_body(item: &GoalWishlistItem) -> String {
+    let notes_formatted = if item.notes.trim().is_empty() {
+        "*(No additional notes provided)*".to_string()
+    } else {
+        format!("> {}", item.notes.trim())
+    };
+
+    let proposed_by = if item.user_nickname.trim().is_empty() {
+        format!("`{}`", item.user_token)
+    } else {
+        format!("{} (`{}`)", item.user_nickname.trim(), item.user_token)
+    };
+
+    format!(
+        "### 🌲 New Quest Proposal from Tardigrade Tough\n\n\
+         - **Quest Title**: {}\n\
+         - **Category**: `{}`\n\
+         - **Target Metric**: {} {}\n\
+         - **Squad Room**: `{}`\n\
+         - **Proposed by**: {}\n\n\
+         #### 📝 Notes & Lore\n\
+         {}\n\n\
+         ---\n\
+         *Automated proposal submitted via Tardigrade Tough app.*",
+        item.title,
+        item.category,
+        item.target_value,
+        item.unit,
+        item.room_slug,
+        proposed_by,
+        notes_formatted
+    )
+}
+
 async fn dispatch_github_issue_if_configured(item: &GoalWishlistItem) {
     let raw_token = match std::env::var("GITHUB_TOKEN")
         .or_else(|_| std::env::var("GH_TOKEN"))
@@ -431,31 +465,7 @@ async fn dispatch_github_issue_if_configured(item: &GoalWishlistItem) {
     let url = format!("https://api.github.com/repos/{repo}/issues");
 
     let title = format!("[Quest Proposal] {} ({})", item.title, item.category);
-    let notes_formatted = if item.notes.trim().is_empty() {
-        "*(No additional notes provided)*".to_string()
-    } else {
-        format!("> {}", item.notes.trim())
-    };
-
-    let body = format!(
-        "### 🌲 New Quest Proposal from Tardigrade Tough\n\n\
-         - **Quest Title**: {}\n\
-         - **Category**: `{}`\n\
-         - **Target Metric**: {} {}\n\
-         - **Squad Room**: `{}`\n\
-         - **Proposed by**: `{}`\n\n\
-         #### 📝 Notes & Lore\n\
-         {}\n\n\
-         ---\n\
-         *Automated proposal submitted via Tardigrade Tough app.*",
-        item.title,
-        item.category,
-        item.target_value,
-        item.unit,
-        item.room_slug,
-        item.user_token,
-        notes_formatted
-    );
+    let body = format_github_issue_body(item);
 
     let client = reqwest::Client::new();
     let auth_header = format!("Bearer {token}");

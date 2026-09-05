@@ -118,6 +118,16 @@
   color: var(--text-primary);
 }
 
+.wishlist-proposer {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.wishlist-proposer strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 .wishlist-notes-text {
   font-size: 0.76rem;
   color: var(--text-muted);

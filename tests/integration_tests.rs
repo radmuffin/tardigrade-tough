@@ -5,7 +5,7 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 use tardigrade_tough::db::*;
 use tardigrade_tough::models::*;
-use tardigrade_tough::routes::{create_routes, AppState};
+use tardigrade_tough::routes::{create_routes, format_github_issue_body, AppState};
 
 fn setup_test_db() -> Connection {
     let mut conn = Connection::open_in_memory().expect("in-memory db failed");
@@ -316,7 +316,9 @@ fn test_user_profile_customization_persistence() {
 #[test]
 fn test_wishlist_submission_and_retrieval() {
     let conn = setup_test_db();
+    let user = get_or_create_user(&conn, "token_submitter", "main").expect("user");
 
+    // Case 1: Propose with explicit readable name
     let req = CreateGoalWishlistRequest {
         room_slug: "main".to_string(),
         title: "General Sherman Giant Sequoia".to_string(),
@@ -324,6 +326,7 @@ fn test_wishlist_submission_and_retrieval() {
         target_value: 2_700_000.0,
         unit: "lbs".to_string(),
         notes: Some("Largest known living single-stem tree".to_string()),
+        user_nickname: Some("BigShermanFan".to_string()),
     };
 
     let item = create_goal_wishlist(&conn, "token_submitter", &req).expect("wishlist ok");
@@ -331,6 +334,55 @@ fn test_wishlist_submission_and_retrieval() {
     assert_eq!(item.target_value, 2_700_000.0);
     assert_eq!(item.category, "weight");
     assert_eq!(item.notes, "Largest known living single-stem tree");
+    assert_eq!(item.user_nickname, "BigShermanFan");
+    assert_eq!(item.user_token, "token_submitter");
+
+    // Verify issue body includes both the readable name and user UUID
+    let issue_body = format_github_issue_body(&item);
+    assert!(
+        issue_body.contains("- **Proposed by**: BigShermanFan (`token_submitter`)"),
+        "Issue body must include readable name and user UUID"
+    );
+
+    // Case 2: Propose with user_nickname None (fallback to DB users table)
+    let req2 = CreateGoalWishlistRequest {
+        room_slug: "main".to_string(),
+        title: "Denali Traverse".to_string(),
+        category: "elevation".to_string(),
+        target_value: 20_310.0,
+        unit: "ft".to_string(),
+        notes: None,
+        user_nickname: None,
+    };
+
+    let item2 = create_goal_wishlist(&conn, "token_submitter", &req2).expect("wishlist ok");
+    assert_eq!(item2.user_nickname, user.nickname);
+    assert_eq!(item2.user_token, "token_submitter");
+
+    let issue_body2 = format_github_issue_body(&item2);
+    assert!(
+        issue_body2.contains(&format!(
+            "- **Proposed by**: {} (`token_submitter`)",
+            user.nickname
+        )),
+        "Issue body fallback must include user profile nickname and UUID"
+    );
+
+    // Case 3: Empty nickname fallback to UUID only
+    let mut bare_item = item2.clone();
+    bare_item.user_nickname = "".to_string();
+    bare_item.user_token = "raw-uuid-123".to_string();
+    let issue_body3 = format_github_issue_body(&bare_item);
+    assert!(
+        issue_body3.contains("- **Proposed by**: `raw-uuid-123`"),
+        "Empty nickname fallback must display raw UUID in backticks"
+    );
+
+    // Verify retrieval
+    let list = get_wishlists(&conn, "main").expect("wishlists");
+    assert_eq!(list.len(), 2);
+    assert_eq!(list[0].user_nickname, user.nickname);
+    assert_eq!(list[1].user_nickname, "BigShermanFan");
 }
 
 #[test]
@@ -673,6 +725,7 @@ fn test_custom_quest_category_proposal_promotion_and_activity_logging() {
         target_value: 100_000.0,
         unit: "reps".to_string(),
         notes: Some("Pushing the Earth down together".to_string()),
+        user_nickname: None,
     };
 
     let item =

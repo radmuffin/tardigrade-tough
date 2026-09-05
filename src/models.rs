@@ -115,12 +115,16 @@ pub struct CreateGoalWishlistRequest {
     pub target_value: f64,
     pub unit: String,
     pub notes: Option<String>,
+    #[serde(default)]
+    pub user_nickname: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GoalWishlistItem {
     pub id: i64,
     pub user_token: String,
+    #[serde(default)]
+    pub user_nickname: String,
     pub room_slug: String,
     pub title: String,
     pub category: String,

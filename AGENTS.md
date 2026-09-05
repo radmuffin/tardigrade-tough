@@ -96,6 +96,7 @@ All activity logs, goals, and leaderboards are partitioned by `room_slug`:
 ### 5. `goal_wishlists`
 - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
 - `user_token` (TEXT NOT NULL)
+- `user_nickname` (TEXT NOT NULL DEFAULT '')
 - `room_slug` (TEXT NOT NULL)
 - `title` (TEXT NOT NULL)
 - `category` (TEXT NOT NULL)
@@ -128,6 +129,10 @@ To maximize agent throughput, prevent CPU/memory starvation, and eliminate test 
 >    ```bash
 >    npm run test:e2e
 >    ```
+>
+> 4. **Autonomous Commit & Push (No Waiting)**:
+>    Once `npm run test:affected` passes cleanly, **commit and push immediately to `origin/main`**.
+>    Do not pause or wait for extra confirmation to push when completing requested fixes or features.
 
 ---
 

@@ -56,6 +56,7 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS goal_wishlists (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_token TEXT NOT NULL,
+            user_nickname TEXT NOT NULL DEFAULT '',
             room_slug TEXT NOT NULL,
             title TEXT NOT NULL,
             category TEXT NOT NULL,
@@ -71,6 +72,12 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_activities_goal ON activities(goal_id);
     "#,
     )?;
+
+    // Ensure user_nickname column exists in goal_wishlists for existing tables
+    let _ = conn.execute(
+        "ALTER TABLE goal_wishlists ADD COLUMN user_nickname TEXT NOT NULL DEFAULT ''",
+        [],
+    );
 
     // Ensure default main room exists with a concise, clean squad name
     let now = Utc::now().to_rfc3339();
@@ -693,12 +700,30 @@ pub fn create_goal_wishlist(
 ) -> Result<GoalWishlistItem> {
     let now = Utc::now().to_rfc3339();
     let notes = req.notes.as_deref().unwrap_or("").trim();
+    let user_nickname = req
+        .user_nickname
+        .as_deref()
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| {
+            conn.query_row(
+                "SELECT nickname FROM users WHERE user_token = ?",
+                params![user_token],
+                |row| row.get::<_, String>(0),
+            )
+            .unwrap_or_else(|_| {
+                get_or_create_user(conn, user_token, &req.room_slug)
+                    .map(|u| u.nickname)
+                    .unwrap_or_default()
+            })
+        });
 
     conn.execute(
-        r#"INSERT INTO goal_wishlists (user_token, room_slug, title, category, target_value, unit, notes, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#,
+        r#"INSERT INTO goal_wishlists (user_token, user_nickname, room_slug, title, category, target_value, unit, notes, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
         params![
             user_token,
+            user_nickname,
             req.room_slug,
             req.title.trim(),
             req.category.trim(),
@@ -714,6 +739,7 @@ pub fn create_goal_wishlist(
     Ok(GoalWishlistItem {
         id,
         user_token: user_token.to_string(),
+        user_nickname,
         room_slug: req.room_slug.clone(),
         title: req.title.trim().to_string(),
         category: req.category.trim().to_string(),
@@ -726,20 +752,25 @@ pub fn create_goal_wishlist(
 
 pub fn get_wishlists(conn: &Connection, room_slug: &str) -> Result<Vec<GoalWishlistItem>> {
     let mut stmt = conn.prepare(
-        "SELECT id, user_token, room_slug, title, category, target_value, unit, notes, created_at FROM goal_wishlists WHERE room_slug = ? ORDER BY id DESC",
+        r#"SELECT gw.id, gw.user_token, COALESCE(NULLIF(gw.user_nickname, ''), u.nickname, '') AS user_nickname, gw.room_slug, gw.title, gw.category, gw.target_value, gw.unit, gw.notes, gw.created_at
+           FROM goal_wishlists gw
+           LEFT JOIN users u ON gw.user_token = u.user_token
+           WHERE gw.room_slug = ?
+           ORDER BY gw.id DESC"#,
     )?;
 
     let rows = stmt.query_map(params![room_slug], |r| {
         Ok(GoalWishlistItem {
             id: r.get(0)?,
             user_token: r.get(1)?,
-            room_slug: r.get(2)?,
-            title: r.get(3)?,
-            category: r.get(4)?,
-            target_value: r.get(5)?,
-            unit: r.get(6)?,
-            notes: r.get(7)?,
-            created_at: r.get(8)?,
+            user_nickname: r.get(2)?,
+            room_slug: r.get(3)?,
+            title: r.get(4)?,
+            category: r.get(5)?,
+            target_value: r.get(6)?,
+            unit: r.get(7)?,
+            notes: r.get(8)?,
+            created_at: r.get(9)?,
         })
     })?;
 

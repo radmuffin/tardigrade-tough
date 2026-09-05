@@ -57,13 +57,18 @@ export function renderWishlists() {
     const safeNotes = item.notes ? FlyToast.escape(item.notes) : '';
     const safeUnit = FlyToast.escape(item.unit);
 
+    const proposerDisplay = item.user_nickname
+      ? `${item.user_nickname} (\`${item.user_token}\`)`
+      : (item.user_token ? `\`${item.user_token}\`` : '');
+
     const ghTitle = encodeURIComponent(`[Quest Proposal] ${item.title} (${cat})`);
     const ghBody = encodeURIComponent(
       `### 🌲 New Quest Proposal from Tardigrade Tough\n\n` +
       `- **Quest Title**: ${item.title}\n` +
       `- **Category**: \`${cat}\` (${item.unit})\n` +
       `- **Target Metric**: ${formatNumber(item.target_value)} ${item.unit}\n` +
-      `- **Squad Room**: \`${item.room_slug || state.roomSlug}\`\n\n` +
+      `- **Squad Room**: \`${item.room_slug || state.roomSlug}\`\n` +
+      (proposerDisplay ? `- **Proposed by**: ${proposerDisplay}\n\n` : `\n`) +
       `#### 📝 Notes & Lore\n` +
       `> ${item.notes || 'No extra notes provided.'}\n\n` +
       `---\n` +
@@ -79,6 +84,7 @@ export function renderWishlists() {
         </div>
         <div class="wishlist-meta-row">
           <span>Target: <span class="wishlist-target-num">${formatNumber(item.target_value)} ${safeUnit}</span></span>
+          ${item.user_nickname ? `<span class="wishlist-proposer" title="UUID: ${FlyToast.escape(item.user_token || '')}">by <strong>${FlyToast.escape(item.user_nickname)}</strong></span>` : ''}
         </div>
         ${safeNotes ? `<div class="wishlist-notes-text">“${safeNotes}”</div>` : ''}
         <div class="wishlist-actions-row">
