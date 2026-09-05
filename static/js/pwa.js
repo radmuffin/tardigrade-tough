@@ -7,13 +7,13 @@ export function updateOfflineStatus(status) {
 
   if (status.pendingCount > 0) {
     dot.style.color = 'var(--accent-amber)';
-    text.textContent = `Syncing (${status.pendingCount} queued) ⏳`;
+    text.textContent = `Syncing (${status.pendingCount}) ⏳`;
   } else if (!status.isOnline) {
     dot.style.color = 'var(--accent-amber)';
-    text.textContent = 'Offline (Queued) 🔌';
+    text.textContent = 'Offline 🔌';
   } else {
     dot.style.color = 'var(--accent-green)';
-    text.textContent = 'Live & Syncing ⚡';
+    text.textContent = 'Live ⚡';
   }
 }
 
@@ -92,7 +92,7 @@ export function setupPwa() {
   window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     hideInstallButtons();
-    FlyToast.success('Tardigrade Tough installed! Access it directly from your home screen.');
+    FlyToast.success('App installed!');
   });
 
   // 3. Handle PWA Shortcuts & URL params (?action=log, ?view=leaderboard, etc.)

@@ -21,7 +21,7 @@ export function renderTrophyRoom() {
     }
     if (subEl) {
       subEl.innerHTML = `
-        <span>${formatNumber(trophy.current_value)} ${trophy.unit} Lifted</span>
+        <span>${formatNumber(trophy.current_value)} ${trophy.unit}</span>
         <span>Target: ${formatNumber(trophy.target_value)} ${trophy.unit}</span>
       `;
     }
@@ -38,13 +38,13 @@ export function renderWishlists() {
 
   const countLabel = document.getElementById('questsWishlistCountLabel');
   if (countLabel) {
-    countLabel.textContent = `Squad Wishlist (${list.length})`;
+    countLabel.textContent = `Wishlist (${list.length})`;
   }
 
   if (list.length === 0) {
     container.innerHTML = `
       <div class="wishlist-empty-box">
-        No quest proposals yet! Tap <strong>+ Propose Goal</strong> to suggest the crew's next colossal benchmark.
+        No proposals yet.
       </div>
     `;
     return;
@@ -91,8 +91,8 @@ export function renderWishlists() {
           <a href="${ghIssueUrl}" target="_blank" rel="noopener noreferrer" class="wishlist-action-btn gh-issue-link" title="Open formatted GitHub Issue in new tab">
             <span>🐙</span> GitHub Issue
           </a>
-          <button type="button" class="wishlist-action-btn activate-quest-btn" data-title="${safeTitle}" data-cat="${cat}" data-val="${item.target_value}" data-unit="${safeUnit}" data-notes="${safeNotes}" title="Promote this proposal to an active live quest">
-            <span>🚀</span> Activate Quest
+          <button type="button" class="wishlist-action-btn activate-quest-btn" data-title="${safeTitle}" data-cat="${cat}" data-val="${item.target_value}" data-unit="${safeUnit}" data-notes="${safeNotes}" title="Activate this quest">
+            <span>🚀</span> Activate
           </button>
         </div>
       </div>

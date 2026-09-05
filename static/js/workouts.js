@@ -43,7 +43,7 @@ export function updateStepperForGoal(goal) {
     if (exLabel) exLabel.textContent = 'Exercise';
     if (metricLabel) metricLabel.textContent = `Weight (${goal?.unit || 'lbs'})`;
     if (countLabel) countLabel.textContent = 'Reps';
-    if (routeLabel) routeLabel.textContent = `→ Auto-Routes to ${FlyToast.escape(goal?.title || 'Pando')} 🌲`;
+    if (routeLabel) routeLabel.textContent = '';
     if (exSelect) {
       exSelect.innerHTML = `
         <option value="Back Squat">🏋️ Back Squat</option>
@@ -55,7 +55,7 @@ export function updateStepperForGoal(goal) {
         <option value="Dumbbell Lunge">🏋️ Dumbbell Lunge</option>
         <option value="Bicep Curl">🏋️ Bicep Curl</option>
         ${customOpts}
-        <option value="__add_custom__">✨ + Add Custom Exercise...</option>
+        <option value="__add_custom__">+ Custom...</option>
       `;
     }
     if (metricPresets) {
@@ -71,10 +71,10 @@ export function updateStepperForGoal(goal) {
       attachMetricPresetListeners();
     }
   } else if (goal.category === 'elevation') {
-    if (exLabel) exLabel.textContent = 'Climb / Elevation Exercise';
-    if (metricLabel) metricLabel.textContent = `Elevation Gain (${goal.unit || 'ft'})`;
-    if (countLabel) countLabel.textContent = 'Sets / Floors';
-    if (routeLabel) routeLabel.textContent = `→ Auto-Routes to ${FlyToast.escape(goal.title)} 🐐`;
+    if (exLabel) exLabel.textContent = 'Exercise';
+    if (metricLabel) metricLabel.textContent = `Elevation (${goal.unit || 'ft'})`;
+    if (countLabel) countLabel.textContent = 'Sets';
+    if (routeLabel) routeLabel.textContent = '';
     if (exSelect) {
       exSelect.innerHTML = `
         <option value="Stair Climber">🧗 Stair Climber</option>
@@ -83,7 +83,7 @@ export function updateStepperForGoal(goal) {
         <option value="Box Step-ups">📦 Box Step-ups</option>
         <option value="Hill Sprints">🏃 Hill Sprints</option>
         ${customOpts}
-        <option value="__add_custom__">✨ + Add Custom Exercise...</option>
+        <option value="__add_custom__">+ Custom...</option>
       `;
     }
     if (wtInput && (wtInput.value === '135' || parseFloat(wtInput.value) <= 0)) {
@@ -102,10 +102,10 @@ export function updateStepperForGoal(goal) {
       attachMetricPresetListeners();
     }
   } else if (goal.category === 'distance') {
-    if (exLabel) exLabel.textContent = 'Distance / Cardio Exercise';
+    if (exLabel) exLabel.textContent = 'Exercise';
     if (metricLabel) metricLabel.textContent = `Distance (${goal.unit || 'mi'})`;
-    if (countLabel) countLabel.textContent = 'Laps / Sets';
-    if (routeLabel) routeLabel.textContent = `→ Auto-Routes to ${FlyToast.escape(goal.title)} 🦌`;
+    if (countLabel) countLabel.textContent = 'Sets';
+    if (routeLabel) routeLabel.textContent = '';
     if (exSelect) {
       exSelect.innerHTML = `
         <option value="Outdoor Run">🏃 Outdoor Run</option>
@@ -114,7 +114,7 @@ export function updateStepperForGoal(goal) {
         <option value="Rowing Machine">🚣 Rowing Machine</option>
         <option value="Treadmill Run">🏃 Treadmill Run</option>
         ${customOpts}
-        <option value="__add_custom__">✨ + Add Custom Exercise...</option>
+        <option value="__add_custom__">+ Custom...</option>
       `;
     }
     if (wtInput && (wtInput.value === '135' || parseFloat(wtInput.value) <= 0)) {
@@ -134,17 +134,17 @@ export function updateStepperForGoal(goal) {
     }
   } else {
     // Custom Quest Category
-    if (exLabel) exLabel.textContent = `${goal.category.toUpperCase()} Movement`;
-    if (metricLabel) metricLabel.textContent = `${goal.unit || 'Metric'}`;
-    if (countLabel) countLabel.textContent = 'Sets / Reps';
-    if (routeLabel) routeLabel.textContent = `→ Auto-Routes to ${FlyToast.escape(goal.title)} 🎯`;
+    if (exLabel) exLabel.textContent = 'Exercise';
+    if (metricLabel) metricLabel.textContent = goal.unit || 'Amount';
+    if (countLabel) countLabel.textContent = 'Sets';
+    if (routeLabel) routeLabel.textContent = '';
     if (exSelect) {
       exSelect.innerHTML = `
         <option value="${FlyToast.escape(goal.title)}">${FlyToast.escape(goal.title)}</option>
-        <option value="Custom Movement">⚡ Custom Movement</option>
-        <option value="Rep Count">🔢 Rep Count</option>
+        <option value="Custom Movement">Custom Movement</option>
+        <option value="Rep Count">Rep Count</option>
         ${customOpts}
-        <option value="__add_custom__">✨ + Add Custom Exercise...</option>
+        <option value="__add_custom__">+ Custom...</option>
       `;
     }
     if (metricPresets) {

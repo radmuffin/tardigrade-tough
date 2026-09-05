@@ -58,35 +58,35 @@ export function renderLeaderboard() {
     {
       category: 'weight',
       icon: '🌲',
-      name: 'Weight Hoisted',
-      questSubtitle: 'Pando Aspen Clone Quest',
+      name: 'Weight',
+      questSubtitle: 'Pando',
       unit: wtUnit,
       metricKey: 'total_weight',
       totalVal: totalWeight,
       formatter: (v) => `${formatNumber(v)} ${wtUnit}`,
-      emptyMsg: 'No weight hoisted yet. Be the first to log a set!',
+      emptyMsg: 'No activity logged yet.',
     },
     {
       category: 'distance',
       icon: '🦌',
-      name: 'Distance Traveled',
-      questSubtitle: 'Caribou Migration Quest',
+      name: 'Distance',
+      questSubtitle: 'Caribou',
       unit: distUnit,
       metricKey: 'total_distance',
       totalVal: totalDistance,
       formatter: (v) => `${v.toFixed(1)} ${distUnit}`,
-      emptyMsg: 'No distance recorded yet. Log your run, walk, or cycle!',
+      emptyMsg: 'No activity logged yet.',
     },
     {
       category: 'elevation',
       icon: '🐐',
-      name: 'Elevation Climbed',
-      questSubtitle: 'Mt. Everest Ascent Quest',
+      name: 'Elevation',
+      questSubtitle: 'Everest',
       unit: elevUnit,
       metricKey: 'total_elevation',
       totalVal: totalElevation,
       formatter: (v) => `${formatNumber(v)} ${elevUnit}`,
-      emptyMsg: 'No elevation logged yet. Climb some stairs or hills!',
+      emptyMsg: 'No activity logged yet.',
     },
   ];
 
@@ -104,13 +104,13 @@ export function renderLeaderboard() {
       category: cg.category,
       icon: '🎯',
       name: cg.title,
-      questSubtitle: `Custom Quest Target: ${formatNumber(cg.target_value)} ${cg.unit}`,
+      questSubtitle: `Target: ${formatNumber(cg.target_value)} ${cg.unit}`,
       unit: cg.unit,
       metricKey: null,
       userTotals,
       totalVal: Math.max(cg.current_value || 0, catTotal),
       formatter: (v) => `${formatNumber(v)} ${cg.unit}`,
-      emptyMsg: `No activity logged for ${cg.title} yet. Be the first!`,
+      emptyMsg: 'No activity logged yet.',
     });
   });
 
@@ -130,7 +130,7 @@ export function renderLeaderboard() {
         <span class="lb-category-quest-subtitle">${sec.questSubtitle}</span>
       </div>
       <div class="lb-category-total-badge ${sec.category}">
-        <span class="total-badge-label">Squad Total</span>
+        <span class="total-badge-label">Total</span>
         <span class="total-badge-val">${sec.formatter(sec.totalVal)}</span>
       </div>
     `;

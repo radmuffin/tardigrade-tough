@@ -37,14 +37,10 @@ export function renderFeed({ onReloadState } = {}) {
   });
 
   if (activities.length === 0) {
-    const isMy = state.activityFilter === 'my';
     container.innerHTML = `
       <div class="activity-empty-state">
         <div class="activity-empty-icon">📊</div>
-        <div class="activity-empty-title">No ${isMy ? 'personal' : 'crew'} activity recorded yet</div>
-        <p class="activity-empty-subtitle">
-          ${isMy ? 'Log a set above or import sheet data to see your history.' : 'Be the first in the squad to log a set or import past workouts!'}
-        </p>
+        <div class="activity-empty-title">No activity yet</div>
       </div>
     `;
     return;

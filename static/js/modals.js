@@ -284,7 +284,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       if (userSquads.length === 0) {
         userSquadsList.innerHTML = `
           <div style="text-align: center; padding: 10px; color: var(--text-muted); font-size: 0.78rem;">
-            No squads joined yet. Create your first squad below to invite crew members!
+            No squads yet.
           </div>
         `;
       } else {
@@ -324,10 +324,10 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     if (quickSoloBtn) {
       if (isSolo) {
         quickSoloBtn.style.opacity = '0.55';
-        quickSoloBtn.textContent = '🧘 Solo (Active)';
+        quickSoloBtn.textContent = 'Solo (Active)';
       } else {
         quickSoloBtn.style.opacity = '1';
-        quickSoloBtn.textContent = '🧘 Solo Quest';
+        quickSoloBtn.textContent = 'Solo';
       }
     }
 
@@ -335,7 +335,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     if (isSolo) {
       if (soloSharePrompt) soloSharePrompt.style.display = 'block';
       if (squadShareActiveControls) squadShareActiveControls.style.display = 'none';
-      if (shareSquadStatusBadge) shareSquadStatusBadge.textContent = 'Solo Quest';
+      if (shareSquadStatusBadge) shareSquadStatusBadge.textContent = 'Solo';
       if (promptSquadNameInput) {
         if (!promptSquadNameInput.value) {
           promptSquadNameInput.value = defaultSquadName;
@@ -345,12 +345,12 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     } else {
       if (soloSharePrompt) soloSharePrompt.style.display = 'none';
       if (squadShareActiveControls) squadShareActiveControls.style.display = 'block';
-      if (shareSquadStatusBadge) shareSquadStatusBadge.textContent = 'Active Squad';
+      if (shareSquadStatusBadge) shareSquadStatusBadge.textContent = 'Active';
 
       const roomUrl = `${window.location.origin}/r/${state.roomSlug}`;
       if (shareRoomUrlInput) shareRoomUrlInput.value = roomUrl;
       if (qrImg) qrImg.src = `/api/qr?url=${encodeURIComponent(roomUrl)}`;
-      if (squadQrLabel) squadQrLabel.textContent = `Scan to Join ${currentRoomName}:`;
+      if (squadQrLabel) squadQrLabel.textContent = '';
       if (nativeShareBtn && typeof navigator.share === 'function') {
         nativeShareBtn.style.display = 'block';
       }
@@ -377,13 +377,13 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
 
     if (squadRoleBadge) {
       if (isSolo) {
-        squadRoleBadge.textContent = 'Solo Quest';
+        squadRoleBadge.textContent = 'Solo';
         squadRoleBadge.style.color = 'var(--accent-cyan)';
       } else if (isCreator) {
-        squadRoleBadge.textContent = '👑 You are Squad Creator';
+        squadRoleBadge.textContent = '👑 Creator';
         squadRoleBadge.style.color = 'var(--accent-amber)';
       } else {
-        squadRoleBadge.textContent = 'Crew Member';
+        squadRoleBadge.textContent = 'Member';
         squadRoleBadge.style.color = 'var(--text-muted)';
       }
     }
@@ -398,7 +398,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
 
     if (squadMembersList) {
       if (members.length === 0) {
-        squadMembersList.innerHTML = `<div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.8rem;">No members recorded yet.</div>`;
+        squadMembersList.innerHTML = `<div style="text-align: center; padding: 12px; color: var(--text-muted); font-size: 0.8rem;">No members yet.</div>`;
       } else {
         squadMembersList.innerHTML = members.map(m => {
           const isMe = m.user_token === state.client.token;
@@ -425,7 +425,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
                     ${isMe ? '<span class="member-pill pill-me">You</span>' : ''}
                     ${isThisCreator ? '<span class="member-pill pill-creator">👑 Creator</span>' : ''}
                   </div>
-                  <span class="member-metric-label">${m.total_sets || 0} sets logged</span>
+                  <span class="member-metric-label">${m.total_sets || 0} sets</span>
                 </div>
               </div>
               ${canRemove ? `
@@ -746,10 +746,10 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     nativeShareBtn.style.display = 'block';
     nativeShareBtn.addEventListener('click', async () => {
       try {
-        const squadTitle = state.currentRoomData?.room?.name || 'Tardigrade Tough Squad';
+        const squadTitle = state.currentRoomData?.room?.name || 'Squad';
         await navigator.share({
           title: `${squadTitle} — Tardigrade Tough`,
-          text: `Join our squad "${squadTitle}" on Tardigrade Tough and conquer colossal nature together!`,
+          text: `Join "${squadTitle}" on Tardigrade Tough!`,
           url: shareRoomUrlInput ? shareRoomUrlInput.value : window.location.href,
         });
       } catch (err) {
@@ -764,7 +764,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   if (quickSoloBtn) {
     quickSoloBtn.addEventListener('click', () => {
       if (state.roomSlug.startsWith('solo-')) {
-        FlyToast.info('Already in your private Solo Quest!');
+        FlyToast.info('Already in Solo mode.');
         return;
       }
       try {
@@ -865,7 +865,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       try {
         await navigator.share({
           title: 'Tardigrade Tough — Gym & Beast Progress Tracker',
-          text: 'Track workouts, hoist Utah’s Pando tree, and conquer colossal nature on Tardigrade Tough!',
+          text: 'Collaborative gym progress tracker on Tardigrade Tough',
           url: shareAppUrlInput ? shareAppUrlInput.value : `${window.location.origin}/`,
         });
       } catch (err) {
@@ -894,7 +894,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   if (leaveSquadBtn) {
     leaveSquadBtn.addEventListener('click', async () => {
       const squadName = state.currentRoomData?.room?.name || 'this squad';
-      if (!confirm(`Are you sure you want to leave "${squadName}"? You will return to your own private solo quest.`)) {
+      if (!confirm(`Leave "${squadName}"?`)) {
         return;
       }
       try {
@@ -903,7 +903,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
           try {
             localStorage.removeItem('tardigrade_current_room');
           } catch (_) {}
-          FlyToast.info(`Left "${squadName}". Returned to Solo Quest.`);
+          FlyToast.info(`Left "${squadName}".`);
           const soloSlug = res.data?.solo_slug;
           if (soloSlug) {
             window.location.href = `/r/${soloSlug}`;
@@ -1036,7 +1036,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
         });
 
         if (res && res.success) {
-          FlyToast.success(`✨ Proposed "${title}"! View it on the Squad Wishlist in Trophy Room.`);
+          FlyToast.success(`✨ Proposed "${title}"!`);
           closeWishlistModal();
           if (onReloadState) await onReloadState();
         } else {
@@ -1103,7 +1103,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       const unit = actBtn.dataset.unit;
       const notes = actBtn.dataset.notes || '';
 
-      const confirmMsg = `Promote "${title}" (${formatNumber(targetVal)} ${unit}) to an active mega-quest for this squad?`;
+      const confirmMsg = `Activate "${title}" (${formatNumber(targetVal)} ${unit})?`;
       if (!window.confirm(confirmMsg)) return;
 
       actBtn.disabled = true;
@@ -1118,7 +1118,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
         description: notes || title,
       }).then(res => {
         if (res && res.success) {
-          FlyToast.success(`🚀 "${title}" is now an active mega-quest!`);
+          FlyToast.success(`🚀 "${title}" activated!`);
           if (onReloadState) {
             onReloadState().then(() => {
               if (onSwitchView) onSwitchView('quests');
