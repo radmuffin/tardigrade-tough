@@ -1,0 +1,186 @@
+/* Goal Segmented Control Bar */
+.goal-segmented-control {
+  display: flex;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.goal-segmented-control::-webkit-scrollbar {
+  display: none;
+}
+
+.goal-segment-btn {
+  flex: 1;
+  min-width: max-content;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.goal-segment-btn.active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-active);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Goal Showcase & Canvas Diorama */
+.diorama-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 16px;
+}
+
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  background: #0b1120;
+}
+
+#dioramaCanvas, #trophyCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Canvas Overlay Arrow Buttons */
+.canvas-arrow-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 1.4rem;
+  font-weight: 800;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.canvas-arrow-btn:active {
+  background: var(--accent-green);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.prev-btn {
+  left: 10px;
+}
+
+.next-btn {
+  right: 10px;
+}
+
+.goal-hero-info {
+  padding: 14px 16px;
+}
+
+.goal-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.goal-hero-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.goal-hero-pct {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--accent-green);
+}
+
+.goal-progress-sub {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.goal-hero-desc {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* Quick Cheer Bar */
+.cheer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 6px 10px;
+  margin-bottom: 16px;
+}
+
+.cheer-buttons {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.cheer-btn {
+  flex: 1;
+  max-width: 50px;
+  height: 40px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  font-size: 1.25rem;
+  padding: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform 0.1s ease, background-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.cheer-btn:hover {
+  background: var(--bg-surface);
+}
+
+.cheer-btn:active {
+  transform: scale(1.25);
+  background: var(--accent-green);
+}

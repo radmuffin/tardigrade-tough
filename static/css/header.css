@@ -1,0 +1,140 @@
+/* Clean, Uniform Header */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px 10px;
+  gap: 8px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.brand-icon-svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+.brand-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  white-space: nowrap;
+  background: linear-gradient(135deg, #10b981, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.15;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.header-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.header-chip:active {
+  transform: scale(0.96);
+}
+
+.room-chip {
+  max-width: 140px;
+}
+
+.profile-chip {
+  max-width: none;
+  flex-shrink: 0;
+}
+
+.chip-text {
+  display: inline-block;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+#roomNameLabel {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.profile-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--accent-green);
+  flex-shrink: 0;
+}
+
+#profileNick {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  max-width: none;
+  vertical-align: middle;
+}
+
+@media (max-width: 420px) {
+  .brand-title {
+    font-size: 0.92rem;
+    letter-spacing: -0.3px;
+  }
+  .app-header {
+    padding: 6px 4px 10px;
+    gap: 6px;
+  }
+  .header-actions {
+    gap: 4px;
+  }
+  .header-chip {
+    height: 30px;
+    padding: 0 7px;
+    font-size: 0.74rem;
+    gap: 4px;
+  }
+  .profile-chip {
+    max-width: none;
+  }
+  #profileNick {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+  .main-nav-btn {
+    padding: 6px 2px;
+    min-height: 44px;
+  }
+  .main-nav-btn .nav-icon {
+    font-size: 1.05rem;
+  }
+  .main-nav-btn .nav-label {
+    font-size: 0.68rem;
+  }
+}

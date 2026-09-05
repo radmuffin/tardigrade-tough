@@ -1,0 +1,185 @@
+/* Trophy Room & Wishlists */
+.trophy-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 16px;
+}
+
+.trophy-badge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: rgba(56, 189, 248, 0.15);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.trophy-crown-badge {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+}
+
+.trophy-date {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.trophy-info-box {
+  padding: 14px 16px;
+}
+
+/* Wishlist & Quest Proposals */
+.wishlist-section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+@keyframes wishlistHighlightPulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); border-color: var(--accent-green); }
+  50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.2); border-color: var(--accent-green); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); border-color: var(--border-color); }
+}
+
+.wishlist-section.highlight-pulse {
+  animation: wishlistHighlightPulse 1.6s ease-out;
+}
+
+.wishlist-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color var(--transition-fast);
+}
+
+.wishlist-card:hover {
+  border-color: var(--accent-green);
+}
+
+.wishlist-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wishlist-card-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.wishlist-cat-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.5px;
+}
+
+.wishlist-cat-badge.weight {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+}
+
+.wishlist-cat-badge.distance {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.wishlist-cat-badge.elevation {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-amber);
+}
+
+.wishlist-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.wishlist-target-num {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wishlist-notes-text {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.wishlist-empty-box {
+  text-align: center;
+  padding: 16px 10px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.wishlist-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.wishlist-action-btn {
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.wishlist-action-btn:hover {
+  border-color: var(--accent-green);
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+
+.wishlist-action-btn.gh-issue-link {
+  color: var(--text-secondary);
+}
+
+.wishlist-action-btn.gh-issue-link:hover {
+  color: #60a5fa;
+  border-color: #60a5fa;
+}
+
+.wishlist-action-btn.activate-quest-btn {
+  color: var(--accent-green);
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.wishlist-action-btn.activate-quest-btn:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--accent-green);
+}

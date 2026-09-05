@@ -1,0 +1,162 @@
+/* Connective Navigation Cards & Strips */
+.connective-nav-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px 14px;
+  margin-top: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.connective-nav-title {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.connective-pills-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.connective-pill-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  width: 100%;
+}
+
+.connective-pill-card:active {
+  background: var(--bg-surface);
+  border-color: var(--accent-green);
+  transform: scale(0.96);
+}
+
+.pill-card-icon {
+  font-size: 1.2rem;
+  margin-bottom: 2px;
+}
+
+.pill-card-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.pill-card-sub {
+  font-size: 0.64rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.connective-action-card {
+  background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-elevated) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin-top: 16px;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+}
+
+.connective-action-content h4 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.connective-action-content p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.connective-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.connective-action-buttons .btn {
+  flex: 1;
+  min-height: 42px;
+  min-width: 130px;
+  font-size: 0.82rem;
+  padding: 8px 12px;
+  justify-content: center;
+}
+
+/* App Footer Styling - Pinned to bottom, understated */
+.app-footer {
+  margin-top: auto;
+  padding: 16px 12px max(16px, env(safe-area-inset-bottom, 16px));
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.footer-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 8px 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.status-dot-small {
+  color: var(--accent-green);
+  font-size: 0.7rem;
+}
+
+.footer-text-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  font-family: inherit;
+}
+
+.footer-text-link:hover,
+.footer-text-link:active {
+  color: var(--text-primary);
+}
+
+.footer-sep {
+  color: var(--text-muted);
+  opacity: 0.4;
+  font-size: 0.65rem;
+}
