@@ -1,4 +1,5 @@
 use crate::models::*;
+use crate::store::mappers::*;
 use chrono::{Duration, NaiveDate, Utc};
 use rusqlite::{params, Connection, Result};
 
@@ -216,15 +217,7 @@ pub fn seed_room_default_goals(conn: &Connection, slug: &str, now: &str) -> Resu
 pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
     let mut stmt =
         conn.prepare("SELECT id, slug, name, created_at, creator_token FROM rooms WHERE slug = ?")?;
-    let found = stmt.query_row(params![slug], |row| {
-        Ok(Room {
-            id: row.get(0)?,
-            slug: row.get(1)?,
-            name: row.get(2)?,
-            created_at: row.get(3)?,
-            creator_token: row.get(4)?,
-        })
-    });
+    let found = stmt.query_row(params![slug], map_room);
 
     match found {
         Ok(room) => Ok(room),
@@ -565,23 +558,7 @@ pub fn get_user_squads(conn: &Connection, user_token: &str) -> Result<Vec<UserSq
     "#,
     )?;
 
-    let rows = stmt.query_map(params![tok, tok], |row| {
-        let slug: String = row.get(0)?;
-        let name: String = row.get(1)?;
-        let role: String = row.get(2)?;
-        let is_creator: bool = row.get(3)?;
-        let member_count: i64 = row.get(4)?;
-        let joined_at: String = row.get(5)?;
-
-        Ok(UserSquadSummary {
-            slug,
-            name,
-            role,
-            is_creator,
-            member_count,
-            joined_at,
-        })
-    })?;
+    let rows = stmt.query_map(params![tok, tok], map_user_squad_summary)?;
 
     let mut squads = Vec::new();
     for s in rows {
@@ -811,16 +788,7 @@ pub fn get_user_personal_records(
          LIMIT 10"#,
     )?;
 
-    let rows = stmt.query_map(params![user_token], |row| {
-        Ok(PersonalRecord {
-            exercise_name: row.get(0)?,
-            activity_type: row.get(1)?,
-            max_weight: row.get(2)?,
-            max_reps: row.get(3)?,
-            max_distance: row.get(4)?,
-            max_elevation: row.get(5)?,
-        })
-    })?;
+    let rows = stmt.query_map(params![user_token], map_personal_record)?;
 
     Ok(rows.filter_map(Result::ok).collect())
 }
@@ -840,21 +808,7 @@ pub fn get_goals_for_room(conn: &Connection, room_slug: &str) -> Result<(Vec<Goa
     let mut active = Vec::new();
     let mut completed = Vec::new();
 
-    let rows = stmt.query_map(params![room_slug], |row| {
-        Ok(Goal {
-            id: row.get(0)?,
-            room_slug: row.get(1)?,
-            title: row.get(2)?,
-            category: row.get(3)?,
-            target_value: row.get(4)?,
-            current_value: row.get(5)?,
-            unit: row.get(6)?,
-            theme_key: row.get(7)?,
-            status: row.get(8)?,
-            description: row.get(9)?,
-            created_at: row.get(10)?,
-        })
-    })?;
+    let rows = stmt.query_map(params![room_slug], map_goal)?;
 
     for g in rows.flatten() {
         if g.status == "completed" {
@@ -1166,29 +1120,7 @@ pub fn get_recent_activities(
            FROM activities WHERE room_slug = ? ORDER BY id DESC LIMIT ?"#,
     )?;
 
-    let rows = stmt.query_map(params![room_slug, limit], |row| {
-        Ok(Activity {
-            id: row.get(0)?,
-            room_slug: row.get(1)?,
-            user_token: row.get(2)?,
-            user_nickname: row.get(3)?,
-            user_avatar_color: row.get(4)?,
-            user_avatar_emoji: row.get(5)?,
-            goal_id: row.get(6)?,
-            activity_type: row.get(7)?,
-            exercise_name: row.get(8)?,
-            sets: row.get(9)?,
-            reps: row.get(10)?,
-            weight_per_rep: row.get(11)?,
-            distance_val: row.get(12)?,
-            elevation_val: row.get(13)?,
-            total_metric: row.get(14)?,
-            notes: row.get(15)?,
-            created_at: row.get(16)?,
-            parent_activity_id: row.get(17)?,
-            is_pr: row.get::<_, i32>(18)? == 1,
-        })
-    })?;
+    let rows = stmt.query_map(params![room_slug, limit], map_activity)?;
 
     Ok(rows.filter_map(Result::ok).collect())
 }
@@ -1377,20 +1309,7 @@ pub fn get_wishlists(conn: &Connection, room_slug: &str) -> Result<Vec<GoalWishl
            ORDER BY gw.id DESC"#,
     )?;
 
-    let rows = stmt.query_map(params![room_slug], |r| {
-        Ok(GoalWishlistItem {
-            id: r.get(0)?,
-            user_token: r.get(1)?,
-            user_nickname: r.get(2)?,
-            room_slug: r.get(3)?,
-            title: r.get(4)?,
-            category: r.get(5)?,
-            target_value: r.get(6)?,
-            unit: r.get(7)?,
-            notes: r.get(8)?,
-            created_at: r.get(9)?,
-        })
-    })?;
+    let rows = stmt.query_map(params![room_slug], map_wishlist_item)?;
 
     Ok(rows.filter_map(Result::ok).collect())
 }

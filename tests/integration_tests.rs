@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use tardigrade_tough::db::*;
 use tardigrade_tough::models::*;
 use tardigrade_tough::routes::{create_routes, format_github_issue_body, AppState};
+use tardigrade_tough::store::*;
 
 fn setup_test_db() -> Connection {
     let mut conn = Connection::open_in_memory().expect("in-memory db failed");
@@ -475,7 +476,7 @@ async fn test_api_info_endpoint() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = fly_common::server::FlyServer::builder()
         .with_app_info("Tardigrade Tough", "0.1.0")
         .nest("/api", create_routes(state))
@@ -494,7 +495,7 @@ async fn test_api_room_state_endpoint() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let server = TestServer::new(app).unwrap();
 
@@ -515,7 +516,7 @@ async fn test_api_activity_logging_and_batch_endpoints() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let server = TestServer::new(app).unwrap();
 
@@ -579,7 +580,7 @@ async fn test_api_qr_generation_endpoint() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let server = TestServer::new(app).unwrap();
 
@@ -594,7 +595,7 @@ async fn test_api_cheer_endpoint() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let server = TestServer::new(app).unwrap();
 
@@ -829,7 +830,7 @@ async fn test_new_visitor_gets_isolated_solo_room_not_main() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let mut server = TestServer::new(app).unwrap();
 
@@ -906,7 +907,7 @@ async fn test_squad_membership_view_everyone_leave_and_creator_remove_member() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let mut server = TestServer::new(app).unwrap();
 
@@ -1067,7 +1068,7 @@ async fn test_create_squad_defaults_to_username_and_lists_user_squads() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let server = TestServer::new(app).unwrap();
 
@@ -1149,7 +1150,7 @@ async fn test_avatar_emoji_customization_and_activity_propagation() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let server = TestServer::new(app).unwrap();
     let user_token = "token_emoji_gorilla_99";
@@ -1216,7 +1217,7 @@ async fn test_solo_activity_auto_forwards_to_user_squads_and_cascades_delete() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let server = TestServer::new(app).unwrap();
 
@@ -1616,7 +1617,7 @@ async fn test_create_custom_quest_with_theme_palette() {
     let conn = setup_test_db();
     let db = Arc::new(Mutex::new(conn));
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState { db, hub };
+    let state = AppState::new(db, hub);
     let app = create_routes(state);
     let server = TestServer::new(app).unwrap();
 
@@ -1668,4 +1669,79 @@ async fn test_create_custom_quest_with_theme_palette() {
         .expect("found custom volcano goal");
     assert_eq!(found["theme_key"], "volcano");
     assert_eq!(found["target_value"], 75000.0);
+}
+
+#[tokio::test]
+async fn test_data_store_trait_abstraction() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let store: Arc<dyn DataStore> = Arc::new(SqliteStore::new(db.clone()));
+
+    // 1. Test RoomStore trait method
+    let room = store
+        .get_or_create_room("abstract-squad")
+        .expect("get_or_create_room");
+    assert_eq!(room.slug, "abstract-squad");
+
+    // 2. Test UserStore trait method
+    let user = store
+        .get_or_create_user("token_abstract_user", &room.slug)
+        .expect("get_or_create_user");
+    assert_eq!(user.user_token, "token_abstract_user");
+
+    // 3. Test GoalStore trait method
+    let goal = store
+        .create_custom_goal(
+            &room.slug,
+            &CreateGoalRequest {
+                room_slug: Some(room.slug.clone()),
+                title: "Titan Pullups".to_string(),
+                category: "weight".to_string(),
+                target_value: 10000.0,
+                unit: "lbs".to_string(),
+                theme_key: Some("canopy".to_string()),
+                description: Some("Custom canopy pullup quest".to_string()),
+            },
+        )
+        .expect("create_custom_goal");
+    assert_eq!(goal.title, "Titan Pullups");
+    assert_eq!(goal.theme_key, "canopy");
+
+    // 4. Test ActivityStore trait method
+    let activity = store
+        .log_single_activity(
+            &user,
+            &room.slug,
+            &LogActivityRequest {
+                room_slug: Some(room.slug.clone()),
+                user_nickname: Some(user.nickname.clone()),
+                user_avatar_color: None,
+                user_avatar_emoji: None,
+                activity_type: "weight".to_string(),
+                exercise_name: Some("Pullup".to_string()),
+                sets: Some(5),
+                reps: Some(10),
+                weight_per_rep: Some(200.0),
+                distance_val: None,
+                elevation_val: None,
+                total_metric: None,
+                notes: None,
+                goal_id: Some(goal.id),
+                created_at: None,
+                parent_activity_id: None,
+                is_pr: None,
+            },
+        )
+        .expect("log_single_activity");
+    assert_eq!(activity.total_metric, 10000.0);
+    assert!(activity.is_pr);
+
+    // 5. Verify goal completion through GoalStore
+    let (_active, completed) = store.get_goals_for_room(&room.slug).expect("get_goals");
+    let completed_titan = completed
+        .iter()
+        .find(|g| g.id == goal.id)
+        .expect("Titan Pullups should be completed");
+    assert_eq!(completed_titan.current_value, 10000.0);
+    assert_eq!(completed_titan.status, "completed");
 }

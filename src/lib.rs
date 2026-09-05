@@ -1,6 +1,7 @@
 pub mod db;
 pub mod models;
 pub mod routes;
+pub mod store;
 
 use db::init_db;
 use fly_common::prelude::*;
@@ -20,10 +21,7 @@ pub fn build_app_state(db_path: &str) -> AppResult<(AppState, DbConn)> {
     }
 
     let hub = Arc::new(BroadcastHub::new(256));
-    let state = AppState {
-        db: db.clone(),
-        hub,
-    };
+    let state = AppState::new(db.clone(), hub);
 
     Ok((state, db))
 }
