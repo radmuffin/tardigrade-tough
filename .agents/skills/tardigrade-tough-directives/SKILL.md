@@ -71,4 +71,7 @@ Always apply these guidelines when designing interfaces, writing code, refactori
    - Lint: `cargo clippy --all-targets` (must be 0 warnings)
    - Test: `cargo test --all-targets`
    - Affected runner: `npm run test:affected`
-3. **Autonomous Delivery**: Once checks pass cleanly, commit and push to `origin/main` immediately without waiting for extra confirmation. Deploy to Fly.io via `fly deploy` and verify `HTTP 200 OK`.
+3. **Autonomous Delivery & CI Deploy Pipeline**:
+   - Once local affected checks pass cleanly, commit and push immediately to `origin/main` without pausing for extra confirmation.
+   - GitHub Actions CI (`.github/workflows/ci.yml`) runs all formatting, linters, backend integration tests, and Playwright E2E tests, and then autonomously deploys to Fly.io.
+   - Do NOT run manual local `fly deploy` for commits pushed to `main` to ensure CI executes before deployment and eliminate redundant double deploys.

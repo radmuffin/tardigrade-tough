@@ -141,6 +141,8 @@ To maximize agent throughput, prevent CPU/memory starvation, and eliminate test 
 > 4. **Autonomous Commit & Push (No Waiting)**:
 >    Once `npm run test:affected` passes cleanly, **commit and push immediately to `origin/main`**.
 >    Do not pause or wait for extra confirmation to push when completing requested fixes or features.
+>    GitHub Actions CI (`.github/workflows/ci.yml`) will run all linting, backend tests, and Playwright E2E tests, and then handle the automated deployment to Fly.io.
+>    **Do NOT run manual `fly deploy` locally** to prevent redundant deploys and ensure CI runs before any deployment.
 
 ---
 
@@ -153,4 +155,4 @@ To maximize agent throughput, prevent CPU/memory starvation, and eliminate test 
 - **🎨 Check code formatting**: `cargo fmt --all -- --check`
 - **🪝 Install git pre-push hook**: `npm run setup:hooks`
 - **🏃 Run local server**: `cargo run`
-- **🚢 Deploy to Fly.io**: `fly deploy`
+- **🚢 Automated Deploy**: Handled by GitHub Actions on push to `main`

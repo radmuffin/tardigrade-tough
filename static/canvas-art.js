@@ -38,6 +38,10 @@ export class PixelDiorama {
     this.ctx.imageSmoothingEnabled = false;
   }
 
+  isLightMode() {
+    return typeof document !== 'undefined' && document.documentElement?.getAttribute('data-theme') === 'light';
+  }
+
   resize() {
     const rect = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
@@ -184,26 +188,37 @@ export class PixelDiorama {
   /* 🌲 PANDO ASPEN GROVE (AUTHENTIC SHEET-INSPIRED PIXEL ART)                 */
   /* ========================================================================= */
   renderPando(ctx, w, h) {
-    // 1. Crisp Autumn Sky (Deep twilight to amber glow)
+    const isLight = this.isLightMode();
+
+    // 1. Crisp Autumn Sky
     const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-    skyGrad.addColorStop(0, '#0f172a');
-    skyGrad.addColorStop(0.5, '#1e293b');
-    skyGrad.addColorStop(0.85, '#334155');
-    skyGrad.addColorStop(1, '#475569');
+    if (isLight) {
+      // Radiant Utah Autumn Daylight (Cerulean to golden horizon haze)
+      skyGrad.addColorStop(0, '#38bdf8');
+      skyGrad.addColorStop(0.45, '#7dd3fc');
+      skyGrad.addColorStop(0.8, '#bae6fd');
+      skyGrad.addColorStop(1, '#fef08a');
+    } else {
+      // Deep twilight to amber glow
+      skyGrad.addColorStop(0, '#0f172a');
+      skyGrad.addColorStop(0.5, '#1e293b');
+      skyGrad.addColorStop(0.85, '#334155');
+      skyGrad.addColorStop(1, '#475569');
+    }
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, w, h);
 
     // 2. Distant Utah Mountain Silhouettes (Fishlake Plateau)
-    ctx.fillStyle = '#18182e';
+    ctx.fillStyle = isLight ? '#64748b' : '#18182e';
     this.drawPixelMountain(ctx, -20, h * 0.72, w * 0.55, h * 0.35);
-    ctx.fillStyle = '#22223d';
+    ctx.fillStyle = isLight ? '#94a3b8' : '#22223d';
     this.drawPixelMountain(ctx, w * 0.35, h * 0.74, w * 0.7, h * 0.32);
 
     // 3. Forest Floor & Rich Autumn Soil
     const groundY = h * 0.78;
-    ctx.fillStyle = '#451a03'; // deep soil
+    ctx.fillStyle = isLight ? '#78350f' : '#451a03'; // deep soil
     ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.fillStyle = '#78350f'; // top soil
+    ctx.fillStyle = isLight ? '#b45309' : '#78350f'; // top soil
     ctx.fillRect(0, groundY, w, 6);
 
     // Fallen golden leaf carpet (multiplies as weight increases)
@@ -331,25 +346,38 @@ export class PixelDiorama {
   /* 🐐 MT. EVEREST GOAT ASCENT RENDERER                                      */
   /* ========================================================================= */
   renderEverest(ctx, w, h) {
+    const isLight = this.isLightMode();
+
     const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-    skyGrad.addColorStop(0, '#0b132b');
-    skyGrad.addColorStop(0.45, '#1c2541');
-    skyGrad.addColorStop(0.8, '#3a506b');
-    skyGrad.addColorStop(1, '#64748b');
+    if (isLight) {
+      // Brilliant high-altitude Himalayan daylight
+      skyGrad.addColorStop(0, '#0284c7');
+      skyGrad.addColorStop(0.5, '#38bdf8');
+      skyGrad.addColorStop(0.85, '#7dd3fc');
+      skyGrad.addColorStop(1, '#e0f2fe');
+    } else {
+      // Midnight alpine sky
+      skyGrad.addColorStop(0, '#0b132b');
+      skyGrad.addColorStop(0.45, '#1c2541');
+      skyGrad.addColorStop(0.8, '#3a506b');
+      skyGrad.addColorStop(1, '#64748b');
+    }
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // High Altitude Stars / Alpine Twinkle
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    for (let i = 0; i < 15; i++) {
-      const sx = ((i * 47 + 13) % w);
-      const sy = ((i * 29 + 7) % Math.floor(h * 0.35));
-      const sSize = (i % 3 === 0) ? 2 : 1;
-      ctx.fillRect(sx, sy, sSize, sSize);
+    // High Altitude Stars (night sky only)
+    if (!isLight) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      for (let i = 0; i < 15; i++) {
+        const sx = ((i * 47 + 13) % w);
+        const sy = ((i * 29 + 7) % Math.floor(h * 0.35));
+        const sSize = (i % 3 === 0) ? 2 : 1;
+        ctx.fillRect(sx, sy, sSize, sSize);
+      }
     }
 
-    // Floating Clouds
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+    // Floating Clouds (crisp white in daylight, translucent in night sky)
+    ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.88)' : 'rgba(255, 255, 255, 0.22)';
     const cloudX1 = ((this.time * 12) % (w + 140)) - 70;
     ctx.fillRect(cloudX1, h * 0.22, 90, 16);
     ctx.fillRect(cloudX1 + 22, h * 0.18, 55, 12);
@@ -365,7 +393,7 @@ export class PixelDiorama {
     const baseY2 = h * 0.95;
 
     // Distant jagged background peaks
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = isLight ? '#64748b' : '#111827';
     this.drawPixelMountain(ctx, -10, h * 0.85, w * 0.45, h * 0.45);
     this.drawPixelMountain(ctx, w * 0.25, h * 0.88, w * 0.6, h * 0.40);
 
@@ -510,18 +538,33 @@ export class PixelDiorama {
   /* 🦌 CARIBOU TUNDRA MIGRATION RENDERER                                     */
   /* ========================================================================= */
   renderCaribou(ctx, w, h) {
+    const isLight = this.isLightMode();
+
     const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-    skyGrad.addColorStop(0, '#042f2e');
-    skyGrad.addColorStop(0.35, '#064e3b');
-    skyGrad.addColorStop(0.7, '#0f766e');
-    skyGrad.addColorStop(1, '#134e4a');
+    if (isLight) {
+      // Expansive Arctic tundra daylight
+      skyGrad.addColorStop(0, '#0284c7');
+      skyGrad.addColorStop(0.4, '#38bdf8');
+      skyGrad.addColorStop(0.75, '#ccfbf1');
+      skyGrad.addColorStop(1, '#f0fdfa');
+    } else {
+      // Polar twilight
+      skyGrad.addColorStop(0, '#042f2e');
+      skyGrad.addColorStop(0.35, '#064e3b');
+      skyGrad.addColorStop(0.7, '#0f766e');
+      skyGrad.addColorStop(1, '#134e4a');
+    }
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Shimmering Aurora Borealis Waves
+    // Northern sky phenomenon: Aurora in dark mode, ethereal Arctic cloud ribbons in light mode
     for (let i = 0; i < 3; i++) {
-      const alpha = 0.18 - i * 0.04;
-      ctx.fillStyle = i === 1 ? `rgba(94, 234, 212, ${alpha})` : `rgba(52, 211, 153, ${alpha})`;
+      const alpha = isLight ? (0.35 - i * 0.08) : (0.18 - i * 0.04);
+      if (isLight) {
+        ctx.fillStyle = i === 1 ? `rgba(204, 251, 241, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
+      } else {
+        ctx.fillStyle = i === 1 ? `rgba(94, 234, 212, ${alpha})` : `rgba(52, 211, 153, ${alpha})`;
+      }
       ctx.beginPath();
       const waveOffset = this.time * 0.8 + i * 1.5;
       ctx.moveTo(0, h * 0.12 + Math.sin(waveOffset) * 12);
@@ -541,14 +584,14 @@ export class PixelDiorama {
     }
 
     // Distant Snow Peaks
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = isLight ? '#64748b' : '#0f172a';
     this.drawPixelMountain(ctx, -10, h * 0.65, w * 0.45, h * 0.36);
     this.drawPixelMountain(ctx, w * 0.35, h * 0.68, w * 0.65, h * 0.34);
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = isLight ? '#94a3b8' : '#1e293b';
     this.drawPixelMountain(ctx, w * 0.15, h * 0.70, w * 0.4, h * 0.26);
 
     // Snow caps on distant peaks
-    ctx.fillStyle = '#e2e8f0';
+    ctx.fillStyle = isLight ? '#f8fafc' : '#e2e8f0';
     ctx.fillRect(w * 0.11, h * 0.32, 10, 4);
     ctx.fillRect(w * 0.66, h * 0.36, 12, 4);
 
@@ -679,15 +722,25 @@ export class PixelDiorama {
   /* 🐋 THE BLUE WHALE (TROPHY ROOM / CONQUERED)                              */
   /* ========================================================================= */
   renderWhale(ctx, w, h) {
+    const isLight = this.isLightMode();
+
     const oceanGrad = ctx.createLinearGradient(0, 0, 0, h);
-    oceanGrad.addColorStop(0, '#0284c7');
-    oceanGrad.addColorStop(0.5, '#0369a1');
-    oceanGrad.addColorStop(1, '#082f49');
+    if (isLight) {
+      // Sun-drenched tropical pelagic waters
+      oceanGrad.addColorStop(0, '#38bdf8');
+      oceanGrad.addColorStop(0.5, '#0ea5e9');
+      oceanGrad.addColorStop(1, '#0284c7');
+    } else {
+      // Deep ocean abyss
+      oceanGrad.addColorStop(0, '#0284c7');
+      oceanGrad.addColorStop(0.5, '#0369a1');
+      oceanGrad.addColorStop(1, '#082f49');
+    }
     ctx.fillStyle = oceanGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Sun rays
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    // Sun rays (vibrant shimmering in daylight)
+    ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.08)';
     for (let i = 0; i < 4; i++) {
       ctx.beginPath();
       const rx = (i * 90) + Math.sin(this.time + i) * 15;
@@ -737,19 +790,30 @@ export class PixelDiorama {
   /* 🌋 VOLCANO QUEST (MAGMA CRIMSON & OBSIDIAN PIXEL ART)                     */
   /* ========================================================================= */
   renderVolcano(ctx, w, h) {
-    // 1. Ash night sky gradient
+    const isLight = this.isLightMode();
+
+    // 1. Volcanic sky gradient
     const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-    skyGrad.addColorStop(0, '#09090b');
-    skyGrad.addColorStop(0.5, '#1c1917');
-    skyGrad.addColorStop(0.85, '#431407');
-    skyGrad.addColorStop(1, '#7f1d1d');
+    if (isLight) {
+      // Daylight fiery amber/peach haze
+      skyGrad.addColorStop(0, '#fdba74');
+      skyGrad.addColorStop(0.45, '#fed7aa');
+      skyGrad.addColorStop(0.8, '#f87171');
+      skyGrad.addColorStop(1, '#ef4444');
+    } else {
+      // Ash night sky gradient
+      skyGrad.addColorStop(0, '#09090b');
+      skyGrad.addColorStop(0.5, '#1c1917');
+      skyGrad.addColorStop(0.85, '#431407');
+      skyGrad.addColorStop(1, '#7f1d1d');
+    }
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, w, h);
 
     // 2. Distant volcanic ridges
-    ctx.fillStyle = '#18181b';
+    ctx.fillStyle = isLight ? '#78716c' : '#18181b';
     this.drawPixelMountain(ctx, -w * 0.1, h * 0.8, w * 0.6, h * 0.4);
-    ctx.fillStyle = '#27272a';
+    ctx.fillStyle = isLight ? '#a8a29e' : '#27272a';
     this.drawPixelMountain(ctx, w * 0.45, h * 0.82, w * 0.65, h * 0.38);
 
     // 3. Central Volcano Peak
@@ -824,16 +888,26 @@ export class PixelDiorama {
   /* 🌴 CANOPY QUEST (EMERALD RAINFOREST PIXEL ART)                            */
   /* ========================================================================= */
   renderCanopy(ctx, w, h) {
+    const isLight = this.isLightMode();
+
     // 1. Rainforest Mist Sky
     const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-    skyGrad.addColorStop(0, '#022c22');
-    skyGrad.addColorStop(0.6, '#064e3b');
-    skyGrad.addColorStop(1, '#065f46');
+    if (isLight) {
+      // Sunlit tropical rainforest morning
+      skyGrad.addColorStop(0, '#6ee7b7');
+      skyGrad.addColorStop(0.55, '#a7f3d0');
+      skyGrad.addColorStop(1, '#d1fae5');
+    } else {
+      // Nighttime rainforest mist
+      skyGrad.addColorStop(0, '#022c22');
+      skyGrad.addColorStop(0.6, '#064e3b');
+      skyGrad.addColorStop(1, '#065f46');
+    }
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, w, h);
 
     // 2. Sunbeams filtering through fog
-    ctx.fillStyle = 'rgba(52, 211, 153, 0.06)';
+    ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.22)' : 'rgba(52, 211, 153, 0.06)';
     for (let i = 0; i < 4; i++) {
       ctx.beginPath();
       ctx.moveTo(w * 0.15 + i * 80, 0);
@@ -923,11 +997,13 @@ export class PixelDiorama {
   /* 🐻 AUTHENTIC PIXEL TARDIGRADE (WATER BEAR)                               */
   /* ========================================================================= */
   renderCustom(ctx, w, h) {
-    ctx.fillStyle = '#0f172a';
+    const isLight = this.isLightMode();
+
+    ctx.fillStyle = isLight ? '#f8fafc' : '#0f172a';
     ctx.fillRect(0, 0, w, h);
 
     // Retro grid
-    ctx.strokeStyle = 'rgba(52, 211, 153, 0.12)';
+    ctx.strokeStyle = isLight ? 'rgba(16, 185, 129, 0.25)' : 'rgba(52, 211, 153, 0.12)';
     ctx.lineWidth = 1;
     for (let x = 0; x < w; x += 20) {
       ctx.beginPath();
@@ -1006,8 +1082,9 @@ export class PixelDiorama {
   }
 
   renderOverlayStats(ctx, w, h) {
+    const isLight = this.isLightMode();
     const barH = 5;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillStyle = isLight ? 'rgba(0, 0, 0, 0.12)' : 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, h - barH, w, barH);
 
     ctx.fillStyle = '#10b981';
