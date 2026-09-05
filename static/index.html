@@ -585,11 +585,13 @@
             <input id="nickInput" type="text" class="form-input" placeholder="Your Name or Call-sign" maxlength="24">
           </div>
 
-          <!-- Avatar Emoji Selection (Exactly One Emoji) -->
+          <!-- Avatar Emoji & Initials Selection -->
           <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label class="form-label" style="margin-bottom: 0;">Avatar Emoji (One Emoji)</label>
-              <span style="font-size: 0.74rem; color: var(--text-muted);">Pick or paste 1 emoji</span>
+              <label class="form-label" style="margin-bottom: 0;">Avatar Emoji</label>
+              <button id="toggleInitialsBtn" type="button" class="btn-initials-toggle" title="Switch to initials mode">
+                <span>🔤</span> <span id="initialsToggleText">Use Initials</span>
+              </button>
             </div>
             <div id="emojiPickerGrid" class="emoji-picker-grid">
               <button type="button" class="emoji-chip selected" data-emoji="🐻" title="Bear">🐻</button>
@@ -609,9 +611,14 @@
               <button type="button" class="emoji-chip" data-emoji="🥊" title="Boxer">🥊</button>
               <button type="button" class="emoji-chip" data-emoji="🔥" title="Fire Spirit">🔥</button>
             </div>
-            <div class="custom-emoji-row" style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
-              <input id="customEmojiInput" type="text" class="form-input" placeholder="Or type any single emoji (e.g. 🦊)" maxlength="4" style="font-size: 1.05rem; text-align: center; flex: 1;">
-              <button id="clearEmojiBtn" class="btn btn-secondary" style="font-size: 0.74rem; white-space: nowrap; padding: 7px 10px;" type="button" title="Use nickname initial only">Initials Only</button>
+            <!-- Revealed Initials / Custom Input (hidden by default) -->
+            <div id="initialsContainer" class="initials-reveal-box" style="display: none; margin-top: 10px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label for="initialsInput" style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap; margin-bottom: 0;">Initials:</label>
+                <input id="initialsInput" type="text" class="form-input" placeholder="AB" maxlength="4" style="width: 72px; text-align: center; font-weight: 700; font-size: 1.05rem; padding: 6px 8px; text-transform: uppercase;">
+                <span style="flex: 1; font-size: 0.72rem; color: var(--text-muted); line-height: 1.2;">1–3 letters or custom icon</span>
+                <button id="resetInitialsBtn" class="btn btn-secondary" style="font-size: 0.72rem; padding: 6px 10px; white-space: nowrap;" type="button" title="Reset to nickname initial">Default</button>
+              </div>
             </div>
           </div>
 

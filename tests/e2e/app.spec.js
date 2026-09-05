@@ -291,6 +291,31 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#profileDot')).toHaveClass(/has-emoji/);
   });
 
+  test('supports toggling and customizing initials mode in profile hub', async ({ page }) => {
+    // Open profile hub
+    await page.click('#profileBtn');
+    await expect(page.locator('#profileModal')).toBeVisible();
+
+    // Initials container should be hidden initially when an emoji is active
+    await expect(page.locator('#initialsContainer')).not.toBeVisible();
+
+    // Click toggle initials button to reveal initials input
+    await page.click('#toggleInitialsBtn');
+    await expect(page.locator('#initialsContainer')).toBeVisible();
+    await expect(page.locator('#toggleInitialsBtn')).toHaveClass(/active/);
+
+    // Enter custom initials
+    await page.fill('#initialsInput', 'TT');
+    await expect(page.locator('#avatarPreviewEmoji')).toHaveText('TT');
+
+    // Save profile
+    await page.click('#saveProfileBtn');
+    await expect(page.locator('#profileModal')).not.toBeVisible();
+
+    // Verify header profile chip reflects new initials
+    await expect(page.locator('#profileDot')).toHaveText('TT');
+  });
+
   test('navigates seamlessly using connective action cards across screens', async ({ page }) => {
     // 1. From Quests, navigate to Leaderboard
     await expect(page.locator('#viewQuests')).toBeVisible();

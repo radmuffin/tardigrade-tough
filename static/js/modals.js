@@ -141,25 +141,22 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   let selectedColor = '#10b981';
   let selectedEmoji = '🐻';
 
-  const customEmojiInput = document.getElementById('customEmojiInput');
-  const clearEmojiBtn = document.getElementById('clearEmojiBtn');
   const avatarPreviewChip = document.getElementById('avatarPreviewChip');
   const avatarPreviewEmoji = document.getElementById('avatarPreviewEmoji');
   const avatarPreviewName = document.getElementById('avatarPreviewName');
+  const toggleInitialsBtn = document.getElementById('toggleInitialsBtn');
+  const initialsToggleText = document.getElementById('initialsToggleText');
+  const initialsContainer = document.getElementById('initialsContainer');
+  const initialsInput = document.getElementById('initialsInput');
+  const resetInitialsBtn = document.getElementById('resetInitialsBtn');
 
-  function extractSingleEmoji(input) {
-    if (!input) return '';
-    const trimmed = input.trim();
-    if (!trimmed) return '';
-    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
-      const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-      const segments = Array.from(segmenter.segment(trimmed));
-      if (segments.length > 0) {
-        return segments[0].segment;
-      }
+  function getDefaultNicknameInitial() {
+    const nick = (nickInput ? nickInput.value.trim() : '') || 'Athlete';
+    const parts = nick.split(/[\s_\-]+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
     }
-    const chars = Array.from(trimmed);
-    return chars.slice(0, 2).join('');
+    return nick.substring(0, 1).toUpperCase();
   }
 
   function updateAvatarPreview() {
@@ -171,24 +168,46 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       avatarPreviewName.textContent = currentNick;
     }
     if (avatarPreviewEmoji) {
-      if (selectedEmoji) {
-        avatarPreviewEmoji.textContent = selectedEmoji;
-      } else {
-        avatarPreviewEmoji.textContent = currentNick.substring(0, 1).toUpperCase();
-      }
+      const displayContent = selectedEmoji || getDefaultNicknameInitial();
+      avatarPreviewEmoji.textContent = displayContent;
+      const isEmoji = /\p{Extended_Pictographic}/u.test(displayContent);
+      avatarPreviewEmoji.style.fontSize = isEmoji
+        ? '1.7rem'
+        : displayContent.length > 2
+        ? '1.1rem'
+        : displayContent.length === 2
+        ? '1.3rem'
+        : '1.5rem';
+      avatarPreviewEmoji.style.fontWeight = isEmoji ? 'normal' : '700';
     }
   }
 
   function syncEmojiSelectionUI() {
+    const isChipEmoji = Array.from(document.querySelectorAll('.emoji-chip')).some(
+      chip => chip.dataset.emoji === selectedEmoji
+    );
+
     document.querySelectorAll('.emoji-chip').forEach(chip => {
       chip.classList.toggle('selected', chip.dataset.emoji === selectedEmoji);
     });
-    if (customEmojiInput) {
-      const matchesChip = Array.from(document.querySelectorAll('.emoji-chip')).some(
-        c => c.dataset.emoji === selectedEmoji
-      );
-      customEmojiInput.value = matchesChip ? '' : selectedEmoji;
+
+    if (isChipEmoji) {
+      if (initialsContainer) initialsContainer.style.display = 'none';
+      if (toggleInitialsBtn) {
+        toggleInitialsBtn.classList.remove('active');
+        if (initialsToggleText) initialsToggleText.textContent = 'Use Initials';
+      }
+    } else {
+      if (initialsContainer) initialsContainer.style.display = 'block';
+      if (initialsInput) {
+        initialsInput.value = selectedEmoji || getDefaultNicknameInitial();
+      }
+      if (toggleInitialsBtn) {
+        toggleInitialsBtn.classList.add('active');
+        if (initialsToggleText) initialsToggleText.textContent = 'Initials Active';
+      }
     }
+
     updateAvatarPreview();
   }
 
@@ -388,11 +407,17 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
           const avatarColor = FlyToast.escape(m.avatar_color || '#10b981');
           const nick = FlyToast.escape(m.nickname || 'Athlete');
 
+          const memberInitial = (m.nickname || 'L').substring(0, 1).toUpperCase();
+          const displayAvatar = m.avatar_emoji || memberInitial;
+          const isEmoji = /\p{Extended_Pictographic}/u.test(displayAvatar);
+          const avatarFontSize = isEmoji ? '12px' : displayAvatar.length > 2 ? '7.5px' : '9px';
+          const avatarFontWeight = isEmoji ? 'normal' : '700';
+
           return `
             <div class="squad-member-item" data-token="${FlyToast.escape(m.user_token)}">
               <div class="member-left">
-                <span class="member-dot" style="background-color: ${avatarColor}; font-size: ${m.avatar_emoji ? '12px' : '9px'};">
-                  ${m.avatar_emoji ? FlyToast.escape(m.avatar_emoji) : nick.substring(0, 1).toUpperCase()}
+                <span class="member-dot" style="background-color: ${avatarColor}; font-size: ${avatarFontSize}; font-weight: ${avatarFontWeight};">
+                  ${FlyToast.escape(displayAvatar)}
                 </span>
                 <div class="member-info">
                   <div class="member-name-row">
@@ -572,28 +597,69 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     });
   });
 
-  if (customEmojiInput) {
-    customEmojiInput.addEventListener('input', () => {
-      const single = extractSingleEmoji(customEmojiInput.value);
-      selectedEmoji = single;
-      document.querySelectorAll('.emoji-chip').forEach(chip => {
-        chip.classList.toggle('selected', chip.dataset.emoji === selectedEmoji);
-      });
+  if (toggleInitialsBtn) {
+    toggleInitialsBtn.addEventListener('click', () => {
+      const isCurrentlyOpen = initialsContainer && initialsContainer.style.display !== 'none';
+      if (isCurrentlyOpen) {
+        // Toggle closed: revert to Bear emoji if no chip was selected
+        const anyChipSelected = Array.from(document.querySelectorAll('.emoji-chip')).some(c => c.classList.contains('selected'));
+        if (!anyChipSelected) {
+          selectedEmoji = '🐻';
+        }
+        syncEmojiSelectionUI();
+      } else {
+        // Reveal initials input mode
+        if (initialsContainer) initialsContainer.style.display = 'block';
+        if (toggleInitialsBtn) toggleInitialsBtn.classList.add('active');
+        if (initialsToggleText) initialsToggleText.textContent = 'Initials Active';
+        document.querySelectorAll('.emoji-chip').forEach(c => c.classList.remove('selected'));
+        if (initialsInput) {
+          if (!initialsInput.value.trim()) {
+            initialsInput.value = getDefaultNicknameInitial();
+          }
+          selectedEmoji = initialsInput.value.trim();
+          initialsInput.focus();
+          initialsInput.select();
+        }
+        updateAvatarPreview();
+      }
+    });
+  }
+
+  if (initialsInput) {
+    initialsInput.addEventListener('input', () => {
+      const val = initialsInput.value.trim();
+      selectedEmoji = val || getDefaultNicknameInitial();
+      document.querySelectorAll('.emoji-chip').forEach(c => c.classList.remove('selected'));
+      if (toggleInitialsBtn) toggleInitialsBtn.classList.add('active');
+      if (initialsToggleText) initialsToggleText.textContent = 'Initials Active';
       updateAvatarPreview();
     });
   }
 
-  if (clearEmojiBtn) {
-    clearEmojiBtn.addEventListener('click', () => {
-      selectedEmoji = '';
-      if (customEmojiInput) customEmojiInput.value = '';
+  if (resetInitialsBtn) {
+    resetInitialsBtn.addEventListener('click', () => {
+      const defaultInitial = getDefaultNicknameInitial();
+      if (initialsInput) initialsInput.value = defaultInitial;
+      selectedEmoji = defaultInitial;
       document.querySelectorAll('.emoji-chip').forEach(c => c.classList.remove('selected'));
+      if (toggleInitialsBtn) toggleInitialsBtn.classList.add('active');
+      if (initialsToggleText) initialsToggleText.textContent = 'Initials Active';
       updateAvatarPreview();
     });
   }
 
   if (nickInput) {
     nickInput.addEventListener('input', () => {
+      const isChipEmoji = Array.from(document.querySelectorAll('.emoji-chip')).some(
+        chip => chip.dataset.emoji === selectedEmoji
+      );
+      if (!isChipEmoji && initialsContainer && initialsContainer.style.display !== 'none') {
+        if (!initialsInput || !initialsInput.value.trim()) {
+          selectedEmoji = getDefaultNicknameInitial();
+          if (initialsInput) initialsInput.value = selectedEmoji;
+        }
+      }
       updateAvatarPreview();
     });
   }
@@ -602,11 +668,15 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   if (saveProfileBtn) {
     saveProfileBtn.addEventListener('click', async () => {
       const nick = nickInput ? nickInput.value.trim() : '';
+      let emojiToSend = selectedEmoji;
+      if (initialsContainer && initialsContainer.style.display !== 'none' && initialsInput) {
+        emojiToSend = initialsInput.value.trim() || getDefaultNicknameInitial();
+      }
       try {
         const res = await state.client.post('/users/profile', {
           nickname: nick,
           avatar_color: selectedColor,
-          avatar_emoji: selectedEmoji,
+          avatar_emoji: emojiToSend,
         });
         if (res && res.success) {
           closeHub();

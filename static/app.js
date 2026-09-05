@@ -109,9 +109,13 @@ export function renderAll() {
   const pDot = document.getElementById('profileDot');
   if (pDot) {
     pDot.style.backgroundColor = state.currentRoomData.user_profile.avatar_color;
-    if (state.currentRoomData.user_profile.avatar_emoji) {
-      pDot.textContent = state.currentRoomData.user_profile.avatar_emoji;
+    const avatarContent = state.currentRoomData.user_profile.avatar_emoji || (state.currentRoomData.user_profile.nickname || 'A').substring(0, 1).toUpperCase();
+    if (avatarContent) {
+      pDot.textContent = avatarContent;
       pDot.classList.add('has-emoji');
+      const isEmoji = /\p{Extended_Pictographic}/u.test(avatarContent);
+      pDot.style.fontSize = isEmoji ? '13px' : avatarContent.length > 2 ? '8.5px' : '10px';
+      pDot.style.fontWeight = isEmoji ? 'normal' : '700';
     } else {
       pDot.textContent = '';
       pDot.classList.remove('has-emoji');

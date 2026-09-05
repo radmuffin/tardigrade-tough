@@ -74,10 +74,15 @@ export function renderFeed({ onReloadState } = {}) {
           ? `${act.exercise_name} (${act.sets}x${act.reps})`
           : `${act.exercise_name}`);
 
+    const displayAvatar = act.user_avatar_emoji || (act.user_nickname || 'L').substring(0, 1).toUpperCase();
+    const isEmoji = /\p{Extended_Pictographic}/u.test(displayAvatar);
+    const avatarFontSize = isEmoji ? '1.1rem' : displayAvatar.length > 2 ? '0.74rem' : displayAvatar.length === 2 ? '0.82rem' : '0.9rem';
+    const avatarFontWeight = isEmoji ? 'normal' : '700';
+
     item.innerHTML = `
       <div class="activity-left">
-        <div class="user-avatar" style="background-color: ${act.user_avatar_color}; width: 32px; height: 32px; font-size: ${act.user_avatar_emoji ? '1.1rem' : '0.85rem'};">
-          ${act.user_avatar_emoji ? FlyToast.escape(act.user_avatar_emoji) : (act.user_nickname || 'L').substring(0, 1).toUpperCase()}
+        <div class="user-avatar" style="background-color: ${act.user_avatar_color}; width: 32px; height: 32px; font-size: ${avatarFontSize}; font-weight: ${avatarFontWeight};">
+          ${FlyToast.escape(displayAvatar)}
         </div>
         <div class="activity-text">
           <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)} (${detailStr})</span></div>

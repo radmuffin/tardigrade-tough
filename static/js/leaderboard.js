@@ -170,6 +170,11 @@ export function renderLeaderboard() {
         const val = sec.metricKey ? (member[sec.metricKey] || 0) : (member.custom_val || 0);
         const pct = sec.totalVal > 0 ? ((val / sec.totalVal) * 100).toFixed(1) : '0.0';
 
+        const displayAvatar = member.avatar_emoji || (member.nickname || 'L').substring(0, 1).toUpperCase();
+        const isEmoji = /\p{Extended_Pictographic}/u.test(displayAvatar);
+        const avatarFontSize = isEmoji ? '1.15rem' : displayAvatar.length > 2 ? '0.75rem' : displayAvatar.length === 2 ? '0.84rem' : '0.95rem';
+        const avatarFontWeight = isEmoji ? 'normal' : '700';
+
         const card = document.createElement('div');
         card.className = `leaderboard-card ${isMe ? 'is-me' : ''}`;
 
@@ -177,8 +182,8 @@ export function renderLeaderboard() {
           <div class="lb-card-top-row">
             <div class="leaderboard-user">
               <span class="lb-rank-badge ${rankClass}">${rankBadge}</span>
-              <div class="user-avatar" style="background-color: ${member.avatar_color || '#10b981'}; font-size: ${member.avatar_emoji ? '1.15rem' : '0.9rem'};">
-                ${member.avatar_emoji ? FlyToast.escape(member.avatar_emoji) : (member.nickname || 'L').substring(0, 1).toUpperCase()}
+              <div class="user-avatar" style="background-color: ${member.avatar_color || '#10b981'}; font-size: ${avatarFontSize}; font-weight: ${avatarFontWeight};">
+                ${FlyToast.escape(displayAvatar)}
               </div>
               <div class="user-details">
                 <div class="user-name-row">
