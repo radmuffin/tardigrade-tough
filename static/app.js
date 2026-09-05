@@ -126,6 +126,23 @@ export function renderAll() {
   const pBtn = document.getElementById('profileBtn');
   if (pBtn) pBtn.title = `${state.currentRoomData.user_profile.nickname} · ${state.currentRoomData.room.name} (Settings)`;
 
+  // Streak & Tardigrade State Badge
+  const streakBadge = document.getElementById('streakBadge');
+  const streakIcon = document.getElementById('streakIcon');
+  const streakCountText = document.getElementById('streakCountText');
+  if (streakBadge && state.currentRoomData.user_profile) {
+    const streakDays = state.currentRoomData.user_profile.streak_days || 0;
+    const tardigradeState = state.currentRoomData.user_profile.tardigrade_state || 'cryptobiosis';
+    if (streakCountText) {
+      streakCountText.textContent = `${streakDays}d`;
+    }
+    if (streakIcon) {
+      streakIcon.textContent = streakDays > 0 ? '🔥' : '💤';
+    }
+    streakBadge.title = `${streakDays}d streak · ${tardigradeState === 'hydrated' ? 'Hydrated' : 'Cryptobiosis'}`;
+    streakBadge.classList.toggle('zero', streakDays === 0);
+  }
+
   // Leaderboard Squad Banner
   const lbSquadName = document.getElementById('lbSquadNameLabel');
   if (lbSquadName && state.currentRoomData.room) {

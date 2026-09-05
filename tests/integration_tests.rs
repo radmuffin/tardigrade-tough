@@ -80,6 +80,7 @@ fn test_multi_room_isolation_and_cross_contamination() {
             goal_id: None,
             created_at: None,
             parent_activity_id: None,
+            is_pr: None,
         },
     )
     .expect("log user a");
@@ -126,6 +127,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             goal_id: None,
             created_at: None,
             parent_activity_id: None,
+            is_pr: None,
         },
     )
     .expect("weight log");
@@ -151,6 +153,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             goal_id: None,
             created_at: None,
             parent_activity_id: None,
+            is_pr: None,
         },
     )
     .expect("distance log");
@@ -176,6 +179,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             goal_id: None,
             created_at: None,
             parent_activity_id: None,
+            is_pr: None,
         },
     )
     .expect("elevation log");
@@ -223,6 +227,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             goal_id: None,
             created_at: None,
             parent_activity_id: None,
+            is_pr: None,
         },
         LogActivityRequest {
             room_slug: Some("main".to_string()),
@@ -241,6 +246,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             goal_id: None,
             created_at: None,
             parent_activity_id: None,
+            is_pr: None,
         },
     ];
 
@@ -280,6 +286,7 @@ fn test_activity_deletion_and_rollback() {
             goal_id: None,
             created_at: None,
             parent_activity_id: None,
+            is_pr: None,
         },
     )
     .expect("log");
@@ -431,6 +438,7 @@ fn test_goal_completion_transition() {
             goal_id: None,
             created_at: None,
             parent_activity_id: None,
+            is_pr: None,
         },
     )
     .expect("trek log");
@@ -800,6 +808,7 @@ fn test_custom_quest_category_proposal_promotion_and_activity_logging() {
             goal_id: None,
             created_at: None,
             parent_activity_id: None,
+            is_pr: None,
         },
     )
     .expect("log pushups");
@@ -1461,4 +1470,202 @@ fn test_init_db_migrates_existing_activities_table_without_parent_activity_id() 
         .query_row("SELECT COUNT(*) FROM activities", [], |r| r.get(0))
         .expect("count");
     assert_eq!(count, 0);
+}
+
+#[test]
+fn test_personal_record_detection_and_query() {
+    let mut conn = setup_test_db();
+    let user = get_or_create_user(&conn, "token_pr_tester", "test-squad").expect("user");
+
+    // 1. First bench press @ 225 lbs -> is a PR!
+    let act1 = log_single_activity(
+        &mut conn,
+        &user,
+        "test-squad",
+        &LogActivityRequest {
+            room_slug: Some("test-squad".to_string()),
+            user_nickname: Some("Tester".to_string()),
+            user_avatar_color: None,
+            user_avatar_emoji: None,
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Bench Press".to_string()),
+            sets: Some(3),
+            reps: Some(5),
+            weight_per_rep: Some(225.0),
+            distance_val: None,
+            elevation_val: None,
+            total_metric: None,
+            notes: None,
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+        },
+    )
+    .expect("act1");
+    assert!(act1.is_pr, "First bench press should be marked PR");
+
+    // 2. Second bench press @ 205 lbs -> NOT a PR!
+    let act2 = log_single_activity(
+        &mut conn,
+        &user,
+        "test-squad",
+        &LogActivityRequest {
+            room_slug: Some("test-squad".to_string()),
+            user_nickname: Some("Tester".to_string()),
+            user_avatar_color: None,
+            user_avatar_emoji: None,
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Bench Press".to_string()),
+            sets: Some(3),
+            reps: Some(5),
+            weight_per_rep: Some(205.0),
+            distance_val: None,
+            elevation_val: None,
+            total_metric: None,
+            notes: None,
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+        },
+    )
+    .expect("act2");
+    assert!(!act2.is_pr, "Lower weight should not be a PR");
+
+    // 3. Third bench press @ 245 lbs -> New PR!
+    let act3 = log_single_activity(
+        &mut conn,
+        &user,
+        "test-squad",
+        &LogActivityRequest {
+            room_slug: Some("test-squad".to_string()),
+            user_nickname: Some("Tester".to_string()),
+            user_avatar_color: None,
+            user_avatar_emoji: None,
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Bench Press".to_string()),
+            sets: Some(1),
+            reps: Some(1),
+            weight_per_rep: Some(245.0),
+            distance_val: None,
+            elevation_val: None,
+            total_metric: None,
+            notes: None,
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+        },
+    )
+    .expect("act3");
+    assert!(act3.is_pr, "Heavier weight should be marked PR");
+
+    // 4. Query personal records
+    let prs = get_user_personal_records(&conn, "token_pr_tester").expect("get prs");
+    assert_eq!(prs.len(), 1);
+    assert_eq!(prs[0].exercise_name, "Bench Press");
+    assert_eq!(prs[0].max_weight, 245.0);
+}
+
+#[test]
+fn test_user_streak_and_tardigrade_state() {
+    let mut conn = setup_test_db();
+    let user = get_or_create_user(&conn, "token_streak_tester", "streak-squad").expect("user");
+
+    // Initially no activities -> streak 0, cryptobiosis
+    let (streak, state) = calculate_user_streak(&conn, "token_streak_tester");
+    assert_eq!(streak, 0);
+    assert_eq!(state, "cryptobiosis");
+
+    // Log activity today
+    let today = chrono::Utc::now().to_rfc3339();
+    log_single_activity(
+        &mut conn,
+        &user,
+        "streak-squad",
+        &LogActivityRequest {
+            room_slug: Some("streak-squad".to_string()),
+            user_nickname: Some("StreakGuy".to_string()),
+            user_avatar_color: None,
+            user_avatar_emoji: None,
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Squat".to_string()),
+            sets: Some(3),
+            reps: Some(5),
+            weight_per_rep: Some(315.0),
+            distance_val: None,
+            elevation_val: None,
+            total_metric: None,
+            notes: None,
+            goal_id: None,
+            created_at: Some(today),
+            parent_activity_id: None,
+            is_pr: None,
+        },
+    )
+    .expect("log today");
+
+    let (streak_after, state_after) = calculate_user_streak(&conn, "token_streak_tester");
+    assert_eq!(streak_after, 1);
+    assert_eq!(state_after, "hydrated");
+}
+
+#[tokio::test]
+async fn test_create_custom_quest_with_theme_palette() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState { db, hub };
+    let app = create_routes(state);
+    let server = TestServer::new(app).unwrap();
+
+    let user_token = "token_quest_creator";
+
+    // 1. Create room
+    let create_res = server
+        .post("/room/create")
+        .add_header("X-Device-Token", user_token)
+        .json(&serde_json::json!({
+            "name": "Magma Squad"
+        }))
+        .await;
+    assert_eq!(create_res.status_code(), axum::http::StatusCode::OK);
+    let create_json: serde_json::Value = create_res.json();
+    let room_slug = create_json["data"]["slug"].as_str().unwrap();
+
+    // 2. Create custom quest with 'volcano' theme
+    let goal_res = server
+        .post("/goals")
+        .add_header("X-Device-Token", user_token)
+        .json(&serde_json::json!({
+            "room_slug": room_slug,
+            "title": "Mount Doom",
+            "category": "weight",
+            "target_value": 75000.0,
+            "unit": "lbs",
+            "theme_key": "volcano",
+            "description": "Lifting into the fires of Mount Doom"
+        }))
+        .await;
+    assert_eq!(goal_res.status_code(), axum::http::StatusCode::CREATED);
+    let goal_json: serde_json::Value = goal_res.json();
+    assert_eq!(goal_json["data"]["theme_key"], "volcano");
+    assert_eq!(goal_json["data"]["title"], "Mount Doom");
+    let goal_id = goal_json["data"]["id"].as_i64().unwrap();
+
+    // 3. Verify it shows up in GET /room/:slug active_goals
+    let room_res = server
+        .get(&format!("/room/{}", room_slug))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    assert_eq!(room_res.status_code(), axum::http::StatusCode::OK);
+    let room_json: serde_json::Value = room_res.json();
+    let active_goals = room_json["data"]["active_goals"].as_array().unwrap();
+    let found = active_goals
+        .iter()
+        .find(|g| g["id"] == goal_id)
+        .expect("found custom volcano goal");
+    assert_eq!(found["theme_key"], "volcano");
+    assert_eq!(found["target_value"], 75000.0);
 }

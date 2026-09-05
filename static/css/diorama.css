@@ -1,4 +1,10 @@
-/* Goal Segmented Control Bar */
+.goal-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .goal-segmented-control {
   display: flex;
   background: var(--bg-surface);
@@ -6,10 +12,43 @@
   border-radius: var(--radius-md);
   padding: 4px;
   gap: 4px;
-  margin-bottom: 12px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  flex: 1;
+}
+
+.btn-new-quest {
+  height: 42px;
+  width: 42px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-new-quest:hover {
+  background: var(--bg-elevated);
+  color: var(--accent-green);
+  border-color: var(--accent-green);
+}
+
+.btn-new-quest:active {
+  transform: scale(0.95);
+}
+
+.quest-theme-btn.active {
+  background: var(--accent-green) !important;
+  color: #ffffff !important;
+  border-color: var(--accent-green) !important;
 }
 .goal-segmented-control::-webkit-scrollbar {
   display: none;

@@ -1,5 +1,5 @@
 use crate::models::*;
-use chrono::Utc;
+use chrono::{Duration, NaiveDate, Utc};
 use rusqlite::{params, Connection, Result};
 
 pub fn init_db(conn: &mut Connection) -> Result<()> {
@@ -109,6 +109,18 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
     // Ensure index on parent_activity_id exists
     let _ = conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_activities_parent ON activities(parent_activity_id)",
+        [],
+    );
+
+    // Ensure is_pr column exists in activities
+    let _ = conn.execute(
+        "ALTER TABLE activities ADD COLUMN is_pr INTEGER NOT NULL DEFAULT 0",
+        [],
+    );
+
+    // Ensure index on user exercise exists for rapid PR lookups
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_activities_user_exercise ON activities(user_token, exercise_name)",
         [],
     );
 
@@ -607,11 +619,67 @@ pub fn generate_solo_room_slug(token: &str) -> String {
     format!("solo-{:06x}", hash & 0xFFFFFF)
 }
 
+pub fn calculate_user_streak(conn: &Connection, user_token: &str) -> (i32, String) {
+    let mut stmt = match conn.prepare(
+        "SELECT DISTINCT SUBSTR(created_at, 1, 10) as day
+         FROM activities
+         WHERE user_token = ?
+         ORDER BY day DESC",
+    ) {
+        Ok(s) => s,
+        Err(_) => return (0, "cryptobiosis".to_string()),
+    };
+
+    let rows: Vec<String> = stmt
+        .query_map(params![user_token], |r| r.get(0))
+        .map(|mapped| mapped.filter_map(Result::ok).collect())
+        .unwrap_or_default();
+
+    if rows.is_empty() {
+        return (0, "cryptobiosis".to_string());
+    }
+
+    let today = Utc::now().date_naive();
+    let yesterday = today - Duration::days(1);
+
+    let most_recent = match NaiveDate::parse_from_str(&rows[0], "%Y-%m-%d") {
+        Ok(d) => d,
+        Err(_) => return (0, "cryptobiosis".to_string()),
+    };
+
+    if most_recent < yesterday {
+        return (0, "cryptobiosis".to_string());
+    }
+
+    let mut streak = 0;
+    let mut expected_date = most_recent;
+
+    for date_str in &rows {
+        if let Ok(d) = NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
+            if d == expected_date {
+                streak += 1;
+                expected_date -= Duration::days(1);
+            } else if d < expected_date {
+                break;
+            }
+        }
+    }
+
+    let state = if streak > 0 {
+        "hydrated".to_string()
+    } else {
+        "cryptobiosis".to_string()
+    };
+
+    (streak, state)
+}
+
 pub fn get_or_create_user(
     conn: &Connection,
     token: &str,
     default_room: &str,
 ) -> Result<UserProfile> {
+    let (streak_days, tardigrade_state) = calculate_user_streak(conn, token);
     let mut stmt = conn.prepare(
         "SELECT user_token, nickname, avatar_color, COALESCE(avatar_emoji, ''), current_room_slug, updated_at FROM users WHERE user_token = ?",
     )?;
@@ -623,6 +691,8 @@ pub fn get_or_create_user(
             avatar_emoji: row.get(3)?,
             current_room_slug: row.get(4)?,
             updated_at: row.get(5)?,
+            streak_days,
+            tardigrade_state: tardigrade_state.clone(),
         })
     });
 
@@ -668,6 +738,8 @@ pub fn get_or_create_user(
                 avatar_emoji,
                 current_room_slug: default_room.to_string(),
                 updated_at: now,
+                streak_days,
+                tardigrade_state,
             })
         }
         Err(e) => Err(e),
@@ -706,6 +778,8 @@ pub fn update_user_profile(
         params![nickname, color, emoji, room, now, token],
     )?;
 
+    let (streak_days, tardigrade_state) = calculate_user_streak(conn, token);
+
     Ok(UserProfile {
         user_token: token.to_string(),
         nickname: nickname.to_string(),
@@ -713,7 +787,42 @@ pub fn update_user_profile(
         avatar_emoji: emoji,
         current_room_slug: room.to_string(),
         updated_at: now,
+        streak_days,
+        tardigrade_state,
     })
+}
+
+pub fn get_user_personal_records(
+    conn: &Connection,
+    user_token: &str,
+) -> Result<Vec<PersonalRecord>> {
+    let mut stmt = conn.prepare(
+        r#"SELECT 
+            exercise_name,
+            activity_type,
+            MAX(weight_per_rep) AS max_weight,
+            MAX(reps) AS max_reps,
+            MAX(distance_val) AS max_distance,
+            MAX(elevation_val) AS max_elevation
+         FROM activities
+         WHERE user_token = ?
+         GROUP BY LOWER(TRIM(exercise_name)), activity_type
+         ORDER BY MAX(weight_per_rep) DESC, MAX(distance_val) DESC, MAX(elevation_val) DESC
+         LIMIT 10"#,
+    )?;
+
+    let rows = stmt.query_map(params![user_token], |row| {
+        Ok(PersonalRecord {
+            exercise_name: row.get(0)?,
+            activity_type: row.get(1)?,
+            max_weight: row.get(2)?,
+            max_reps: row.get(3)?,
+            max_distance: row.get(4)?,
+            max_elevation: row.get(5)?,
+        })
+    })?;
+
+    Ok(rows.filter_map(Result::ok).collect())
 }
 
 pub fn get_goals_for_room(conn: &Connection, room_slug: &str) -> Result<(Vec<Goal>, Vec<Goal>)> {
@@ -859,10 +968,60 @@ pub fn log_single_activity(
     let notes = req.notes.as_deref().unwrap_or("").trim();
     let parent_activity_id = req.parent_activity_id;
 
+    let is_pr = if let Some(explicit_pr) = req.is_pr {
+        explicit_pr
+    } else {
+        let clean_exercise = exercise_name.trim().to_lowercase();
+        match activity_type.as_str() {
+            "weight" => {
+                if weight_per_rep > 0.0 {
+                    let prev_max: f64 = tx
+                        .query_row(
+                            "SELECT COALESCE(MAX(weight_per_rep), 0.0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ?",
+                            params![user.user_token, clean_exercise],
+                            |r| r.get(0),
+                        )
+                        .unwrap_or(0.0);
+                    weight_per_rep > prev_max
+                } else {
+                    let prev_max_reps: i32 = tx
+                        .query_row(
+                            "SELECT COALESCE(MAX(reps), 0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ? AND weight_per_rep = 0.0",
+                            params![user.user_token, clean_exercise],
+                            |r| r.get(0),
+                        )
+                        .unwrap_or(0);
+                    reps > prev_max_reps
+                }
+            }
+            "distance" if distance_val > 0.0 => {
+                let prev_max: f64 = tx
+                    .query_row(
+                        "SELECT COALESCE(MAX(distance_val), 0.0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ?",
+                        params![user.user_token, clean_exercise],
+                        |r| r.get(0),
+                    )
+                    .unwrap_or(0.0);
+                distance_val > prev_max
+            }
+            "elevation" if elevation_val > 0.0 => {
+                let prev_max: f64 = tx
+                    .query_row(
+                        "SELECT COALESCE(MAX(elevation_val), 0.0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ?",
+                        params![user.user_token, clean_exercise],
+                        |r| r.get(0),
+                    )
+                    .unwrap_or(0.0);
+                elevation_val > prev_max
+            }
+            _ => false,
+        }
+    };
+
     tx.execute(
         r#"INSERT INTO activities 
-           (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+           (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, is_pr)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
         params![
             room_slug,
             user.user_token,
@@ -880,7 +1039,8 @@ pub fn log_single_activity(
             total_metric,
             notes,
             activity_time,
-            parent_activity_id
+            parent_activity_id,
+            if is_pr { 1 } else { 0 }
         ],
     )?;
 
@@ -906,6 +1066,7 @@ pub fn log_single_activity(
         notes: notes.to_string(),
         created_at: activity_time.to_string(),
         parent_activity_id,
+        is_pr,
     })
 }
 
@@ -1001,7 +1162,7 @@ pub fn get_recent_activities(
     limit: i64,
 ) -> Result<Vec<Activity>> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id
+        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0)
            FROM activities WHERE room_slug = ? ORDER BY id DESC LIMIT ?"#,
     )?;
 
@@ -1025,6 +1186,7 @@ pub fn get_recent_activities(
             notes: row.get(15)?,
             created_at: row.get(16)?,
             parent_activity_id: row.get(17)?,
+            is_pr: row.get::<_, i32>(18)? == 1,
         })
     })?;
 

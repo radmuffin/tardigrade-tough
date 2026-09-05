@@ -79,7 +79,7 @@ export function renderFeed({ onReloadState } = {}) {
           ${FlyToast.escape(displayAvatar)}
         </div>
         <div class="activity-text">
-          <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)}${detailStr ? ` (${detailStr})` : ''}</span></div>
+          <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)}${detailStr ? ` (${detailStr})` : ''}</span>${act.is_pr ? ' <span class="pr-badge">👑 PR</span>' : ''}</div>
           <div class="activity-meta">${act.notes ? `"${FlyToast.escape(act.notes)}" • ` : ''}${formatTimeAgo(act.created_at)}</div>
         </div>
       </div>

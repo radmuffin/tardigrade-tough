@@ -538,6 +538,37 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
         opt.classList.toggle('selected', opt.dataset.color === selectedColor);
       });
       syncEmojiSelectionUI();
+
+      // Populate Streak & Tardigrade State preview
+      const streakPreview = document.getElementById('avatarPreviewStreak');
+      if (streakPreview) {
+        const sDays = state.currentRoomData.user_profile.streak_days || 0;
+        const sState = state.currentRoomData.user_profile.tardigrade_state || 'cryptobiosis';
+        streakPreview.textContent = `${sDays > 0 ? '🔥' : '💤'} ${sDays}d streak · ${sState === 'hydrated' ? 'Hydrated' : 'Cryptobiosis'}`;
+      }
+
+      // Populate PRs in profile
+      const prsCard = document.getElementById('profilePrsCard');
+      const prsList = document.getElementById('profilePrsList');
+      if (prsCard && prsList) {
+        const prs = state.currentRoomData.personal_records || [];
+        if (prs.length > 0) {
+          prsCard.style.display = 'block';
+          prsList.innerHTML = prs.map(pr => {
+            let valStr = '';
+            if (pr.activity_type === 'weight') {
+              valStr = pr.max_weight > 0 ? `${formatNumber(pr.max_weight)} lbs` : `${pr.max_reps} reps`;
+            } else if (pr.activity_type === 'distance') {
+              valStr = `${pr.max_distance} mi`;
+            } else if (pr.activity_type === 'elevation') {
+              valStr = `${formatNumber(pr.max_elevation)} ft`;
+            }
+            return `<span class="pr-pill"><span>${FlyToast.escape(pr.exercise_name)}:</span> <strong>${valStr}</strong></span>`;
+          }).join('');
+        } else {
+          prsCard.style.display = 'none';
+        }
+      }
     }
     populateSquadHubFields();
     if (profileModal) profileModal.classList.remove('hidden');
@@ -555,6 +586,9 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
 
   const profileBtn = document.getElementById('profileBtn');
   if (profileBtn) profileBtn.addEventListener('click', () => openHub('profile'));
+
+  const streakBadge = document.getElementById('streakBadge');
+  if (streakBadge) streakBadge.addEventListener('click', () => openHub('profile'));
 
   const roomBtn = document.getElementById('roomBtn');
   if (roomBtn) roomBtn.addEventListener('click', () => openHub('squad'));
@@ -1139,14 +1173,127 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     }
   });
 
+  // Create Quest Modal
+  const createQuestModal = document.getElementById('createQuestModal');
+  const openNewQuestBtn = document.getElementById('openNewQuestBtn');
+  const closeCreateQuestBtn = document.getElementById('closeCreateQuestBtn');
+  const cancelCreateQuestBtn = document.getElementById('cancelCreateQuestBtn');
+  const submitCreateQuestBtn = document.getElementById('submitCreateQuestBtn');
+  const questTitleInput = document.getElementById('questTitleInput');
+  const questCategorySelect = document.getElementById('questCategorySelect');
+  const questUnitSelect = document.getElementById('questUnitSelect');
+  const questTargetInput = document.getElementById('questTargetInput');
+  const questThemePicker = document.getElementById('questThemePicker');
+
+  let selectedQuestTheme = 'volcano';
+
+  if (questThemePicker) {
+    questThemePicker.querySelectorAll('.quest-theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        questThemePicker.querySelectorAll('.quest-theme-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedQuestTheme = btn.dataset.theme || 'volcano';
+      });
+    });
+  }
+
+  if (questCategorySelect && questUnitSelect) {
+    questCategorySelect.addEventListener('change', () => {
+      const cat = questCategorySelect.value;
+      if (cat === 'weight') questUnitSelect.value = 'lbs';
+      else if (cat === 'distance') questUnitSelect.value = 'mi';
+      else if (cat === 'elevation') questUnitSelect.value = 'ft';
+    });
+  }
+
+  function openCreateQuestModal() {
+    if (!createQuestModal) return;
+    createQuestModal.classList.remove('hidden');
+    if (questTitleInput) {
+      questTitleInput.value = '';
+      setTimeout(() => questTitleInput.focus(), 80);
+    }
+    if (questTargetInput) questTargetInput.value = '';
+    if (questCategorySelect) questCategorySelect.value = 'weight';
+    if (questUnitSelect) questUnitSelect.value = 'lbs';
+    selectedQuestTheme = 'volcano';
+    if (questThemePicker) {
+      questThemePicker.querySelectorAll('.quest-theme-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.theme === 'volcano');
+      });
+    }
+  }
+
+  function closeCreateQuestModal() {
+    if (createQuestModal) createQuestModal.classList.add('hidden');
+  }
+
+  if (openNewQuestBtn) {
+    openNewQuestBtn.addEventListener('click', openCreateQuestModal);
+  }
+  if (closeCreateQuestBtn) {
+    closeCreateQuestBtn.addEventListener('click', closeCreateQuestModal);
+  }
+  if (cancelCreateQuestBtn) {
+    cancelCreateQuestBtn.addEventListener('click', closeCreateQuestModal);
+  }
+
+  if (submitCreateQuestBtn) {
+    submitCreateQuestBtn.addEventListener('click', async () => {
+      const title = questTitleInput ? questTitleInput.value.trim() : '';
+      const category = questCategorySelect ? questCategorySelect.value : 'weight';
+      const unit = questUnitSelect ? questUnitSelect.value : 'lbs';
+      const targetVal = questTargetInput ? parseFloat(questTargetInput.value) : 0;
+
+      if (!title) {
+        FlyToast.error('Please enter a quest title');
+        return;
+      }
+      if (isNaN(targetVal) || targetVal <= 0) {
+        FlyToast.error('Target value must be greater than 0');
+        return;
+      }
+
+      submitCreateQuestBtn.disabled = true;
+      submitCreateQuestBtn.textContent = 'Creating...';
+      try {
+        const res = await state.client.post('/goals', {
+          room_slug: state.roomSlug,
+          title,
+          category,
+          target_value: targetVal,
+          unit,
+          theme_key: selectedQuestTheme,
+          description: title,
+        });
+        if (res && res.success) {
+          FlyToast.success(`✨ Quest "${title}" created!`);
+          closeCreateQuestModal();
+          if (onReloadState) await onReloadState();
+          if (onSwitchView) onSwitchView('quests');
+          else if (window.switchView) window.switchView('quests');
+        } else {
+          FlyToast.error(res?.error || 'Failed to create quest');
+        }
+      } catch (err) {
+        console.error('Create quest error:', err);
+        FlyToast.error('Failed to create quest');
+      } finally {
+        submitCreateQuestBtn.disabled = false;
+        submitCreateQuestBtn.textContent = 'Create';
+      }
+    });
+  }
+
   // Close modals when clicking backdrop outside modal-box
-  [profileModal, roomModal, aboutModal, wishlistModal].forEach(modal => {
+  [profileModal, roomModal, aboutModal, wishlistModal, createQuestModal].forEach(modal => {
     if (!modal) return;
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         closeHub();
         if (aboutModal) aboutModal.classList.add('hidden');
         if (wishlistModal) wishlistModal.classList.add('hidden');
+        if (createQuestModal) createQuestModal.classList.add('hidden');
       }
     });
   });

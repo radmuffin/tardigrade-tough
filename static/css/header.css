@@ -69,6 +69,42 @@
   flex-shrink: 0;
 }
 
+.streak-chip {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: var(--accent-amber);
+}
+
+.streak-chip:hover {
+  background: rgba(245, 158, 11, 0.22);
+}
+
+.streak-chip.zero {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.offline-chip {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  cursor: default;
+}
+
+.offline-chip.pending {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: var(--accent-amber);
+}
+
+.offline-chip.synced {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: var(--accent-green);
+  transition: all 0.3s ease;
+}
+
 .chip-text {
   display: inline-block;
   white-space: nowrap;

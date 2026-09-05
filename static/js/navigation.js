@@ -253,6 +253,14 @@ export function renderGoalShowcase({ onUpdateStepper } = {}) {
   // Highlight active segment button & sync ARIA tabs
   const segControl = document.getElementById('goalSegmentedControl');
   if (segControl) {
+    const activeGoalIds = new Set(activeGoals.map(g => g.id));
+    segControl.querySelectorAll('.goal-segment-btn[id^="goalTab_"]').forEach(customBtn => {
+      const gid = parseInt(customBtn.id.replace('goalTab_', ''), 10);
+      if (!activeGoalIds.has(gid)) {
+        customBtn.remove();
+      }
+    });
+
     activeGoals.forEach((g, idx) => {
       let btnId = '';
       if (g.theme_key === 'pando') btnId = 'goalTabPando';
@@ -267,11 +275,13 @@ export function renderGoalShowcase({ onUpdateStepper } = {}) {
         btn.className = 'goal-segment-btn';
         btn.setAttribute('role', 'tab');
         btn.dataset.theme = g.theme_key;
-        const emoji = g.theme_key === 'whale' ? '🐋' : (g.category === 'weight' ? '🌲' : g.category === 'distance' ? '🦌' : g.category === 'elevation' ? '🐐' : '🎯');
+        btn.dataset.goalId = g.id;
+        const emoji = g.theme_key === 'volcano' ? '🌋' : g.theme_key === 'canopy' ? '🌴' : g.theme_key === 'whale' ? '🐋' : (g.category === 'weight' ? '🌲' : g.category === 'distance' ? '🦌' : g.category === 'elevation' ? '🐐' : '🎯');
         const shortName = g.title.split(' ')[0];
         btn.innerHTML = `<span class="segment-emoji">${emoji}</span> <span class="segment-title">${FlyToast.escape(shortName)}</span>`;
         btn.addEventListener('click', () => {
-          state.selectedGoalIndex = idx;
+          const targetIdx = (state.currentRoomData?.active_goals || []).findIndex(goal => goal.id === g.id);
+          state.selectedGoalIndex = targetIdx !== -1 ? targetIdx : 0;
           renderGoalShowcase({ onUpdateStepper });
         });
         segControl.appendChild(btn);

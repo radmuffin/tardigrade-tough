@@ -115,6 +115,41 @@
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
+.pr-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+.pr-pill {
+  font-size: 0.76rem;
+  font-weight: 700;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pr-pill strong {
+  color: var(--accent-amber);
+  font-family: var(--font-mono);
+}
+
 .delete-btn {
   background: transparent;
   border: none;

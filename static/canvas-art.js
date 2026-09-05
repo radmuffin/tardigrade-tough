@@ -121,6 +121,12 @@ export class PixelDiorama {
       case 'whale':
         const blues = ['#38bdf8', '#0284c7', '#bae6fd', '#06b6d4'];
         return blues[Math.floor(Math.random() * blues.length)];
+      case 'volcano':
+        const fires = ['#ef4444', '#dc2626', '#f97316', '#fbbf24', '#7f1d1d'];
+        return fires[Math.floor(Math.random() * fires.length)];
+      case 'canopy':
+        const emeralds = ['#10b981', '#059669', '#34d399', '#047857', '#6ee7b7'];
+        return emeralds[Math.floor(Math.random() * emeralds.length)];
       default:
         return '#10b981';
     }
@@ -158,6 +164,12 @@ export class PixelDiorama {
         break;
       case 'whale':
         this.renderWhale(ctx, w, h);
+        break;
+      case 'volcano':
+        this.renderVolcano(ctx, w, h);
+        break;
+      case 'canopy':
+        this.renderCanopy(ctx, w, h);
         break;
       default:
         this.renderCustom(ctx, w, h);
@@ -722,6 +734,192 @@ export class PixelDiorama {
   }
 
   /* ========================================================================= */
+  /* 🌋 VOLCANO QUEST (MAGMA CRIMSON & OBSIDIAN PIXEL ART)                     */
+  /* ========================================================================= */
+  renderVolcano(ctx, w, h) {
+    // 1. Ash night sky gradient
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+    skyGrad.addColorStop(0, '#09090b');
+    skyGrad.addColorStop(0.5, '#1c1917');
+    skyGrad.addColorStop(0.85, '#431407');
+    skyGrad.addColorStop(1, '#7f1d1d');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // 2. Distant volcanic ridges
+    ctx.fillStyle = '#18181b';
+    this.drawPixelMountain(ctx, -w * 0.1, h * 0.8, w * 0.6, h * 0.4);
+    ctx.fillStyle = '#27272a';
+    this.drawPixelMountain(ctx, w * 0.45, h * 0.82, w * 0.65, h * 0.38);
+
+    // 3. Central Volcano Peak
+    const peakX = w * 0.5;
+    const peakY = h * 0.3;
+    const baseW = w * 0.85;
+    const baseY = h * 0.82;
+
+    ctx.fillStyle = '#0c0a09';
+    ctx.beginPath();
+    ctx.moveTo(peakX - 25, peakY + 8);
+    ctx.lineTo(peakX - baseW * 0.45, baseY);
+    ctx.lineTo(peakX + baseW * 0.45, baseY);
+    ctx.lineTo(peakX + 25, peakY + 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // Crater Rim & Glowing Magma Pool
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(peakX - 24, peakY + 4, 48, 8);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(peakX - 18, peakY + 6, 36, 4);
+
+    // 4. Flowing Lava Streams down the mountainside
+    const flowLen = Math.min(1.0, this.progress);
+    const lavaColors = ['#f97316', '#ef4444', '#facc15', '#b91c1c'];
+    for (let i = 0; i < 5; i++) {
+      const offsetX = (i - 2) * 14;
+      const streamYEnd = peakY + 12 + (baseY - peakY) * flowLen * (0.6 + (i % 3) * 0.2);
+      ctx.strokeStyle = lavaColors[i % lavaColors.length];
+      ctx.lineWidth = 3 + (i % 2);
+      ctx.beginPath();
+      ctx.moveTo(peakX + offsetX, peakY + 8);
+      ctx.lineTo(peakX + offsetX * 1.8 + Math.sin(this.time * 2 + i) * 4, (peakY + streamYEnd) * 0.5);
+      ctx.lineTo(peakX + offsetX * 2.6, streamYEnd);
+      ctx.stroke();
+    }
+
+    // 5. Basalt Ground
+    ctx.fillStyle = '#1c1917';
+    ctx.fillRect(0, baseY, w, h - baseY);
+    ctx.fillStyle = '#292524';
+    ctx.fillRect(0, baseY, w, 4);
+
+    // Glowing fissures in ground
+    for (let x = 20; x < w; x += 55) {
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(x + Math.sin(this.time + x) * 3, baseY + 6, 16, 2);
+    }
+
+    // Floating embers
+    if (Math.random() < 0.35) {
+      this.particles.push({
+        x: peakX + (Math.random() * 50 - 25),
+        y: peakY + (Math.random() * 10),
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: -Math.random() * 2.0 - 1.0,
+        size: Math.floor(Math.random() * 3) + 2,
+        color: Math.random() > 0.4 ? '#f97316' : '#fbbf24',
+        alpha: 0.9,
+        life: 0.9,
+      });
+    }
+
+    // Fearless Water Bear on the ridge!
+    const tardX = w * 0.22;
+    const tardY = baseY - 12 + Math.sin(this.time * 3) * 2;
+    this.drawPixelTardigrade(ctx, tardX, tardY, 0.45);
+  }
+
+  /* ========================================================================= */
+  /* 🌴 CANOPY QUEST (EMERALD RAINFOREST PIXEL ART)                            */
+  /* ========================================================================= */
+  renderCanopy(ctx, w, h) {
+    // 1. Rainforest Mist Sky
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+    skyGrad.addColorStop(0, '#022c22');
+    skyGrad.addColorStop(0.6, '#064e3b');
+    skyGrad.addColorStop(1, '#065f46');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // 2. Sunbeams filtering through fog
+    ctx.fillStyle = 'rgba(52, 211, 153, 0.06)';
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(w * 0.15 + i * 80, 0);
+      ctx.lineTo(w * 0.3 + i * 90, h);
+      ctx.lineTo(w * 0.22 + i * 90, h);
+      ctx.lineTo(w * 0.08 + i * 80, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 3. Giant Ancient Redwood/Banyan Trunks
+    const trunks = [
+      { x: w * 0.12, w: 22 },
+      { x: w * 0.42, w: 26 },
+      { x: w * 0.78, w: 20 },
+    ];
+    trunks.forEach(t => {
+      // Bark
+      ctx.fillStyle = '#14532d';
+      ctx.fillRect(t.x, 0, t.w, h * 0.82);
+      ctx.fillStyle = '#166534';
+      ctx.fillRect(t.x + 3, 0, t.w - 6, h * 0.82);
+      // Moss patches
+      ctx.fillStyle = '#10b981';
+      for (let my = 20; my < h * 0.8; my += 35) {
+        ctx.fillRect(t.x + 2, my, 8, 12);
+      }
+    });
+
+    // 4. Overhanging Canopy Foliage (Layered Lush Emeralds)
+    const foliageClusters = [
+      { cx: w * 0.15, cy: h * 0.22, r: 48 },
+      { cx: w * 0.45, cy: h * 0.18, r: 56 },
+      { cx: w * 0.8, cy: h * 0.24, r: 44 },
+    ];
+    const emeralds = ['#064e3b', '#047857', '#059669', '#10b981', '#34d399'];
+    foliageClusters.forEach(f => {
+      const growthR = f.r * (0.8 + this.progress * 0.4);
+      emeralds.forEach((col, idx) => {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(f.cx, f.cy, growthR * (1.0 - idx * 0.15), 0, Math.PI * 2);
+        ctx.fill();
+      });
+    });
+
+    // 5. Hanging Vines
+    for (let i = 0; i < 6; i++) {
+      const vx = w * 0.18 + i * 50;
+      const vineLen = 30 + (i % 3) * 25 + Math.sin(this.time + i) * 4;
+      ctx.strokeStyle = '#059669';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(vx, h * 0.2);
+      ctx.quadraticCurveTo(vx + Math.sin(this.time + i) * 6, h * 0.2 + vineLen * 0.5, vx, h * 0.2 + vineLen);
+      ctx.stroke();
+    }
+
+    // 6. Forest Floor & Glowing Spores
+    const groundY = h * 0.82;
+    ctx.fillStyle = '#064e3b';
+    ctx.fillRect(0, groundY, w, h - groundY);
+    ctx.fillStyle = '#059669';
+    ctx.fillRect(0, groundY, w, 5);
+
+    // Drifting spore particles
+    if (Math.random() < 0.25) {
+      this.particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: Math.sin(this.time) * 0.8,
+        vy: -Math.random() * 0.7 - 0.3,
+        size: 2,
+        color: '#6ee7b7',
+        alpha: 0.85,
+        life: 0.85,
+      });
+    }
+
+    // Water bear hanging out on branch
+    const tardX = w * 0.42 + 12;
+    const tardY = h * 0.55 + Math.sin(this.time * 2) * 2;
+    this.drawPixelTardigrade(ctx, tardX, tardY, 0.45);
+  }
+
+  /* ========================================================================= */
   /* 🐻 AUTHENTIC PIXEL TARDIGRADE (WATER BEAR)                               */
   /* ========================================================================= */
   renderCustom(ctx, w, h) {
@@ -750,9 +948,12 @@ export class PixelDiorama {
     this.drawPixelTardigrade(ctx, tardX, tardY);
   }
 
-  drawPixelTardigrade(ctx, x, y) {
+  drawPixelTardigrade(ctx, x, y, scale = 1.0) {
     ctx.save();
     ctx.translate(x, y);
+    if (scale !== 1.0) {
+      ctx.scale(scale, scale);
+    }
 
     // Plump segmented barrel body (Emerald/Moss)
     ctx.fillStyle = '#10b981';

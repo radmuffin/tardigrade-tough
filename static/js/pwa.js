@@ -3,17 +3,48 @@ import { FlyToast } from '/_fly/fly-ui.js';
 export function updateOfflineStatus(status) {
   const dot = document.getElementById('footerStatusDot');
   const text = document.getElementById('footerStatusText');
-  if (!dot || !text) return;
+  if (dot && text) {
+    if (status.pendingCount > 0) {
+      dot.style.color = 'var(--accent-amber)';
+      text.textContent = `Syncing (${status.pendingCount}) ⏳`;
+    } else if (!status.isOnline) {
+      dot.style.color = 'var(--accent-amber)';
+      text.textContent = 'Offline 🔌';
+    } else {
+      dot.style.color = 'var(--accent-green)';
+      text.textContent = 'Live ⚡';
+    }
+  }
+
+  const badge = document.getElementById('offlineSyncBadge');
+  const badgeText = document.getElementById('offlineSyncText');
+  const badgeIcon = document.getElementById('offlineSyncIcon');
+  if (!badge || !badgeText) return;
 
   if (status.pendingCount > 0) {
-    dot.style.color = 'var(--accent-amber)';
-    text.textContent = `Syncing (${status.pendingCount}) ⏳`;
+    badge.style.display = 'inline-flex';
+    badge.classList.remove('synced');
+    badge.classList.add('pending');
+    if (badgeIcon) badgeIcon.textContent = '⏳';
+    badgeText.textContent = `${status.pendingCount} queued`;
   } else if (!status.isOnline) {
-    dot.style.color = 'var(--accent-amber)';
-    text.textContent = 'Offline 🔌';
+    badge.style.display = 'inline-flex';
+    badge.classList.remove('synced', 'pending');
+    if (badgeIcon) badgeIcon.textContent = '🔌';
+    badgeText.textContent = 'Offline';
+  } else if (badge.classList.contains('pending')) {
+    badge.classList.remove('pending');
+    badge.classList.add('synced');
+    if (badgeIcon) badgeIcon.textContent = '✔';
+    badgeText.textContent = 'Synced';
+    setTimeout(() => {
+      if (!badge.classList.contains('pending')) {
+        badge.style.display = 'none';
+        badge.classList.remove('synced');
+      }
+    }, 2000);
   } else {
-    dot.style.color = 'var(--accent-green)';
-    text.textContent = 'Live ⚡';
+    badge.style.display = 'none';
   }
 }
 

@@ -1,8 +1,8 @@
 use crate::db::*;
 use crate::models::{
     Activity, BatchLogActivityRequest, CheerRequest, CreateGoalRequest, CreateGoalWishlistRequest,
-    CreateRoomRequest, Goal, GoalWishlistItem, LogActivityRequest, RenameRoomRequest, Room,
-    RoomDataResponse, UpdateProfileRequest, UserProfile as AppUserProfile,
+    CreateRoomRequest, Goal, GoalWishlistItem, LogActivityRequest, PersonalRecord,
+    RenameRoomRequest, Room, RoomDataResponse, UpdateProfileRequest, UserProfile as AppUserProfile,
 };
 use axum::async_trait;
 use axum::{
@@ -129,6 +129,7 @@ pub fn create_routes(state: AppState) -> Router {
         )
         .route("/room/:slug/members/:token", delete(remove_member_handler))
         .route("/users/profile", post(update_profile))
+        .route("/user/prs", get(get_user_prs_handler))
         .route("/activities", post(log_activity))
         .route("/activities/batch", post(log_batch_activities))
         .route("/activities/:id", delete(delete_activity_handler))
@@ -214,6 +215,7 @@ async fn get_room_data(
     let wishlists = get_wishlists(&conn, &target_slug).unwrap_or_default();
     let members = get_room_members(&conn, &target_slug).unwrap_or_default();
     let user_squads = get_user_squads(&conn, user.as_str()).unwrap_or_default();
+    let personal_records = get_user_personal_records(&conn, user.as_str()).unwrap_or_default();
 
     (
         StatusCode::OK,
@@ -227,8 +229,18 @@ async fn get_room_data(
             wishlists,
             members,
             user_squads,
+            personal_records,
         })),
     )
+}
+
+async fn get_user_prs_handler(
+    user: UserToken,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<Vec<PersonalRecord>>>) {
+    let conn = state.db.lock().unwrap();
+    let prs = get_user_personal_records(&conn, user.as_str()).unwrap_or_default();
+    (StatusCode::OK, Json(ApiResponse::ok(prs)))
 }
 
 async fn create_room_handler(
@@ -648,6 +660,8 @@ async fn cheer_handler(
                 avatar_emoji: "🐻".to_string(),
                 current_room_slug: payload.room_slug.clone(),
                 updated_at: "".to_string(),
+                streak_days: 0,
+                tardigrade_state: "cryptobiosis".to_string(),
             }
         });
 

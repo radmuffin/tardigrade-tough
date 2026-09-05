@@ -55,6 +55,14 @@
         <span class="brand-title">TARDIGRADE TOUGH</span>
       </div>
       <div class="header-actions">
+        <div id="offlineSyncBadge" class="header-chip offline-chip" style="display: none;" title="Offline Queue">
+          <span id="offlineSyncIcon" class="chip-icon">⚡</span>
+          <span id="offlineSyncText" class="chip-text">Offline</span>
+        </div>
+        <button id="streakBadge" class="header-chip streak-chip" title="Streak" type="button">
+          <span id="streakIcon" class="chip-icon">🔥</span>
+          <span id="streakCountText" class="chip-text">0d</span>
+        </button>
         <button id="headerInstallBtn" class="header-chip install-chip" title="Install Web App" style="display: none;">
           <span class="chip-icon">📲</span>
           <span class="chip-text">Install</span>
@@ -93,20 +101,23 @@
     <!-- VIEW 1: ACTIVE QUESTS & WORKOUT DOCK                                  -->
     <!-- ===================================================================== -->
     <main id="viewQuests" class="app-view active">
-      <!-- Goal Selector Segmented Control -->
-      <div id="goalSegmentedControl" class="goal-segmented-control" role="tablist" aria-label="Active Quests">
-        <button id="goalTabPando" class="goal-segment-btn active" data-theme="pando" role="tab" aria-selected="true">
-          <span class="segment-emoji">🌲</span>
-          <span class="segment-title">Pando</span>
-        </button>
-        <button id="goalTabEverest" class="goal-segment-btn" data-theme="everest" role="tab" aria-selected="false">
-          <span class="segment-emoji">🐐</span>
-          <span class="segment-title">Everest</span>
-        </button>
-        <button id="goalTabCaribou" class="goal-segment-btn" data-theme="caribou" role="tab" aria-selected="false">
-          <span class="segment-emoji">🦌</span>
-          <span class="segment-title">Caribou</span>
-        </button>
+      <!-- Goal Selector Segmented Control Row -->
+      <div class="goal-controls-row">
+        <div id="goalSegmentedControl" class="goal-segmented-control" role="tablist" aria-label="Active Quests">
+          <button id="goalTabPando" class="goal-segment-btn active" data-theme="pando" role="tab" aria-selected="true">
+            <span class="segment-emoji">🌲</span>
+            <span class="segment-title">Pando</span>
+          </button>
+          <button id="goalTabEverest" class="goal-segment-btn" data-theme="everest" role="tab" aria-selected="false">
+            <span class="segment-emoji">🐐</span>
+            <span class="segment-title">Everest</span>
+          </button>
+          <button id="goalTabCaribou" class="goal-segment-btn" data-theme="caribou" role="tab" aria-selected="false">
+            <span class="segment-emoji">🦌</span>
+            <span class="segment-title">Caribou</span>
+          </button>
+        </div>
+        <button id="openNewQuestBtn" class="btn-new-quest" title="Create Quest" type="button">+</button>
       </div>
 
       <!-- Goal Visual Showcase & Living Diorama -->
@@ -521,6 +532,60 @@
     </div>
   </div>
 
+  <!-- Create Custom Quest Modal -->
+  <div id="createQuestModal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title">⚔️ New Quest</h3>
+        <button id="closeCreateQuestBtn" class="modal-close-icon-btn" title="Close" type="button">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="questTitleInput">Quest Title</label>
+        <input id="questTitleInput" type="text" class="form-input" placeholder="e.g. Olympus Mons" maxlength="40">
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="form-group">
+          <label class="form-label" for="questCategorySelect">Category</label>
+          <select id="questCategorySelect" class="form-select">
+            <option value="weight">Weight</option>
+            <option value="distance">Distance</option>
+            <option value="elevation">Elevation</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="questUnitSelect">Unit</label>
+          <select id="questUnitSelect" class="form-select">
+            <option value="lbs">lbs</option>
+            <option value="kg">kg</option>
+            <option value="mi">mi</option>
+            <option value="km">km</option>
+            <option value="ft">ft</option>
+            <option value="m">m</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="questTargetInput">Target Value</label>
+        <input id="questTargetInput" type="number" class="form-input" placeholder="e.g. 50000" min="1" step="any">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Theme Palette</label>
+        <div id="questThemePicker" class="quest-theme-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+          <button type="button" class="btn btn-secondary quest-theme-btn active" data-theme="volcano">🌋 Volcano</button>
+          <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="canopy">🌴 Canopy</button>
+          <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="pando">🌲 Pando</button>
+          <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="everest">🐐 Everest</button>
+          <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="caribou">🦌 Caribou</button>
+          <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="whale">🐋 Ocean</button>
+        </div>
+      </div>
+      <div class="action-buttons-row" style="margin-top: 14px;">
+        <button id="cancelCreateQuestBtn" class="btn btn-secondary" type="button">Cancel</button>
+        <button id="submitCreateQuestBtn" class="btn btn-primary" type="button">Create</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Consolidated User Profile & Squad Hub Modal -->
   <div id="profileModal" class="modal-backdrop hidden">
     <div class="modal-box hub-modal-box">
@@ -555,7 +620,14 @@
             </div>
             <div style="flex: 1; min-width: 0;">
               <div id="avatarPreviewName" style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Athlete</div>
+              <div id="avatarPreviewStreak" style="font-size: 0.78rem; font-weight: 600; color: var(--accent-amber); margin-top: 2px;">🔥 0d · Cryptobiosis</div>
             </div>
+          </div>
+
+          <!-- Personal Records Section -->
+          <div id="profilePrsCard" class="prs-summary-card" style="margin-bottom: 14px; padding: 10px 12px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-color); display: none;">
+            <div style="font-size: 0.74rem; font-weight: 800; color: var(--accent-amber); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em;">👑 Personal Records</div>
+            <div id="profilePrsList" class="prs-pill-list" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
           </div>
 
           <div class="form-group">

@@ -53,6 +53,10 @@ pub struct UserProfile {
     pub avatar_emoji: String,
     pub current_room_slug: String,
     pub updated_at: String,
+    #[serde(default)]
+    pub streak_days: i32,
+    #[serde(default)]
+    pub tardigrade_state: String,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -111,6 +115,8 @@ pub struct Activity {
     pub created_at: String,
     #[serde(default)]
     pub parent_activity_id: Option<i64>,
+    #[serde(default)]
+    pub is_pr: bool,
 }
 
 impl Activity {
@@ -132,8 +138,19 @@ impl Activity {
             goal_id: None,
             created_at: Some(self.created_at.clone()),
             parent_activity_id: Some(self.id),
+            is_pr: Some(self.is_pr),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersonalRecord {
+    pub exercise_name: String,
+    pub activity_type: String,
+    pub max_weight: f64,
+    pub max_reps: i32,
+    pub max_distance: f64,
+    pub max_elevation: f64,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -155,6 +172,8 @@ pub struct LogActivityRequest {
     pub created_at: Option<String>,
     #[serde(default)]
     pub parent_activity_id: Option<i64>,
+    #[serde(default)]
+    pub is_pr: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -231,4 +250,6 @@ pub struct RoomDataResponse {
     pub members: Vec<RoomMember>,
     #[serde(default)]
     pub user_squads: Vec<UserSquadSummary>,
+    #[serde(default)]
+    pub personal_records: Vec<PersonalRecord>,
 }
