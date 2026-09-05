@@ -177,10 +177,33 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
     Ok(())
 }
 
-pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
-    let mut stmt = conn.prepare(
-        "SELECT id, slug, name, created_at, COALESCE(creator_token, '') FROM rooms WHERE slug = ?",
+pub fn seed_room_default_goals(conn: &Connection, slug: &str, now: &str) -> Result<()> {
+    conn.execute(
+        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
+           VALUES (?, 'Pando Aspen Clone', 'weight', 13200000.0, 0.0, 'lbs', 'pando', 'active', 'Hoisting the 13.2-million-pound underground root system of Utah’s massive clonal aspen grove.', ?)"#,
+        params![slug, now],
     )?;
+    conn.execute(
+        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
+           VALUES (?, 'Caribou Migration', 'distance', 3000.0, 0.0, 'mi', 'caribou', 'active', 'Running, walking, and biking the majestic 3,000-mile Arctic tundra migration.', ?)"#,
+        params![slug, now],
+    )?;
+    conn.execute(
+        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
+           VALUES (?, 'Mt. Everest Ascent', 'elevation', 29031.0, 0.0, 'ft', 'everest', 'active', 'Scaling the roof of the world with nimble mountain goats.', ?)"#,
+        params![slug, now],
+    )?;
+    conn.execute(
+        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
+           VALUES (?, 'The Blue Whale', 'weight', 418878.0, 418878.0, 'lbs', 'whale', 'completed', '🏆 CONQUERED! The crew hoisted the full weight of a colossal Blue Whale.', ?)"#,
+        params![slug, now],
+    )?;
+    Ok(())
+}
+
+pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
+    let mut stmt =
+        conn.prepare("SELECT id, slug, name, created_at, creator_token FROM rooms WHERE slug = ?")?;
     let found = stmt.query_row(params![slug], |row| {
         Ok(Room {
             id: row.get(0)?,
@@ -207,26 +230,7 @@ pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
             let id = conn.last_insert_rowid();
 
             // Seed initial goals for newly created rooms
-            conn.execute(
-                r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-                   VALUES (?, 'Pando Aspen Clone', 'weight', 13200000.0, 0.0, 'lbs', 'pando', 'active', 'Hoisting the 13.2-million-pound underground root system of Utah’s massive clonal aspen grove.', ?)"#,
-                params![slug, now],
-            )?;
-            conn.execute(
-                r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-                   VALUES (?, 'Caribou Migration', 'distance', 3000.0, 0.0, 'mi', 'caribou', 'active', 'Running, walking, and biking the majestic 3,000-mile Arctic tundra migration.', ?)"#,
-                params![slug, now],
-            )?;
-            conn.execute(
-                r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-                   VALUES (?, 'Mt. Everest Ascent', 'elevation', 29031.0, 0.0, 'ft', 'everest', 'active', 'Scaling the roof of the world with nimble mountain goats.', ?)"#,
-                params![slug, now],
-            )?;
-            conn.execute(
-                r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-                   VALUES (?, 'The Blue Whale', 'weight', 418878.0, 418878.0, 'lbs', 'whale', 'completed', '🏆 CONQUERED! The crew hoisted the full weight of a colossal Blue Whale.', ?)"#,
-                params![slug, now],
-            )?;
+            seed_room_default_goals(conn, slug, &now)?;
 
             Ok(Room {
                 id,
@@ -504,26 +508,7 @@ pub fn create_room_for_user(
     let id = conn.last_insert_rowid();
 
     // Seed initial goals for newly created rooms
-    conn.execute(
-        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-           VALUES (?, 'Pando Aspen Clone', 'weight', 13200000.0, 0.0, 'lbs', 'pando', 'active', 'Hoisting the 13.2-million-pound underground root system of Utah’s massive clonal aspen grove.', ?)"#,
-        params![slug, now],
-    )?;
-    conn.execute(
-        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-           VALUES (?, 'Caribou Migration', 'distance', 3000.0, 0.0, 'mi', 'caribou', 'active', 'Running, walking, and biking the majestic 3,000-mile Arctic tundra migration.', ?)"#,
-        params![slug, now],
-    )?;
-    conn.execute(
-        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-           VALUES (?, 'Mt. Everest Ascent', 'elevation', 29031.0, 0.0, 'ft', 'everest', 'active', 'Scaling the roof of the world with nimble mountain goats.', ?)"#,
-        params![slug, now],
-    )?;
-    conn.execute(
-        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-           VALUES (?, 'The Blue Whale', 'weight', 418878.0, 418878.0, 'lbs', 'whale', 'completed', '🏆 CONQUERED! The crew hoisted the full weight of a colossal Blue Whale.', ?)"#,
-        params![slug, now],
-    )?;
+    seed_room_default_goals(conn, &slug, &now)?;
 
     if !tok.is_empty() {
         conn.execute(

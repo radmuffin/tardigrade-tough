@@ -113,6 +113,29 @@ pub struct Activity {
     pub parent_activity_id: Option<i64>,
 }
 
+impl Activity {
+    pub fn to_forwarded_request(&self, squad_slug: &str) -> LogActivityRequest {
+        LogActivityRequest {
+            room_slug: Some(squad_slug.to_string()),
+            user_nickname: Some(self.user_nickname.clone()),
+            user_avatar_color: Some(self.user_avatar_color.clone()),
+            user_avatar_emoji: Some(self.user_avatar_emoji.clone()),
+            activity_type: self.activity_type.clone(),
+            exercise_name: Some(self.exercise_name.clone()),
+            sets: Some(self.sets),
+            reps: Some(self.reps),
+            weight_per_rep: Some(self.weight_per_rep),
+            distance_val: Some(self.distance_val),
+            elevation_val: Some(self.elevation_val),
+            total_metric: Some(self.total_metric),
+            notes: Some(self.notes.clone()),
+            goal_id: None,
+            created_at: Some(self.created_at.clone()),
+            parent_activity_id: Some(self.id),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct LogActivityRequest {
     pub room_slug: Option<String>,

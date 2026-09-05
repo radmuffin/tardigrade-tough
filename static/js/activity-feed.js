@@ -66,9 +66,7 @@ export function renderFeed({ onReloadState } = {}) {
 
     let detailStr = act.activity_type === 'weight'
       ? `${act.sets}x${act.reps} @ ${act.weight_per_rep}lbs`
-      : (act.sets > 1 || act.reps > 1
-          ? `${act.exercise_name} (${act.sets}x${act.reps})`
-          : `${act.exercise_name}`);
+      : (act.sets > 1 || act.reps > 1 ? `${act.sets}x${act.reps}` : '');
 
     const displayAvatar = act.user_avatar_emoji || (act.user_nickname || 'L').substring(0, 1).toUpperCase();
     const isEmoji = /\p{Extended_Pictographic}/u.test(displayAvatar);
@@ -81,7 +79,7 @@ export function renderFeed({ onReloadState } = {}) {
           ${FlyToast.escape(displayAvatar)}
         </div>
         <div class="activity-text">
-          <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)} (${detailStr})</span></div>
+          <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)}${detailStr ? ` (${detailStr})` : ''}</span></div>
           <div class="activity-meta">${act.notes ? `"${FlyToast.escape(act.notes)}" • ` : ''}${formatTimeAgo(act.created_at)}</div>
         </div>
       </div>

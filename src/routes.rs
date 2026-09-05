@@ -453,24 +453,7 @@ async fn log_activity(
             if room_slug.starts_with("solo-") {
                 if let Ok(squads) = get_user_squads(&conn, user.as_str()) {
                     for squad in squads {
-                        let forwarded_req = LogActivityRequest {
-                            room_slug: Some(squad.slug.clone()),
-                            user_nickname: Some(activity.user_nickname.clone()),
-                            user_avatar_color: Some(activity.user_avatar_color.clone()),
-                            user_avatar_emoji: Some(activity.user_avatar_emoji.clone()),
-                            activity_type: activity.activity_type.clone(),
-                            exercise_name: Some(activity.exercise_name.clone()),
-                            sets: Some(activity.sets),
-                            reps: Some(activity.reps),
-                            weight_per_rep: Some(activity.weight_per_rep),
-                            distance_val: Some(activity.distance_val),
-                            elevation_val: Some(activity.elevation_val),
-                            total_metric: Some(activity.total_metric),
-                            notes: Some(activity.notes.clone()),
-                            goal_id: None,
-                            created_at: Some(activity.created_at.clone()),
-                            parent_activity_id: Some(activity.id),
-                        };
+                        let forwarded_req = activity.to_forwarded_request(&squad.slug);
 
                         if let Ok(fwd_activity) = log_single_activity(
                             &mut conn,
@@ -583,24 +566,7 @@ async fn log_batch_activities(
             for squad in squads {
                 let mut squad_created = Vec::new();
                 for solo_act in &created {
-                    let fwd_req = LogActivityRequest {
-                        room_slug: Some(squad.slug.clone()),
-                        user_nickname: Some(solo_act.user_nickname.clone()),
-                        user_avatar_color: Some(solo_act.user_avatar_color.clone()),
-                        user_avatar_emoji: Some(solo_act.user_avatar_emoji.clone()),
-                        activity_type: solo_act.activity_type.clone(),
-                        exercise_name: Some(solo_act.exercise_name.clone()),
-                        sets: Some(solo_act.sets),
-                        reps: Some(solo_act.reps),
-                        weight_per_rep: Some(solo_act.weight_per_rep),
-                        distance_val: Some(solo_act.distance_val),
-                        elevation_val: Some(solo_act.elevation_val),
-                        total_metric: Some(solo_act.total_metric),
-                        notes: Some(solo_act.notes.clone()),
-                        goal_id: None,
-                        created_at: Some(solo_act.created_at.clone()),
-                        parent_activity_id: Some(solo_act.id),
-                    };
+                    let fwd_req = solo_act.to_forwarded_request(&squad.slug);
                     if let Ok(sq_act) =
                         log_single_activity(&mut conn, &user_profile, &squad.slug, &fwd_req)
                     {
