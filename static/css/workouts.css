@@ -117,33 +117,35 @@
   transition: all 0.12s ease;
 }
 
-.preset-chip-minus {
+.preset-chip-minus, .preset-minus {
   color: var(--text-secondary);
-  border-color: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
-.preset-chip-minus:hover {
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #fca5a5;
+.preset-chip-minus:hover, .preset-minus:hover {
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
 }
 
-.preset-chip-minus:active {
-  background: rgba(239, 68, 68, 0.22);
+.preset-chip-minus:active, .preset-minus:active {
+  background: #ef4444;
   border-color: #ef4444;
   color: #ffffff;
 }
 
-.preset-chip-plus {
+.preset-chip-plus, .preset-plus {
   color: var(--text-primary);
-  border-color: rgba(16, 185, 129, 0.25);
+  border-color: rgba(16, 185, 129, 0.3);
 }
 
-.preset-chip-plus:hover {
-  border-color: rgba(16, 185, 129, 0.5);
-  color: #6ee7b7;
+.preset-chip-plus:hover, .preset-plus:hover {
+  border-color: rgba(16, 185, 129, 0.6);
+  color: var(--accent-green);
+  background: rgba(16, 185, 129, 0.1);
 }
 
-.preset-chip-plus:active {
+.preset-chip-plus:active, .preset-plus:active {
   background: var(--accent-green);
   border-color: var(--accent-green);
   color: #ffffff;

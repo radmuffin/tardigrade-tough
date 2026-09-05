@@ -22,6 +22,21 @@ pub struct RoomMember {
     pub total_sets: i64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserSquadSummary {
+    pub slug: String,
+    pub name: String,
+    pub role: String,
+    pub is_creator: bool,
+    pub member_count: i64,
+    pub joined_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateRoomRequest {
+    pub name: Option<String>,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct RenameRoomRequest {
     pub name: String,
@@ -176,4 +191,6 @@ pub struct RoomDataResponse {
     pub wishlists: Vec<GoalWishlistItem>,
     #[serde(default)]
     pub members: Vec<RoomMember>,
+    #[serde(default)]
+    pub user_squads: Vec<UserSquadSummary>,
 }

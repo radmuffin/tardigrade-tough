@@ -17,11 +17,16 @@ fn setup_test_db() -> Connection {
 fn test_db_initialization_and_default_seeds() {
     let conn = setup_test_db();
 
-    let room = get_or_create_room(&conn, "main").expect("room");
-    assert_eq!(room.slug, "main");
-    assert_eq!(room.name, "Pando Squad");
+    // Verify init_db does not seed any hardcoded 'main' rooms
+    let room_count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM rooms", [], |r| r.get(0))
+        .expect("count rooms");
+    assert_eq!(room_count, 0, "No rooms should be hardcoded at init_db");
 
-    let (active, completed) = get_goals_for_room(&conn, "main").expect("goals");
+    let room = get_or_create_room(&conn, "pando-squad").expect("room");
+    assert_eq!(room.slug, "pando-squad");
+
+    let (active, completed) = get_goals_for_room(&conn, "pando-squad").expect("goals");
     assert_eq!(active.len(), 3);
     assert_eq!(completed.len(), 1);
 
@@ -695,21 +700,21 @@ fn test_pwa_configuration_and_assets() {
 fn test_room_renaming_and_persistence() {
     let conn = setup_test_db();
 
-    // 1. Initial room name is Pando Squad
-    let room = get_or_create_room(&conn, "main").expect("room");
+    // 1. Initial room creation
+    let room = create_room_for_user(&conn, "token_renamer", Some("Pando Squad")).expect("room");
     assert_eq!(room.name, "Pando Squad");
 
     // 2. Rename room
-    let updated = update_room_name(&conn, "main", "Iron Bears Squad").expect("update room");
+    let updated = update_room_name(&conn, &room.slug, "Iron Bears Squad").expect("update room");
     assert_eq!(updated.name, "Iron Bears Squad");
-    assert_eq!(updated.slug, "main");
+    assert_eq!(updated.slug, room.slug);
 
     // 3. Verify persistence
-    let fetched = get_or_create_room(&conn, "main").expect("fetch room");
+    let fetched = get_or_create_room(&conn, &room.slug).expect("fetch room");
     assert_eq!(fetched.name, "Iron Bears Squad");
 
     // 4. Verify invalid empty names are rejected
-    assert!(update_room_name(&conn, "main", "   ").is_err());
+    assert!(update_room_name(&conn, &room.slug, "   ").is_err());
 }
 
 #[test]
@@ -1027,4 +1032,86 @@ async fn test_squad_membership_view_everyone_leave_and_creator_remove_member() {
         .clone();
     assert_eq!(final_members.len(), 1);
     assert_eq!(final_members[0]["user_token"], alice_token);
+}
+
+#[tokio::test]
+async fn test_create_squad_defaults_to_username_and_lists_user_squads() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState { db, hub };
+    let app = create_routes(state);
+    let server = TestServer::new(app).unwrap();
+
+    let user_token = "hercules_token_99";
+
+    // 1. Set nickname
+    let res_prof = server
+        .post("/users/profile")
+        .add_header("X-Device-Token", user_token)
+        .json(&json!({
+            "nickname": "Hercules"
+        }))
+        .await;
+    res_prof.assert_status_ok();
+
+    // 2. Create squad with default name (empty/none)
+    let res_create_1 = server
+        .post("/room/create")
+        .add_header("X-Device-Token", user_token)
+        .json(&json!({}))
+        .await;
+    res_create_1.assert_status_ok();
+    let create_1_json: serde_json::Value = res_create_1.json();
+    assert_eq!(create_1_json["success"], true);
+    assert_eq!(
+        create_1_json["data"]["name"], "Hercules's Squad",
+        "Created squad should default to <nickname>'s Squad"
+    );
+    let slug_1 = create_1_json["data"]["slug"].as_str().unwrap().to_string();
+    assert!(slug_1.starts_with("hercules-s-squad-"));
+
+    // 3. Create a second squad with explicit custom name
+    let res_create_2 = server
+        .post("/room/create")
+        .add_header("X-Device-Token", user_token)
+        .json(&json!({
+            "name": "Olympian Lifters"
+        }))
+        .await;
+    res_create_2.assert_status_ok();
+    let create_2_json: serde_json::Value = res_create_2.json();
+    assert_eq!(create_2_json["success"], true);
+    assert_eq!(create_2_json["data"]["name"], "Olympian Lifters");
+    let slug_2 = create_2_json["data"]["slug"].as_str().unwrap().to_string();
+
+    // 4. Fetch room data and verify user_squads lists both squads
+    let res_room = server
+        .get(&format!("/room/{}", slug_2))
+        .add_header("X-Device-Token", user_token)
+        .await;
+    res_room.assert_status_ok();
+    let room_json: serde_json::Value = res_room.json();
+    let user_squads = room_json["data"]["user_squads"].as_array().unwrap();
+    assert_eq!(user_squads.len(), 2);
+    assert!(user_squads
+        .iter()
+        .any(|s| s["slug"] == slug_1 && s["is_creator"] == true));
+    assert!(user_squads
+        .iter()
+        .any(|s| s["slug"] == slug_2 && s["is_creator"] == true));
+
+    // 5. Another user joins slug_1 and inspects their squads
+    let guest_token = "guest_pegasus_77";
+    let res_guest = server
+        .get(&format!("/room/{}", slug_1))
+        .add_header("X-Device-Token", guest_token)
+        .await;
+    res_guest.assert_status_ok();
+    let guest_json: serde_json::Value = res_guest.json();
+    let guest_squads = guest_json["data"]["user_squads"].as_array().unwrap();
+    assert_eq!(guest_squads.len(), 1);
+    assert_eq!(guest_squads[0]["slug"], slug_1);
+    assert_eq!(guest_squads[0]["is_creator"], false);
+    assert_eq!(guest_squads[0]["member_count"], 2);
 }

@@ -147,6 +147,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
 
   const roomSlugInput = document.getElementById('roomSlugInput');
   const newRoomNameInput = document.getElementById('newRoomNameInput');
+  const createNewRoomBtn = document.getElementById('createNewRoomBtn');
   const qrImg = document.getElementById('roomQrImage');
   const editRoomNameInput = document.getElementById('editRoomNameInput');
   const saveRoomNameBtn = document.getElementById('saveRoomNameBtn');
@@ -154,36 +155,147 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   const copyRoomUrlBtn = document.getElementById('copyRoomUrlBtn');
   const nativeShareBtn = document.getElementById('nativeShareBtn');
   const currentRoomSlugLabel = document.getElementById('currentRoomSlugLabel');
+  const squadMembersCard = document.getElementById('squadMembersCard');
   const squadMembersList = document.getElementById('squadMembersList');
   const squadMemberCount = document.getElementById('squadMemberCount');
   const squadRoleBadge = document.getElementById('squadRoleBadge');
   const leaveSquadBtn = document.getElementById('leaveSquadBtn');
 
+  // Multi-squad & dual sharing elements
+  const userSquadCount = document.getElementById('userSquadCount');
+  const userSquadsList = document.getElementById('userSquadsList');
+  const quickSoloBtn = document.getElementById('quickSoloBtn');
+  const renameSquadControls = document.getElementById('renameSquadControls');
+  const soloStatusNotice = document.getElementById('soloStatusNotice');
+  const shareSquadStatusBadge = document.getElementById('shareSquadStatusBadge');
+  const soloSharePrompt = document.getElementById('soloSharePrompt');
+  const promptSquadNameInput = document.getElementById('promptSquadNameInput');
+  const promptCreateSquadBtn = document.getElementById('promptCreateSquadBtn');
+  const squadShareActiveControls = document.getElementById('squadShareActiveControls');
+  const squadQrLabel = document.getElementById('squadQrLabel');
+  const shareAppUrlInput = document.getElementById('shareAppUrlInput');
+  const copyAppUrlBtn = document.getElementById('copyAppUrlBtn');
+  const nativeShareAppBtn = document.getElementById('nativeShareAppBtn');
+  const appQrImage = document.getElementById('appQrImage');
+
   function populateSquadHubFields() {
+    const isSolo = state.roomSlug.startsWith('solo-');
+    const myNick = state.currentRoomData?.user_profile?.nickname || 'Athlete';
+    const defaultSquadName = (myNick && myNick !== 'Athlete') ? `${myNick}'s Squad` : 'Pando Squad';
+
     if (roomSlugInput) roomSlugInput.value = state.roomSlug;
     if (currentRoomSlugLabel) {
       currentRoomSlugLabel.textContent = `slug: ${state.roomSlug}`;
     }
-    if (state.currentRoomData && state.currentRoomData.room) {
-      if (editRoomNameInput) editRoomNameInput.value = state.currentRoomData.room.name;
-      const label = document.getElementById('roomNameLabel');
-      if (label) label.textContent = state.currentRoomData.room.name;
+
+    const currentRoomName = state.currentRoomData?.room?.name || (isSolo ? 'Solo Quest' : 'Squad');
+    const label = document.getElementById('roomNameLabel');
+    if (label) label.textContent = currentRoomName;
+
+    if (editRoomNameInput) {
+      editRoomNameInput.value = isSolo ? '' : currentRoomName;
+      editRoomNameInput.placeholder = defaultSquadName;
     }
-    const roomUrl = `${window.location.origin}/r/${state.roomSlug}`;
-    if (shareRoomUrlInput) {
-      shareRoomUrlInput.value = roomUrl;
+
+    if (newRoomNameInput) {
+      newRoomNameInput.placeholder = defaultSquadName;
     }
-    if (qrImg) {
-      qrImg.src = `/api/qr?url=${encodeURIComponent(roomUrl)}`;
+
+    // Toggle Solo vs Squad Mode in Details Card
+    if (soloStatusNotice) soloStatusNotice.style.display = isSolo ? 'block' : 'none';
+    if (renameSquadControls) renameSquadControls.style.display = isSolo ? 'none' : 'flex';
+
+    // Populate Your Squads List
+    const userSquads = state.currentRoomData?.user_squads || [];
+    if (userSquadCount) userSquadCount.textContent = userSquads.length;
+
+    if (userSquadsList) {
+      if (userSquads.length === 0) {
+        userSquadsList.innerHTML = `
+          <div style="text-align: center; padding: 10px; color: var(--text-muted); font-size: 0.78rem;">
+            No squads joined yet. Create your first squad below to invite crew members!
+          </div>
+        `;
+      } else {
+        userSquadsList.innerHTML = userSquads.map(s => {
+          const isActive = s.slug === state.roomSlug;
+          return `
+            <div class="user-squad-item ${isActive ? 'active' : ''}" data-slug="${FlyToast.escape(s.slug)}" role="button" tabindex="0">
+              <div class="user-squad-name-row">
+                <span class="user-squad-icon">${s.is_creator ? '👑' : '👥'}</span>
+                <div style="min-width: 0;">
+                  <strong class="user-squad-name">${FlyToast.escape(s.name)}</strong>
+                  <div class="user-squad-meta">${s.member_count} member${s.member_count === 1 ? '' : 's'} · ${s.is_creator ? 'Creator' : 'Member'}</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                ${isActive ? '<span class="member-pill pill-me">Active</span>' : '<span style="font-size: 0.75rem; color: var(--accent-green);">Switch ›</span>'}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        userSquadsList.querySelectorAll('.user-squad-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const slug = item.dataset.slug;
+            if (slug && slug !== state.roomSlug) {
+              try {
+                localStorage.setItem('tardigrade_current_room', slug);
+              } catch (_) {}
+              window.location.href = `/r/${slug}`;
+            }
+          });
+        });
+      }
     }
-    if (nativeShareBtn && typeof navigator.share === 'function') {
-      nativeShareBtn.style.display = 'block';
+
+    // Quick Solo Button Status
+    if (quickSoloBtn) {
+      if (isSolo) {
+        quickSoloBtn.style.opacity = '0.55';
+        quickSoloBtn.textContent = '🧘 Solo (Active)';
+      } else {
+        quickSoloBtn.style.opacity = '1';
+        quickSoloBtn.textContent = '🧘 Solo Quest';
+      }
+    }
+
+    // Section 2D: Share Your Squad (or Solo Prompt)
+    if (isSolo) {
+      if (soloSharePrompt) soloSharePrompt.style.display = 'block';
+      if (squadShareActiveControls) squadShareActiveControls.style.display = 'none';
+      if (shareSquadStatusBadge) shareSquadStatusBadge.textContent = 'Solo Quest';
+      if (promptSquadNameInput) {
+        if (!promptSquadNameInput.value) {
+          promptSquadNameInput.value = defaultSquadName;
+        }
+        promptSquadNameInput.placeholder = defaultSquadName;
+      }
+    } else {
+      if (soloSharePrompt) soloSharePrompt.style.display = 'none';
+      if (squadShareActiveControls) squadShareActiveControls.style.display = 'block';
+      if (shareSquadStatusBadge) shareSquadStatusBadge.textContent = 'Active Squad';
+
+      const roomUrl = `${window.location.origin}/r/${state.roomSlug}`;
+      if (shareRoomUrlInput) shareRoomUrlInput.value = roomUrl;
+      if (qrImg) qrImg.src = `/api/qr?url=${encodeURIComponent(roomUrl)}`;
+      if (squadQrLabel) squadQrLabel.textContent = `Scan to Join ${currentRoomName}:`;
+      if (nativeShareBtn && typeof navigator.share === 'function') {
+        nativeShareBtn.style.display = 'block';
+      }
+    }
+
+    // Section 2E: Share Tardigrade Tough (App)
+    const appUrl = `${window.location.origin}/`;
+    if (shareAppUrlInput) shareAppUrlInput.value = appUrl;
+    if (appQrImage) appQrImage.src = `/api/qr?url=${encodeURIComponent(appUrl)}`;
+    if (nativeShareAppBtn && typeof navigator.share === 'function') {
+      nativeShareAppBtn.style.display = 'block';
     }
 
     // Populate Squad Members Roster
     const members = state.currentRoomData?.members || [];
     const creatorToken = state.currentRoomData?.room?.creator_token || '';
-    const isSolo = state.roomSlug.startsWith('solo-');
     const isCreator = (!isSolo && creatorToken && creatorToken === state.client.token)
       || (!isSolo && members.length === 1 && members[0]?.user_token === state.client.token)
       || (!isSolo && !creatorToken);
@@ -206,11 +318,11 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     }
 
     if (leaveSquadBtn) {
-      if (isSolo) {
-        leaveSquadBtn.style.display = 'none';
-      } else {
-        leaveSquadBtn.style.display = 'block';
-      }
+      leaveSquadBtn.style.display = isSolo ? 'none' : 'block';
+    }
+
+    if (squadMembersCard) {
+      squadMembersCard.style.display = isSolo ? 'none' : 'block';
     }
 
     if (squadMembersList) {
@@ -487,20 +599,119 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     });
   }
 
-  // Create New Group or Solo Quest
-  if (createNewRoomBtn) {
-    createNewRoomBtn.addEventListener('click', () => {
-      const name = newRoomNameInput ? newRoomNameInput.value.trim() : '';
-      if (!name) {
-        FlyToast.error('Please enter a group or solo name');
+  // Quick Solo Button
+  if (quickSoloBtn) {
+    quickSoloBtn.addEventListener('click', () => {
+      if (state.roomSlug.startsWith('solo-')) {
+        FlyToast.info('Already in your private Solo Quest!');
         return;
       }
-
-      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `squad-${Date.now().toString(36)}`;
       try {
-        localStorage.setItem('tardigrade_current_room', slug);
-      } catch (e) {}
-      window.location.href = `/r/${slug}`;
+        localStorage.removeItem('tardigrade_current_room');
+      } catch (_) {}
+      window.location.href = '/';
+    });
+  }
+
+  // Prompt Create & Share Squad (from Solo mode)
+  if (promptCreateSquadBtn) {
+    promptCreateSquadBtn.addEventListener('click', async () => {
+      const myNick = state.currentRoomData?.user_profile?.nickname || 'Athlete';
+      const defaultSquadName = (myNick && myNick !== 'Athlete') ? `${myNick}'s Squad` : 'Pando Squad';
+      const rawName = promptSquadNameInput ? promptSquadNameInput.value.trim() : '';
+      const finalName = rawName || defaultSquadName;
+
+      try {
+        promptCreateSquadBtn.disabled = true;
+        promptCreateSquadBtn.textContent = 'Creating...';
+        const res = await state.client.post('/room/create', { name: finalName });
+        if (res && res.success && res.data) {
+          try {
+            localStorage.setItem('tardigrade_current_room', res.data.slug);
+          } catch (_) {}
+          FlyToast.success(`Squad "${res.data.name}" created!`);
+          window.location.href = `/r/${res.data.slug}`;
+        } else {
+          FlyToast.error(res?.error || 'Failed to create squad');
+          promptCreateSquadBtn.disabled = false;
+          promptCreateSquadBtn.textContent = 'Create & Share';
+        }
+      } catch (err) {
+        console.error('Create squad error:', err);
+        FlyToast.error('Failed to create squad');
+        promptCreateSquadBtn.disabled = false;
+        promptCreateSquadBtn.textContent = 'Create & Share';
+      }
+    });
+  }
+
+  // Create New Group / Squad
+  if (createNewRoomBtn) {
+    createNewRoomBtn.addEventListener('click', async () => {
+      const myNick = state.currentRoomData?.user_profile?.nickname || 'Athlete';
+      const defaultSquadName = (myNick && myNick !== 'Athlete') ? `${myNick}'s Squad` : 'Pando Squad';
+      const rawName = newRoomNameInput ? newRoomNameInput.value.trim() : '';
+      const finalName = rawName || defaultSquadName;
+
+      try {
+        createNewRoomBtn.disabled = true;
+        createNewRoomBtn.textContent = 'Creating...';
+        const res = await state.client.post('/room/create', { name: finalName });
+        if (res && res.success && res.data) {
+          try {
+            localStorage.setItem('tardigrade_current_room', res.data.slug);
+          } catch (_) {}
+          FlyToast.success(`Created "${res.data.name}"!`);
+          window.location.href = `/r/${res.data.slug}`;
+        } else {
+          FlyToast.error(res?.error || 'Failed to create squad');
+          createNewRoomBtn.disabled = false;
+          createNewRoomBtn.textContent = 'Create';
+        }
+      } catch (err) {
+        console.error('Create room error:', err);
+        FlyToast.error('Failed to create squad');
+        createNewRoomBtn.disabled = false;
+        createNewRoomBtn.textContent = 'Create';
+      }
+    });
+  }
+
+  // Copy Main App URL
+  if (copyAppUrlBtn && shareAppUrlInput) {
+    copyAppUrlBtn.addEventListener('click', async () => {
+      const url = shareAppUrlInput.value || `${window.location.origin}/`;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          shareAppUrlInput.select();
+          document.execCommand('copy');
+        }
+        FlyToast.success('Tardigrade Tough app link copied!');
+      } catch (_) {
+        shareAppUrlInput.select();
+        document.execCommand('copy');
+        FlyToast.success('Tardigrade Tough app link copied!');
+      }
+    });
+  }
+
+  // Native Share Main App
+  if (nativeShareAppBtn && typeof navigator.share === 'function') {
+    nativeShareAppBtn.style.display = 'block';
+    nativeShareAppBtn.addEventListener('click', async () => {
+      try {
+        await navigator.share({
+          title: 'Tardigrade Tough — Gym & Beast Progress Tracker',
+          text: 'Track workouts, hoist Utah’s Pando tree, and conquer colossal nature on Tardigrade Tough!',
+          url: shareAppUrlInput ? shareAppUrlInput.value : `${window.location.origin}/`,
+        });
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn('Share app aborted or failed:', err);
+        }
+      }
     });
   }
 

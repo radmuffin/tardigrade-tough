@@ -71,9 +71,9 @@
 }
 
 .color-option.selected {
-  border-color: #ffffff;
+  border-color: var(--text-primary);
   transform: scale(1.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 2px var(--bg-surface), 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 /* Modal Styling for Unified User & Squad Hub */
@@ -321,14 +321,14 @@
 }
 
 .pill-me {
-  background: rgba(59, 130, 246, 0.18);
-  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.14);
+  color: var(--accent-blue);
   border: 1px solid rgba(59, 130, 246, 0.35);
 }
 
 .pill-creator {
-  background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--accent-amber);
   border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
@@ -372,3 +372,81 @@
   background: rgba(239, 68, 68, 0.12);
   border-color: #ef4444;
 }
+
+/* User Squads List & Switcher */
+.user-squads-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.user-squad-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.user-squad-item:hover {
+  border-color: var(--accent-green);
+  background: var(--bg-elevated);
+  transform: translateY(-1px);
+}
+
+.user-squad-item:focus-visible {
+  outline: 2px solid var(--border-active);
+  outline-offset: 2px;
+}
+
+.user-squad-item.active {
+  border-color: var(--accent-green);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.user-squad-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.user-squad-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.user-squad-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+  display: block;
+}
+
+.user-squad-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.solo-prompt-box {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+

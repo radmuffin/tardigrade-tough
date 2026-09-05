@@ -193,26 +193,26 @@
             <div class="stepper-box">
               <label id="stepperMetricLabel" class="form-label">Weight (lbs)</label>
               <div class="stepper-controls">
-                <button id="wtMinusBtn" class="stepper-btn">-10</button>
-                <input id="stepperWeight" type="number" class="stepper-input" value="135" min="0" step="2.5">
-                <button id="wtPlusBtn" class="stepper-btn">+10</button>
+                <button id="wtMinusBtn" class="stepper-btn" type="button" aria-label="Decrease weight by 10">-10</button>
+                <input id="stepperWeight" type="number" class="stepper-input" value="135" min="0" step="2.5" aria-label="Weight amount">
+                <button id="wtPlusBtn" class="stepper-btn" type="button" aria-label="Increase weight by 10">+10</button>
               </div>
               <div id="stepperMetricPresets" class="quick-presets preset-grid-plates">
-                <button class="preset-chip preset-minus" data-delta="-45">-45</button>
-                <button class="preset-chip preset-minus" data-delta="-25">-25</button>
-                <button class="preset-chip preset-minus" data-delta="-5">-5</button>
-                <button class="preset-chip preset-plus" data-delta="+5">+5</button>
-                <button class="preset-chip preset-plus" data-delta="+25">+25</button>
-                <button class="preset-chip preset-plus" data-delta="+45">+45</button>
+                <button class="preset-chip preset-minus" data-delta="-45" type="button" aria-label="Decrease 45 pounds">-45</button>
+                <button class="preset-chip preset-minus" data-delta="-25" type="button" aria-label="Decrease 25 pounds">-25</button>
+                <button class="preset-chip preset-minus" data-delta="-5" type="button" aria-label="Decrease 5 pounds">-5</button>
+                <button class="preset-chip preset-plus" data-delta="+5" type="button" aria-label="Increase 5 pounds">+5</button>
+                <button class="preset-chip preset-plus" data-delta="+25" type="button" aria-label="Increase 25 pounds">+25</button>
+                <button class="preset-chip preset-plus" data-delta="+45" type="button" aria-label="Increase 45 pounds">+45</button>
               </div>
             </div>
 
             <div class="stepper-box">
               <label id="stepperCountLabel" class="form-label">Reps</label>
               <div class="stepper-controls">
-                <button id="repsMinusBtn" class="stepper-btn">-1</button>
-                <input id="stepperReps" type="number" class="stepper-input" value="10" min="1">
-                <button id="repsPlusBtn" class="stepper-btn">+1</button>
+                <button id="repsMinusBtn" class="stepper-btn" type="button" aria-label="Decrease reps by 1">-1</button>
+                <input id="stepperReps" type="number" class="stepper-input" value="10" min="1" aria-label="Reps count">
+                <button id="repsPlusBtn" class="stepper-btn" type="button" aria-label="Increase reps by 1">+1</button>
               </div>
               <div id="stepperCountPresets" class="quick-presets preset-grid-reps">
                 <button class="preset-chip-rep" data-val="3">3</button>
@@ -427,7 +427,7 @@
         <div class="trophy-info-box">
           <div class="goal-header-row">
             <h3 class="goal-hero-title">🐋 The Blue Whale</h3>
-            <span class="goal-hero-pct" style="color: #38bdf8;">100.0%</span>
+            <span class="goal-hero-pct" style="color: var(--accent-blue);">100.0%</span>
           </div>
           <div class="goal-progress-sub">
             <span>418,878 lbs Lifted</span>
@@ -608,24 +608,42 @@
         <section id="hubPaneSquad" class="hub-section">
           <div class="hub-section-header">
             <span class="hub-section-icon">👥</span>
-            <h4 class="hub-section-title">Squad & Rooms</h4>
+            <h4 class="hub-section-title">Squads & Crew</h4>
           </div>
 
-          <!-- Section 1: Rename Current Squad -->
-          <div class="hub-card">
+          <!-- Section 2A: Your Squads & Switcher -->
+          <div class="hub-card" id="userSquadsCard">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label class="form-label" style="color: var(--accent-green); margin-bottom: 0;">
+                🛡️ Your Squads (<span id="userSquadCount">0</span>)
+              </label>
+              <button id="quickSoloBtn" class="btn btn-secondary" style="font-size: 0.74rem; padding: 2px 8px; border-radius: 999px;" type="button" title="Switch to private solo quest">
+                🧘 Solo Quest
+              </button>
+            </div>
+            <div id="userSquadsList" class="user-squads-list">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Section 2B: Current Squad Info / Rename -->
+          <div class="hub-card" id="currentSquadCard">
             <label class="form-label" style="color: var(--accent-green); display: flex; justify-content: space-between; align-items: center;">
-              <span>✏️ Current Squad: <strong id="roomNameLabel" class="room-name-highlight">Pando Squad</strong></span>
-              <small id="currentRoomSlugLabel" style="color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem;">slug: main</small>
+              <span>✏️ Current Room: <strong id="roomNameLabel" class="room-name-highlight">Solo Quest</strong></span>
+              <small id="currentRoomSlugLabel" style="color: var(--text-muted); font-family: var(--font-mono); font-size: 0.75rem;">slug: solo</small>
             </label>
-            <div style="display: flex; gap: 6px;">
-              <input id="editRoomNameInput" type="text" class="form-input" placeholder="Squad Name" maxlength="50">
+            <div id="renameSquadControls" style="display: flex; gap: 6px;">
+              <input id="editRoomNameInput" type="text" class="form-input" placeholder="Squad Name" maxlength="50" aria-label="Edit squad name">
               <button id="saveRoomNameBtn" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;" type="button">
                 Save Name
               </button>
             </div>
+            <div id="soloStatusNotice" style="display: none; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+              🔒 You are currently training in your private Solo Quest.
+            </div>
           </div>
 
-          <!-- Section 2: Squad Members Roster -->
+          <!-- Section 2C: Squad Members Roster (hidden in solo mode) -->
           <div class="hub-card" id="squadMembersCard">
             <label class="form-label" style="color: var(--accent-green); display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <span>👥 Crew Members (<strong id="squadMemberCount">0</strong>)</span>
@@ -639,40 +657,94 @@
             </button>
           </div>
 
-          <!-- Section 3: Share Current Squad -->
-          <div class="hub-card">
-            <label class="form-label" style="color: #60a5fa;">🔗 Share Squad Invite Link</label>
-            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
-              <input id="shareRoomUrlInput" type="text" class="form-input" readonly style="font-size: 0.78rem; font-family: var(--font-mono); background: var(--bg-surface);">
-              <button id="copyRoomUrlBtn" class="btn btn-secondary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;" type="button">
-                📋 Copy
-              </button>
+          <!-- Section 2D: Share Your Squad (or prompt to create if in Solo Quest) -->
+          <div class="hub-card" id="shareSquadHubCard">
+            <label class="form-label" style="color: var(--accent-blue); display: flex; justify-content: space-between; align-items: center;">
+              <span>👥 Share Your Squad</span>
+              <span id="shareSquadStatusBadge" style="font-size: 0.72rem; color: var(--text-muted);"></span>
+            </label>
+
+            <!-- Solo Mode Prompt: If in Solo, prompt to name and create squad -->
+            <div id="soloSharePrompt" style="display: none;" class="solo-prompt-box">
+              <div style="font-size: 0.84rem; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">
+                ✨ Name & Create Your Squad First
+              </div>
+              <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.4;">
+                You are currently in Solo mode. Name your squad below to generate a shareable crew link and QR code for your gym partners!
+              </p>
+              <div style="display: flex; gap: 6px;">
+                <input id="promptSquadNameInput" type="text" class="form-input" placeholder="e.g. Athlete's Squad" maxlength="50" aria-label="Squad name to create">
+                <button id="promptCreateSquadBtn" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;" type="button">
+                  Create & Share
+                </button>
+              </div>
             </div>
-            <button id="nativeShareBtn" class="btn btn-secondary" style="width: 100%; display: none; margin-bottom: 8px; font-size: 0.82rem;" type="button">
-              📲 Share via Apps / Messages
-            </button>
-            <div style="text-align: center; margin-top: 8px;">
-              <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Scan with Phone to Join:</span>
-              <div style="display: flex; justify-content: center;">
-                <img id="roomQrImage" src="" alt="Room QR Code" style="width: 130px; height: 130px; background: #fff; border-radius: var(--radius-md); padding: 6px;">
+
+            <!-- Active Squad Sharing Controls: Shown when in a squad -->
+            <div id="squadShareActiveControls">
+              <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                <input id="shareRoomUrlInput" type="text" class="form-input" readonly style="font-size: 0.78rem; font-family: var(--font-mono); background: var(--bg-surface);" aria-label="Squad invite link">
+                <button id="copyRoomUrlBtn" class="btn btn-secondary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;" type="button">
+                  📋 Copy Link
+                </button>
+              </div>
+              <button id="nativeShareBtn" class="btn btn-secondary" style="width: 100%; display: none; margin-bottom: 8px; font-size: 0.82rem;" type="button">
+                📲 Share Squad via Apps / Messages
+              </button>
+              <div style="text-align: center; margin-top: 8px;">
+                <span id="squadQrLabel" style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Scan to Join Squad:</span>
+                <div style="display: flex; justify-content: center;">
+                  <img id="roomQrImage" src="" alt="Squad QR Code" style="width: 130px; height: 130px; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 6px;">
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Section 3: Start New Crew or Solo Quest -->
-          <div class="hub-card">
-            <label class="form-label" style="color: var(--accent-amber);">✨ Start New Crew or Solo Quest</label>
-            <input id="newRoomNameInput" type="text" class="form-input" placeholder="e.g. Sally's Bio Squad or Solo Tonnage">
-            <button id="createNewRoomBtn" class="btn btn-secondary" style="width: 100%; margin-top: 8px; font-size: 0.85rem;" type="button">
-              Create New Group
+          <!-- Section 2E: Share Tardigrade Tough (App) -->
+          <div class="hub-card" id="shareAppHubCard">
+            <label class="form-label" style="color: var(--accent-pink); display: flex; justify-content: space-between; align-items: center;">
+              <span>🌍 Share Tardigrade Tough (App)</span>
+              <span style="font-size: 0.72rem; color: var(--text-muted);">Main App</span>
+            </label>
+            <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4;">
+              Share the web app with anyone! New visitors get their own private workout quest.
+            </p>
+            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+              <input id="shareAppUrlInput" type="text" class="form-input" readonly style="font-size: 0.78rem; font-family: var(--font-mono); background: var(--bg-surface);" aria-label="Tardigrade Tough web app link">
+              <button id="copyAppUrlBtn" class="btn btn-secondary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;" type="button">
+                📋 Copy Link
+              </button>
+            </div>
+            <button id="nativeShareAppBtn" class="btn btn-secondary" style="width: 100%; display: none; margin-bottom: 8px; font-size: 0.82rem;" type="button">
+              📲 Share Tardigrade Tough App
             </button>
+            <div style="text-align: center; margin-top: 8px;">
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 6px;">Scan to Open App:</span>
+              <div style="display: flex; justify-content: center;">
+                <img id="appQrImage" src="" alt="App QR Code" style="width: 130px; height: 130px; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 6px;">
+              </div>
+            </div>
           </div>
 
-          <!-- Section 4: Join by Slug -->
-          <div class="form-group" style="margin-top: 10px;">
-            <label class="form-label">Join Existing Group by Code / Slug</label>
+          <!-- Section 2F: Create Another Squad -->
+          <div class="hub-card" id="createSquadCard">
+            <label class="form-label" style="color: var(--accent-amber);">✨ Create a Squad</label>
+            <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4;">
+              Create multiple squads for different gym crews, family, or fitness goals.
+            </p>
             <div style="display: flex; gap: 6px;">
-              <input id="roomSlugInput" type="text" class="form-input" placeholder="e.g. main or aspen-crew">
+              <input id="newRoomNameInput" type="text" class="form-input" placeholder="e.g. Iron Tardigrades" maxlength="50" aria-label="New squad name">
+              <button id="createNewRoomBtn" class="btn btn-secondary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;" type="button">
+                Create
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 2G: Join Existing Squad by Slug -->
+          <div class="form-group" style="margin-top: 10px;">
+            <label class="form-label">Join Existing Squad by Code / Slug</label>
+            <div style="display: flex; gap: 6px;">
+              <input id="roomSlugInput" type="text" class="form-input" placeholder="e.g. titan-squad or pando-crew" aria-label="Squad code or slug to join">
               <button id="switchRoomBtn" class="btn btn-secondary" style="white-space: nowrap;" type="button">Join</button>
             </div>
           </div>
@@ -835,14 +907,14 @@
         </p>
 
         <!-- Made for Sally Dedication -->
-        <div id="aboutStorySection" class="about-card story-card" style="margin-top: 14px; background: rgba(236, 72, 153, 0.08); border: 1px solid rgba(236, 72, 153, 0.3); border-left: 3px solid #ec4899; border-radius: var(--radius-md); padding: 12px 14px; text-align: center;">
-          <span style="color: #f472b6; font-weight: 800; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 6px;">
+        <div id="aboutStorySection" class="about-card story-card" style="margin-top: 14px; background: rgba(236, 72, 153, 0.08); border: 1px solid rgba(236, 72, 153, 0.3); border-left: 3px solid var(--accent-pink); border-radius: var(--radius-md); padding: 12px 14px; text-align: center;">
+          <span style="color: var(--accent-pink); font-weight: 800; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 6px;">
             <span>💝</span> Made for Sally
           </span>
         </div>
 
         <!-- Contact & GitHub Section -->
-        <div id="aboutContactSection" class="about-card contact-card" style="margin-top: 12px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-left: 3px solid #3b82f6; border-radius: var(--radius-md); padding: 14px;">
+        <div id="aboutContactSection" class="about-card contact-card" style="margin-top: 12px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-left: 3px solid var(--accent-blue); border-radius: var(--radius-md); padding: 14px;">
           <h4 style="margin-top: 0; display: flex; align-items: center; gap: 6px;">
             <span>📬</span> Contact & Project
           </h4>
@@ -854,14 +926,14 @@
               <span style="font-size: 1.15rem;">✉️</span>
               <div style="display: flex; flex-direction: column; overflow: hidden;">
                 <span style="font-weight: 700; font-size: 0.74rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Email</span>
-                <span style="font-family: var(--font-mono); color: #60a5fa; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">danielspiesman@gmail.com</span>
+                <span style="font-family: var(--font-mono); color: var(--accent-blue); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">danielspiesman@gmail.com</span>
               </div>
             </a>
             <a href="https://github.com/radmuffin/tardigrade-tough" target="_blank" rel="noopener noreferrer" class="contact-link-row" style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); font-size: 0.84rem;">
               <span style="font-size: 1.15rem;">🐙</span>
               <div style="display: flex; flex-direction: column; overflow: hidden;">
                 <span style="font-weight: 700; font-size: 0.74rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">GitHub Repository</span>
-                <span style="font-family: var(--font-mono); color: #34d399; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">github.com/radmuffin/tardigrade-tough</span>
+                <span style="font-family: var(--font-mono); color: var(--accent-green); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">github.com/radmuffin/tardigrade-tough</span>
               </div>
             </a>
           </div>

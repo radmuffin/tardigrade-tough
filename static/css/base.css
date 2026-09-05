@@ -171,6 +171,12 @@ body {
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
   border-color: var(--border-active);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+:focus-visible {
+  outline: 2px solid var(--border-active);
+  outline-offset: 2px;
 }
 
 .btn {

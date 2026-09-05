@@ -129,54 +129,6 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         [],
     );
 
-    // Ensure default main room exists with a concise, clean squad name
-    let now = Utc::now().to_rfc3339();
-    conn.execute(
-        "INSERT OR IGNORE INTO rooms (slug, name, created_at) VALUES ('main', 'Pando Squad', ?)",
-        params![now],
-    )?;
-    conn.execute(
-        "UPDATE rooms SET name = 'Pando Squad' WHERE slug = 'main' AND name = 'Pando & Friends Gym Crew'",
-        [],
-    )?;
-
-    // Check if default goals need to be seeded for 'main'
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM goals WHERE room_slug = 'main'",
-        [],
-        |row| row.get(0),
-    )?;
-
-    if count == 0 {
-        // 1. Pando (Active Weight Goal) - starts clean at 0.0
-        conn.execute(
-            r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-               VALUES ('main', 'Pando Aspen Clone', 'weight', 13200000.0, 0.0, 'lbs', 'pando', 'active', 'Hoisting the 13.2-million-pound underground root system of Utah’s massive clonal aspen grove.', ?)"#,
-            params![now],
-        )?;
-
-        // 2. Caribou Migration (Active Distance Goal) - starts clean at 0.0
-        conn.execute(
-            r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-               VALUES ('main', 'Caribou Migration', 'distance', 3000.0, 0.0, 'mi', 'caribou', 'active', 'Running, walking, and biking the majestic 3,000-mile Arctic tundra migration.', ?)"#,
-            params![now],
-        )?;
-
-        // 3. Mt. Everest Climb (Active Elevation Goal) - starts clean at 0.0
-        conn.execute(
-            r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-               VALUES ('main', 'Mt. Everest Ascent', 'elevation', 29031.0, 0.0, 'ft', 'everest', 'active', 'Scaling the roof of the world with nimble mountain goats.', ?)"#,
-            params![now],
-        )?;
-
-        // 4. The Blue Whale (Completed Trophy Goal)
-        conn.execute(
-            r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-               VALUES ('main', 'The Blue Whale', 'weight', 418878.0, 418878.0, 'lbs', 'whale', 'completed', '🏆 CONQUERED! The crew hoisted the full weight of a colossal Blue Whale.', ?)"#,
-            params![now],
-        )?;
-    }
-
     // Ensure active goals accurately reflect the actual sum of logged activities in that room
     conn.execute(
         r#"UPDATE goals
@@ -241,6 +193,11 @@ pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
             conn.execute(
                 r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
                    VALUES (?, 'Mt. Everest Ascent', 'elevation', 29031.0, 0.0, 'ft', 'everest', 'active', 'Scaling the roof of the world with nimble mountain goats.', ?)"#,
+                params![slug, now],
+            )?;
+            conn.execute(
+                r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
+                   VALUES (?, 'The Blue Whale', 'weight', 418878.0, 418878.0, 'lbs', 'whale', 'completed', '🏆 CONQUERED! The crew hoisted the full weight of a colossal Blue Whale.', ?)"#,
                 params![slug, now],
             )?;
 
@@ -472,6 +429,138 @@ pub fn remove_room_member(
     .map_err(|e| e.to_string())?;
 
     Ok(solo_slug)
+}
+
+pub fn create_room_for_user(
+    conn: &Connection,
+    user_token: &str,
+    name: Option<&str>,
+) -> Result<Room> {
+    let tok = user_token.trim();
+    let default_room = generate_solo_room_slug(tok);
+    let user_profile = get_or_create_user(conn, tok, &default_room)?;
+
+    let nick = user_profile.nickname.trim();
+    let fallback_name = if !nick.is_empty() && nick != "Athlete" {
+        format!("{}'s Squad", nick)
+    } else {
+        "Pando Squad".to_string()
+    };
+
+    let chosen_name = name
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(&fallback_name);
+
+    let base_slug = chosen_name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+        .collect::<String>();
+    let clean_base = base_slug.trim_matches('-').replace("--", "-");
+    let clean_base = if clean_base.is_empty() {
+        "squad".to_string()
+    } else {
+        clean_base
+    };
+    let random_suffix = &fly_common::sync::generate_share_token()[..4];
+    let slug = format!("{}-{}", clean_base, random_suffix);
+
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "INSERT INTO rooms (slug, name, created_at, creator_token) VALUES (?, ?, ?, ?)",
+        params![slug, chosen_name, now, tok],
+    )?;
+    let id = conn.last_insert_rowid();
+
+    // Seed initial goals for newly created rooms
+    conn.execute(
+        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
+           VALUES (?, 'Pando Aspen Clone', 'weight', 13200000.0, 0.0, 'lbs', 'pando', 'active', 'Hoisting the 13.2-million-pound underground root system of Utah’s massive clonal aspen grove.', ?)"#,
+        params![slug, now],
+    )?;
+    conn.execute(
+        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
+           VALUES (?, 'Caribou Migration', 'distance', 3000.0, 0.0, 'mi', 'caribou', 'active', 'Running, walking, and biking the majestic 3,000-mile Arctic tundra migration.', ?)"#,
+        params![slug, now],
+    )?;
+    conn.execute(
+        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
+           VALUES (?, 'Mt. Everest Ascent', 'elevation', 29031.0, 0.0, 'ft', 'everest', 'active', 'Scaling the roof of the world with nimble mountain goats.', ?)"#,
+        params![slug, now],
+    )?;
+    conn.execute(
+        r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
+           VALUES (?, 'The Blue Whale', 'weight', 418878.0, 418878.0, 'lbs', 'whale', 'completed', '🏆 CONQUERED! The crew hoisted the full weight of a colossal Blue Whale.', ?)"#,
+        params![slug, now],
+    )?;
+
+    if !tok.is_empty() {
+        conn.execute(
+            "INSERT OR REPLACE INTO room_members (room_slug, user_token, role, joined_at) VALUES (?, ?, 'creator', ?)",
+            params![slug, tok, now],
+        )?;
+
+        conn.execute(
+            "UPDATE users SET current_room_slug = ? WHERE user_token = ?",
+            params![slug, tok],
+        )?;
+    }
+
+    Ok(Room {
+        id,
+        slug,
+        name: chosen_name.to_string(),
+        created_at: now,
+        creator_token: tok.to_string(),
+    })
+}
+
+pub fn get_user_squads(conn: &Connection, user_token: &str) -> Result<Vec<UserSquadSummary>> {
+    let tok = user_token.trim();
+    if tok.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT
+            r.slug,
+            r.name,
+            rm.role,
+            (r.creator_token = ? OR rm.role = 'creator') AS is_creator,
+            (SELECT COUNT(*) FROM room_members rm2 WHERE rm2.room_slug = r.slug) AS member_count,
+            rm.joined_at
+        FROM room_members rm
+        JOIN rooms r ON r.slug = rm.room_slug
+        WHERE rm.user_token = ? AND r.slug NOT LIKE 'solo-%'
+        ORDER BY rm.joined_at DESC
+    "#,
+    )?;
+
+    let rows = stmt.query_map(params![tok, tok], |row| {
+        let slug: String = row.get(0)?;
+        let name: String = row.get(1)?;
+        let role: String = row.get(2)?;
+        let is_creator: bool = row.get(3)?;
+        let member_count: i64 = row.get(4)?;
+        let joined_at: String = row.get(5)?;
+
+        Ok(UserSquadSummary {
+            slug,
+            name,
+            role,
+            is_creator,
+            member_count,
+            joined_at,
+        })
+    })?;
+
+    let mut squads = Vec::new();
+    for s in rows {
+        squads.push(s?);
+    }
+    Ok(squads)
 }
 
 pub fn get_user_current_room(conn: &Connection, token: &str) -> Result<Option<String>> {

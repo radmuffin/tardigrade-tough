@@ -20,7 +20,7 @@
 .trophy-crown-badge {
   font-size: 0.78rem;
   font-weight: 800;
-  color: #38bdf8;
+  color: var(--accent-blue);
   letter-spacing: 0.5px;
 }
 
@@ -97,7 +97,7 @@
 
 .wishlist-cat-badge.distance {
   background: rgba(59, 130, 246, 0.15);
-  color: #60a5fa;
+  color: var(--accent-blue);
 }
 
 .wishlist-cat-badge.elevation {

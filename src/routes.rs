@@ -1,8 +1,8 @@
 use crate::db::*;
 use crate::models::{
     Activity, BatchLogActivityRequest, CheerRequest, CreateGoalRequest, CreateGoalWishlistRequest,
-    Goal, GoalWishlistItem, LogActivityRequest, RenameRoomRequest, Room, RoomDataResponse,
-    UpdateProfileRequest, UserProfile as AppUserProfile,
+    CreateRoomRequest, Goal, GoalWishlistItem, LogActivityRequest, RenameRoomRequest, Room,
+    RoomDataResponse, UpdateProfileRequest, UserProfile as AppUserProfile,
 };
 use axum::async_trait;
 use axum::{
@@ -119,6 +119,7 @@ pub struct QrQuery {
 pub fn create_routes(state: AppState) -> Router {
     Router::new()
         .route("/room", get(get_default_room_data))
+        .route("/room/create", post(create_room_handler))
         .route("/room/:slug", get(get_room_data))
         .route("/room/:slug/name", post(rename_room_handler))
         .route("/room/:slug/leave", post(leave_room_handler))
@@ -211,6 +212,7 @@ async fn get_room_data(
     let leaderboard = get_leaderboard(&conn, &target_slug).unwrap_or_default();
     let wishlists = get_wishlists(&conn, &target_slug).unwrap_or_default();
     let members = get_room_members(&conn, &target_slug).unwrap_or_default();
+    let user_squads = get_user_squads(&conn, user.as_str()).unwrap_or_default();
 
     (
         StatusCode::OK,
@@ -223,8 +225,35 @@ async fn get_room_data(
             leaderboard,
             wishlists,
             members,
+            user_squads,
         })),
     )
+}
+
+async fn create_room_handler(
+    user: UserToken,
+    State(state): State<AppState>,
+    Json(payload): Json<CreateRoomRequest>,
+) -> (StatusCode, Json<ApiResponse<Room>>) {
+    let effective_user = if user.is_present() {
+        user.as_str().to_string()
+    } else {
+        fly_common::sync::generate_share_token()
+    };
+    let conn = state.db.lock().unwrap();
+    let name_opt = payload
+        .name
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+
+    match create_room_for_user(&conn, &effective_user, name_opt) {
+        Ok(room) => (StatusCode::OK, Json(ApiResponse::ok(room))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
+    }
 }
 
 async fn rename_room_handler(

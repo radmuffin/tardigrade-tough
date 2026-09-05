@@ -83,11 +83,11 @@
 }
 
 .lb-metric-tile:nth-child(2) .lb-tile-val {
-  color: #60a5fa;
+  color: var(--accent-blue);
 }
 
 .lb-metric-tile:nth-child(3) .lb-tile-val {
-  color: #fbbf24;
+  color: var(--accent-amber);
 }
 
 .lb-tile-icon {

@@ -39,6 +39,18 @@ export function renderLeaderboard() {
   if (heroDist) heroDist.textContent = `${totalDistance.toFixed(1)} ${distUnit}`;
   if (heroElev) heroElev.textContent = `${formatNumber(totalElevation)} ${elevUnit}`;
 
+  // Update squad banner in leaderboard
+  const isSolo = state.roomSlug.startsWith('solo-');
+  const squadNameLabel = document.getElementById('lbSquadNameLabel');
+  const squadMembersCount = document.getElementById('lbSquadMembersCount');
+  if (squadNameLabel && state.currentRoomData?.room) {
+    squadNameLabel.textContent = isSolo ? 'Solo Quest' : state.currentRoomData.room.name;
+  }
+  if (squadMembersCount) {
+    const memberCount = state.currentRoomData?.members?.length || 0;
+    squadMembersCount.textContent = isSolo ? 'Private Solo' : `${memberCount} member${memberCount === 1 ? '' : 's'}`;
+  }
+
   const currentUserId = state.currentRoomData.user_profile?.user_token;
 
   // Render 3 Vertical Category Sections (Weight, Distance, Elevation)
