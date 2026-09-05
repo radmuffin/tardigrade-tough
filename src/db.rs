@@ -844,6 +844,7 @@ pub fn log_single_activity(
             "weight" => (sets as f64) * (reps as f64) * weight_per_rep,
             "distance" => distance_val,
             "elevation" => elevation_val,
+            "ability" => 1.0,
             _ => {
                 if weight_per_rep > 0.0 {
                     (sets as f64) * (reps as f64) * weight_per_rep
@@ -865,6 +866,7 @@ pub fn log_single_activity(
             "weight" => "Lift",
             "distance" => "Cardio",
             "elevation" => "Climb",
+            "ability" => "Feat",
             _ => "Workout",
         })
         .trim();
@@ -967,6 +969,16 @@ pub fn log_single_activity(
                     )
                     .unwrap_or(0.0);
                 elevation_val > prev_max
+            }
+            "ability" => {
+                let prev_count: i64 = tx
+                    .query_row(
+                        "SELECT COUNT(*) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ? AND activity_type = 'ability'",
+                        params![user.user_token, clean_exercise],
+                        |r| r.get(0),
+                    )
+                    .unwrap_or(0);
+                prev_count == 0
             }
             _ => false,
         }
@@ -1241,6 +1253,71 @@ pub fn create_custom_goal(
         description: description.to_string(),
         created_at: now,
     })
+}
+
+pub fn checkoff_goal(
+    conn: &mut Connection,
+    user: &UserProfile,
+    goal_id: i64,
+    notes: Option<&str>,
+) -> Result<(Goal, Activity)> {
+    let goal: Goal = {
+        let mut stmt = conn.prepare(
+            "SELECT id, room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at FROM goals WHERE id = ?",
+        )?;
+        stmt.query_row(params![goal_id], map_goal)?
+    };
+
+    if goal.status == "completed" {
+        return Err(rusqlite::Error::InvalidParameterName(
+            "Goal is already completed".to_string(),
+        ));
+    }
+
+    let note_str = notes
+        .map(|n| n.trim().to_string())
+        .unwrap_or_else(|| "Accomplished!".to_string());
+    let target_val = if goal.target_value > 0.0 {
+        goal.target_value
+    } else {
+        1.0
+    };
+    let act_type = if goal.category.trim().is_empty() {
+        "ability".to_string()
+    } else {
+        goal.category.trim().to_lowercase()
+    };
+
+    let req = LogActivityRequest {
+        room_slug: Some(goal.room_slug.clone()),
+        user_nickname: Some(user.nickname.clone()),
+        user_avatar_color: Some(user.avatar_color.clone()),
+        user_avatar_emoji: Some(user.avatar_emoji.clone()),
+        activity_type: act_type,
+        exercise_name: Some(goal.title.clone()),
+        sets: Some(1),
+        reps: Some(1),
+        weight_per_rep: Some(0.0),
+        distance_val: Some(0.0),
+        elevation_val: Some(0.0),
+        total_metric: Some(target_val),
+        notes: Some(note_str),
+        goal_id: Some(goal.id),
+        created_at: None,
+        parent_activity_id: None,
+        is_pr: None,
+    };
+
+    let activity = log_single_activity(conn, user, &goal.room_slug, &req)?;
+
+    let updated_goal: Goal = {
+        let mut stmt = conn.prepare(
+            "SELECT id, room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at FROM goals WHERE id = ?",
+        )?;
+        stmt.query_row(params![goal_id], map_goal)?
+    };
+
+    Ok((updated_goal, activity))
 }
 
 pub fn create_goal_wishlist(

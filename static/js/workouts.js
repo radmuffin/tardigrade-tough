@@ -38,6 +38,41 @@ export function updateStepperForGoal(goal) {
   const metricPresets = document.getElementById('stepperMetricPresets');
   const wtInput = document.getElementById('stepperWeight');
   const customOpts = getCustomExerciseOptionsHtml();
+  const tabAbility = document.getElementById('modeAbilityBtn');
+  const panelAbility = document.getElementById('panelAbilityCheckoff');
+
+  if (goal && goal.category === 'ability') {
+    if (tabAbility) tabAbility.style.display = 'inline-block';
+    const featEmoji = document.getElementById('abilityFeatEmoji');
+    const featTitle = document.getElementById('abilityFeatTitle');
+    const featStatus = document.getElementById('abilityFeatStatus');
+    const checkoffBtn = document.getElementById('abilityCheckoffBtn');
+
+    if (featTitle) featTitle.textContent = goal.title;
+    if (featEmoji) featEmoji.textContent = goal.theme_key === 'volcano' ? '🌋' : goal.theme_key === 'canopy' ? '🌴' : goal.theme_key === 'everest' ? '🐐' : '⚡';
+    if (featStatus) featStatus.textContent = goal.status === 'completed' ? '✓ Accomplished 🏆' : 'One-Off Feat';
+    if (checkoffBtn) {
+      checkoffBtn.dataset.goalId = goal.id;
+      if (goal.status === 'completed') {
+        checkoffBtn.disabled = true;
+        checkoffBtn.innerHTML = '<span>✓</span> Accomplished! 🏆';
+        checkoffBtn.className = 'btn btn-secondary';
+      } else {
+        checkoffBtn.disabled = false;
+        checkoffBtn.innerHTML = '<span>✓</span> Mark Accomplished';
+        checkoffBtn.className = 'btn btn-primary';
+      }
+    }
+    if (window.setLoggingMode) {
+      window.setLoggingMode('ability');
+    }
+    return;
+  } else {
+    if (tabAbility) tabAbility.style.display = 'none';
+    if (panelAbility && panelAbility.style.display === 'block' && window.setLoggingMode) {
+      window.setLoggingMode('stepper');
+    }
+  }
 
   if (!goal || goal.category === 'weight') {
     if (exLabel) exLabel.textContent = 'Exercise';
@@ -200,37 +235,46 @@ function attachMetricPresetListeners() {
 }
 
 export function setupLoggingTabs() {
+  const tabAbility = document.getElementById('modeAbilityBtn');
   const tabStepper = document.getElementById('modeStepperBtn');
   const tabWorkout = document.getElementById('modeWorkoutBtn');
   const tabFastAdd = document.getElementById('modeFastAddBtn');
 
+  const panelAbility = document.getElementById('panelAbilityCheckoff');
   const panelStepper = document.getElementById('panelStepper');
   const panelWorkout = document.getElementById('panelWorkout');
   const panelFastAdd = document.getElementById('panelFastAdd');
 
-  if (!tabStepper || !tabWorkout || !tabFastAdd) return;
+  const allTabs = [tabAbility, tabStepper, tabWorkout, tabFastAdd].filter(Boolean);
+  const allPanels = [panelAbility, panelStepper, panelWorkout, panelFastAdd].filter(Boolean);
 
   function setMode(mode) {
-    [tabStepper, tabWorkout, tabFastAdd].forEach(t => t.classList.remove('active'));
-    [panelStepper, panelWorkout, panelFastAdd].forEach(p => {
+    allTabs.forEach(t => t.classList.remove('active'));
+    allPanels.forEach(p => {
       if (p) p.style.display = 'none';
     });
 
-    if (mode === 'stepper') {
-      tabStepper.classList.add('active');
+    if (mode === 'ability') {
+      if (tabAbility) tabAbility.classList.add('active');
+      if (panelAbility) panelAbility.style.display = 'block';
+    } else if (mode === 'stepper') {
+      if (tabStepper) tabStepper.classList.add('active');
       if (panelStepper) panelStepper.style.display = 'block';
     } else if (mode === 'workout') {
-      tabWorkout.classList.add('active');
+      if (tabWorkout) tabWorkout.classList.add('active');
       if (panelWorkout) panelWorkout.style.display = 'block';
     } else if (mode === 'fastadd') {
-      tabFastAdd.classList.add('active');
+      if (tabFastAdd) tabFastAdd.classList.add('active');
       if (panelFastAdd) panelFastAdd.style.display = 'block';
     }
   }
 
-  tabStepper.addEventListener('click', () => setMode('stepper'));
-  tabWorkout.addEventListener('click', () => setMode('workout'));
-  tabFastAdd.addEventListener('click', () => setMode('fastadd'));
+  window.setLoggingMode = setMode;
+
+  if (tabAbility) tabAbility.addEventListener('click', () => setMode('ability'));
+  if (tabStepper) tabStepper.addEventListener('click', () => setMode('stepper'));
+  if (tabWorkout) tabWorkout.addEventListener('click', () => setMode('workout'));
+  if (tabFastAdd) tabFastAdd.addEventListener('click', () => setMode('fastadd'));
 }
 
 export function setupSteppers({ onReloadState } = {}) {
@@ -426,6 +470,40 @@ export function setupSteppers({ onReloadState } = {}) {
         return;
       }
       if (logSetBtn) logSetBtn.click();
+    });
+  }
+
+  const checkoffBtn = document.getElementById('abilityCheckoffBtn');
+  const featNoteInput = document.getElementById('abilityFeatNoteInput');
+  if (checkoffBtn) {
+    checkoffBtn.addEventListener('click', async () => {
+      const activeGoals = state.currentRoomData?.active_goals || [];
+      const currentGoal = activeGoals[state.selectedGoalIndex];
+      const goalId = checkoffBtn.dataset.goalId || currentGoal?.id;
+      if (!goalId) return;
+
+      const notes = (featNoteInput ? featNoteInput.value.trim() : '') || 'Accomplished!';
+      try {
+        checkoffBtn.disabled = true;
+        checkoffBtn.innerHTML = '<span>⏳</span> Recording...';
+        const res = await state.client.post(`/goals/${goalId}/checkoff`, { notes });
+        if (res && res.success) {
+          if (featNoteInput) featNoteInput.value = '';
+          FlyToast.success(`🎉 Accomplished: ${currentGoal?.title || 'Ability'}!`);
+          if (state.diorama) {
+            state.diorama.spawnCelebrationBurst('⚡ Feat Unlocked!');
+          }
+          if (onReloadState) await onReloadState();
+        } else {
+          FlyToast.error(res?.error || 'Failed to check off feat');
+        }
+      } catch (err) {
+        console.error('Checkoff error:', err);
+        FlyToast.error('Failed to check off feat');
+      } finally {
+        checkoffBtn.disabled = false;
+        checkoffBtn.innerHTML = '<span>✓</span> Mark Accomplished';
+      }
     });
   }
 

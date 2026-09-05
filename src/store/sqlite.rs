@@ -107,6 +107,16 @@ impl GoalStore for SqliteStore {
         crate::db::create_custom_goal(&conn, room_slug, req).map_err(Into::into)
     }
 
+    fn checkoff_goal(
+        &self,
+        user: &UserProfile,
+        goal_id: i64,
+        notes: Option<&str>,
+    ) -> StoreResult<(Goal, Activity)> {
+        let mut conn = self.conn.lock().unwrap();
+        crate::db::checkoff_goal(&mut conn, user, goal_id, notes).map_err(Into::into)
+    }
+
     fn create_goal_wishlist(
         &self,
         user_token: &str,

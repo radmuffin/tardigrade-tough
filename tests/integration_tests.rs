@@ -1745,3 +1745,180 @@ async fn test_data_store_trait_abstraction() {
     assert_eq!(completed_titan.current_value, 10000.0);
     assert_eq!(completed_titan.status, "completed");
 }
+
+#[tokio::test]
+async fn test_ability_goal_creation_checkoff_pr_and_rollback() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(100));
+    let state = AppState::new(db, hub);
+    let app = create_routes(state);
+    let server = TestServer::new(app).unwrap();
+
+    let user_token = "token_ability_ninja";
+
+    // 1. Create an Ability Goal (One-Off Feat: Muscle Up)
+    let create_res = server
+        .post("/goals")
+        .add_header("x-user-token", user_token)
+        .json(&json!({
+            "title": "Strict Muscle Up",
+            "category": "ability",
+            "target_value": 1.0,
+            "unit": "feat",
+            "theme_key": "feat",
+            "description": "Strict bar muscle up with no kip."
+        }))
+        .await;
+    create_res.assert_status(axum::http::StatusCode::CREATED);
+    let goal_json: serde_json::Value = create_res.json();
+    let goal_id = goal_json["data"]["id"].as_i64().unwrap();
+    assert_eq!(goal_json["data"]["category"], "ability");
+    assert_eq!(goal_json["data"]["status"], "active");
+    assert_eq!(goal_json["data"]["target_value"], 1.0);
+    assert_eq!(goal_json["data"]["current_value"], 0.0);
+
+    // 2. Verify it shows in active_goals
+    let room_res = server
+        .get("/room/current")
+        .add_header("x-user-token", user_token)
+        .await;
+    room_res.assert_status_ok();
+    let room_data: serde_json::Value = room_res.json();
+    let active_goals = room_data["data"]["active_goals"].as_array().unwrap();
+    assert!(active_goals.iter().any(|g| g["id"] == goal_id));
+
+    // 3. Check off the goal via /goals/:id/checkoff
+    let checkoff_res = server
+        .post(&format!("/goals/{}/checkoff", goal_id))
+        .add_header("x-user-token", user_token)
+        .json(&json!({
+            "notes": "First clean ring muscle up!"
+        }))
+        .await;
+    checkoff_res.assert_status_ok();
+    let checkoff_json: serde_json::Value = checkoff_res.json();
+    assert_eq!(checkoff_json["data"]["goal"]["status"], "completed");
+    assert_eq!(checkoff_json["data"]["goal"]["current_value"], 1.0);
+    assert_eq!(
+        checkoff_json["data"]["activity"]["activity_type"],
+        "ability"
+    );
+    assert_eq!(
+        checkoff_json["data"]["activity"]["exercise_name"],
+        "Strict Muscle Up"
+    );
+    assert_eq!(
+        checkoff_json["data"]["activity"]["notes"],
+        "First clean ring muscle up!"
+    );
+    assert_eq!(checkoff_json["data"]["activity"]["is_pr"], true);
+    let activity_id = checkoff_json["data"]["activity"]["id"].as_i64().unwrap();
+
+    // 4. Verify the goal is now in completed_goals
+    let room_after = server
+        .get("/room/current")
+        .add_header("x-user-token", user_token)
+        .await;
+    let room_after_data: serde_json::Value = room_after.json();
+    let completed_goals = room_after_data["data"]["completed_goals"]
+        .as_array()
+        .unwrap();
+    assert!(completed_goals.iter().any(|g| g["id"] == goal_id));
+
+    // 5. Attempting to check off an already-completed goal fails with 400
+    let second_checkoff = server
+        .post(&format!("/goals/{}/checkoff", goal_id))
+        .add_header("x-user-token", user_token)
+        .json(&json!({}))
+        .await;
+    second_checkoff.assert_status(axum::http::StatusCode::BAD_REQUEST);
+
+    // 6. Delete the activity to test transactional rollback
+    let del_res = server
+        .delete(&format!("/activities/{}", activity_id))
+        .add_header("x-user-token", user_token)
+        .await;
+    del_res.assert_status_ok();
+
+    // Verify goal reverted to active and current_value 0.0
+    let room_rollback = server
+        .get("/room/current")
+        .add_header("x-user-token", user_token)
+        .await;
+    let rollback_data: serde_json::Value = room_rollback.json();
+    let rollback_active = rollback_data["data"]["active_goals"].as_array().unwrap();
+    let reverted_goal = rollback_active
+        .iter()
+        .find(|g| g["id"] == goal_id)
+        .expect("Goal should be active again");
+    assert_eq!(reverted_goal["status"], "active");
+    assert_eq!(reverted_goal["current_value"], 0.0);
+}
+
+#[tokio::test]
+async fn test_solo_ability_checkoff_auto_forwards_to_squads() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(100));
+    let state = AppState::new(db, hub);
+    let app = create_routes(state);
+    let server = TestServer::new(app).unwrap();
+
+    let user_token = "token_solo_gymnast";
+
+    // 1. Create a squad
+    let squad_res = server
+        .post("/room/create")
+        .add_header("x-user-token", user_token)
+        .json(&json!({
+            "name": "Gymnast Squad"
+        }))
+        .await;
+    squad_res.assert_status_ok();
+    let squad_json: serde_json::Value = squad_res.json();
+    let squad_slug = squad_json["data"]["slug"].as_str().unwrap().to_string();
+
+    // 2. In solo room, create an ability goal "Backflip"
+    let solo_room = format!("solo-{}", user_token);
+    let goal_res = server
+        .post("/goals")
+        .add_header("x-user-token", user_token)
+        .json(&json!({
+            "room_slug": solo_room,
+            "title": "Backflip",
+            "category": "ability",
+            "target_value": 1.0,
+            "unit": "feat",
+            "theme_key": "feat"
+        }))
+        .await;
+    goal_res.assert_status(axum::http::StatusCode::CREATED);
+    let goal_json: serde_json::Value = goal_res.json();
+    let goal_id = goal_json["data"]["id"].as_i64().unwrap();
+
+    // 3. Check off Backflip in solo room
+    let checkoff_res = server
+        .post(&format!("/goals/{}/checkoff", goal_id))
+        .add_header("x-user-token", user_token)
+        .json(&json!({
+            "notes": "Landed on grass!"
+        }))
+        .await;
+    checkoff_res.assert_status_ok();
+
+    // 4. Verify the activity was auto-forwarded to the squad
+    let squad_data_res = server
+        .get(&format!("/room/{}", squad_slug))
+        .add_header("x-user-token", user_token)
+        .await;
+    squad_data_res.assert_status_ok();
+    let squad_data: serde_json::Value = squad_data_res.json();
+    let squad_activities = squad_data["data"]["recent_activities"].as_array().unwrap();
+    let fwd_act = squad_activities
+        .iter()
+        .find(|a| a["exercise_name"] == "Backflip")
+        .expect("Backflip should be auto-forwarded to squad");
+    assert_eq!(fwd_act["activity_type"], "ability");
+    assert_eq!(fwd_act["notes"], "Landed on grass!");
+}

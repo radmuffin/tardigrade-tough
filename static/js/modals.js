@@ -1010,6 +1010,11 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
         if (cat === 'weight') wishlistUnitSelect.value = 'lbs';
         else if (cat === 'distance') wishlistUnitSelect.value = 'mi';
         else if (cat === 'elevation') wishlistUnitSelect.value = 'ft';
+        else if (cat === 'ability') {
+          wishlistUnitSelect.value = 'feat';
+          const targetIn = document.getElementById('wishlistTargetInput');
+          if (targetIn && (!targetIn.value || targetIn.value === '0')) targetIn.value = '1';
+        }
       }
     });
 
@@ -1029,8 +1034,12 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       const title = document.getElementById('wishlistTitleInput')?.value?.trim();
       let category = wishlistCatSelect?.value || 'weight';
       let unit = wishlistUnitSelect?.value || 'lbs';
-      const targetVal = parseFloat(document.getElementById('wishlistTargetInput')?.value);
+      let targetVal = parseFloat(document.getElementById('wishlistTargetInput')?.value);
       const notes = document.getElementById('wishlistNotesInput')?.value?.trim() || '';
+
+      if (category === 'ability' && (isNaN(targetVal) || targetVal <= 0)) {
+        targetVal = 1;
+      }
 
       if (category === 'custom') {
         const customCatVal = customCatInput?.value?.trim();
@@ -1142,7 +1151,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       if (!window.confirm(confirmMsg)) return;
 
       actBtn.disabled = true;
-      const themeKey = category === 'weight' ? 'pando' : category === 'distance' ? 'caribou' : (category === 'elevation' ? 'everest' : 'custom');
+      const themeKey = category === 'weight' ? 'pando' : category === 'distance' ? 'caribou' : (category === 'elevation' ? 'everest' : (category === 'ability' ? 'feat' : 'custom'));
       state.client.post('/goals', {
         room_slug: state.roomSlug,
         title,
@@ -1183,6 +1192,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   const questCategorySelect = document.getElementById('questCategorySelect');
   const questUnitSelect = document.getElementById('questUnitSelect');
   const questTargetInput = document.getElementById('questTargetInput');
+  const questTargetGroup = document.getElementById('questTargetGroup');
   const questThemePicker = document.getElementById('questThemePicker');
 
   let selectedQuestTheme = 'volcano';
@@ -1200,9 +1210,26 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   if (questCategorySelect && questUnitSelect) {
     questCategorySelect.addEventListener('change', () => {
       const cat = questCategorySelect.value;
-      if (cat === 'weight') questUnitSelect.value = 'lbs';
-      else if (cat === 'distance') questUnitSelect.value = 'mi';
-      else if (cat === 'elevation') questUnitSelect.value = 'ft';
+      if (cat === 'weight') {
+        questUnitSelect.value = 'lbs';
+        if (questTargetGroup) questTargetGroup.style.display = 'block';
+      } else if (cat === 'distance') {
+        questUnitSelect.value = 'mi';
+        if (questTargetGroup) questTargetGroup.style.display = 'block';
+      } else if (cat === 'elevation') {
+        questUnitSelect.value = 'ft';
+        if (questTargetGroup) questTargetGroup.style.display = 'block';
+      } else if (cat === 'ability') {
+        questUnitSelect.value = 'feat';
+        if (questTargetInput) questTargetInput.value = '1';
+        if (questTargetGroup) questTargetGroup.style.display = 'none';
+        selectedQuestTheme = 'feat';
+        if (questThemePicker) {
+          questThemePicker.querySelectorAll('.quest-theme-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.theme === 'feat');
+          });
+        }
+      }
     });
   }
 
@@ -1214,6 +1241,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       setTimeout(() => questTitleInput.focus(), 80);
     }
     if (questTargetInput) questTargetInput.value = '';
+    if (questTargetGroup) questTargetGroup.style.display = 'block';
     if (questCategorySelect) questCategorySelect.value = 'weight';
     if (questUnitSelect) questUnitSelect.value = 'lbs';
     selectedQuestTheme = 'volcano';
@@ -1243,7 +1271,12 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       const title = questTitleInput ? questTitleInput.value.trim() : '';
       const category = questCategorySelect ? questCategorySelect.value : 'weight';
       const unit = questUnitSelect ? questUnitSelect.value : 'lbs';
-      const targetVal = questTargetInput ? parseFloat(questTargetInput.value) : 0;
+      let targetVal = questTargetInput ? parseFloat(questTargetInput.value) : 0;
+
+      if (category === 'ability') {
+        targetVal = 1;
+        if (!selectedQuestTheme || selectedQuestTheme === 'volcano') selectedQuestTheme = 'feat';
+      }
 
       if (!title) {
         FlyToast.error('Please enter a quest title');

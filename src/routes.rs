@@ -1,8 +1,9 @@
 use crate::db::*;
 use crate::models::{
-    Activity, BatchLogActivityRequest, CheerRequest, CreateGoalRequest, CreateGoalWishlistRequest,
-    CreateRoomRequest, Goal, GoalWishlistItem, LogActivityRequest, PersonalRecord,
-    RenameRoomRequest, Room, RoomDataResponse, UpdateProfileRequest, UserProfile as AppUserProfile,
+    Activity, BatchLogActivityRequest, CheckoffGoalRequest, CheckoffGoalResponse, CheerRequest,
+    CreateGoalRequest, CreateGoalWishlistRequest, CreateRoomRequest, Goal, GoalWishlistItem,
+    LogActivityRequest, PersonalRecord, RenameRoomRequest, Room, RoomDataResponse,
+    UpdateProfileRequest, UserProfile as AppUserProfile,
 };
 use axum::async_trait;
 use axum::{
@@ -149,6 +150,7 @@ pub fn create_routes(state: AppState) -> Router {
         .route("/activities/:id", delete(delete_activity_handler))
         .route("/cheer", post(cheer_handler))
         .route("/goals", post(create_goal_handler))
+        .route("/goals/:id/checkoff", post(checkoff_goal_handler))
         .route("/goals/wishlist", post(create_wishlist_handler))
         .route("/qr", get(qr_handler))
         .route("/ws", get(ws_handler))
@@ -752,6 +754,102 @@ async fn create_goal_handler(
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
+    }
+}
+
+async fn checkoff_goal_handler(
+    user: UserToken,
+    Path(goal_id): Path<i64>,
+    State(state): State<AppState>,
+    payload: Option<Json<CheckoffGoalRequest>>,
+) -> (StatusCode, Json<ApiResponse<CheckoffGoalResponse>>) {
+    let solo_room = generate_solo_room_slug(user.as_str());
+    let user_profile = match state.store.get_or_create_user(user.as_str(), &solo_room) {
+        Ok(p) => p,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::err(e.to_string())),
+            );
+        }
+    };
+
+    let notes = payload.as_ref().and_then(|p| p.0.notes.as_deref());
+
+    match state.store.checkoff_goal(&user_profile, goal_id, notes) {
+        Ok((goal, activity)) => {
+            let (active_goals, completed_goals) = state
+                .store
+                .get_goals_for_room(&goal.room_slug)
+                .unwrap_or_default();
+            let leaderboard = state
+                .store
+                .get_leaderboard(&goal.room_slug)
+                .unwrap_or_default();
+
+            let _ = state.hub.broadcast(WsMessage {
+                room: goal.room_slug.clone(),
+                event: "activity_logged".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "activity": activity,
+                    "active_goals": active_goals,
+                    "completed_goals": completed_goals,
+                    "leaderboard": leaderboard,
+                }),
+            });
+
+            let _ = state.hub.broadcast(WsMessage {
+                room: goal.room_slug.clone(),
+                event: "goal_completed".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "goal": goal,
+                }),
+            });
+
+            // If checked off in a solo room, auto-forward to all squads the user belongs to
+            if goal.room_slug.starts_with("solo-") {
+                if let Ok(squads) = state.store.get_user_squads(user.as_str()) {
+                    for squad in squads {
+                        let fwd_req = activity.to_forwarded_request(&squad.slug);
+                        if let Ok(sq_act) =
+                            state
+                                .store
+                                .log_single_activity(&user_profile, &squad.slug, &fwd_req)
+                        {
+                            let (sq_goals, sq_completed) = state
+                                .store
+                                .get_goals_for_room(&squad.slug)
+                                .unwrap_or_default();
+                            let sq_leaderboard =
+                                state.store.get_leaderboard(&squad.slug).unwrap_or_default();
+
+                            let _ = state.hub.broadcast(WsMessage {
+                                room: squad.slug.clone(),
+                                event: "activity_logged".to_string(),
+                                sender_token: Some(user.as_str().to_string()),
+                                payload: serde_json::json!({
+                                    "activity": sq_act,
+                                    "active_goals": sq_goals,
+                                    "completed_goals": sq_completed,
+                                    "leaderboard": sq_leaderboard,
+                                }),
+                            });
+                        }
+                    }
+                }
+            }
+
+            (
+                StatusCode::OK,
+                Json(ApiResponse::ok(CheckoffGoalResponse { goal, activity })),
+            )
+        }
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
             Json(ApiResponse::err(e.to_string())),
         ),
     }

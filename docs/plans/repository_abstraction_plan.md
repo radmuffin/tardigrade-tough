@@ -87,7 +87,7 @@ To make the system cleaner, adaptable, and extensible:
 - [x] Run full test suite with `cargo test --all-targets` (all 26 tests pass).
 - [x] Run `npm run test:affected`.
 - [x] Autonomous commit and push to `origin/main`.
-- [ ] Deploy to Fly.io via `fly deploy` and test live health endpoint.
+- [x] Deploy to Fly.io via `fly deploy` and test live health endpoint.
 
 ---
 

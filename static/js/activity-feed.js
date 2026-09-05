@@ -58,6 +58,8 @@ export function renderFeed({ onReloadState } = {}) {
       metricText = `+${act.total_metric} mi`;
     } else if (act.activity_type === 'elevation') {
       metricText = `+${formatNumber(act.total_metric)} ft`;
+    } else if (act.activity_type === 'ability') {
+      metricText = '⚡ Feat';
     } else {
       const matchGoal = (state.currentRoomData.active_goals || []).find(g => g.id === act.goal_id || g.category === act.activity_type);
       const unit = matchGoal?.unit || '';
@@ -66,6 +68,8 @@ export function renderFeed({ onReloadState } = {}) {
 
     let detailStr = act.activity_type === 'weight'
       ? `${act.sets}x${act.reps} @ ${act.weight_per_rep}lbs`
+      : act.activity_type === 'ability'
+      ? 'Accomplished'
       : (act.sets > 1 || act.reps > 1 ? `${act.sets}x${act.reps}` : '');
 
     const displayAvatar = act.user_avatar_emoji || (act.user_nickname || 'L').substring(0, 1).toUpperCase();

@@ -14,19 +14,48 @@ export function renderTrophyRoom() {
     const subEl = trophyContainer.querySelector('.goal-progress-sub');
 
     if (titleEl) {
-      titleEl.textContent = `${trophy.theme_key === 'whale' ? '🐋 ' : '🏆 '}${trophy.title}`;
+      const isAbility = trophy.category === 'ability';
+      titleEl.textContent = `${isAbility ? '⚡ ' : (trophy.theme_key === 'whale' ? '🐋 ' : '🏆 ')}${trophy.title}`;
     }
     if (descEl) {
       descEl.textContent = trophy.description;
     }
     if (subEl) {
-      subEl.innerHTML = `
-        <span>${formatNumber(trophy.current_value)} ${trophy.unit}</span>
-        <span>Target: ${formatNumber(trophy.target_value)} ${trophy.unit}</span>
-      `;
+      const isAbility = trophy.category === 'ability';
+      subEl.innerHTML = isAbility
+        ? `<span>✓ Accomplished Feat</span><span>Target: 1 Feat</span>`
+        : `<span>${formatNumber(trophy.current_value)} ${trophy.unit}</span><span>Target: ${formatNumber(trophy.target_value)} ${trophy.unit}</span>`;
     }
     if (state.trophyDiorama) {
       state.trophyDiorama.setTheme(trophy.theme_key, 1.0);
+    }
+  }
+
+  const listContainer = document.getElementById('conqueredTrophiesList');
+  if (listContainer) {
+    if (completed.length === 0) {
+      listContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.82rem; padding: 8px 0;">No trophies conquered yet.</div>';
+    } else {
+      listContainer.innerHTML = completed.map(g => {
+        const isAbility = g.category === 'ability';
+        const emoji = isAbility ? '⚡' : (g.theme_key === 'whale' ? '🐋' : '🏆');
+        const metricStr = isAbility
+          ? 'One-off Feat'
+          : `${formatNumber(g.target_value)} ${g.unit}`;
+
+        return `
+          <div class="leaderboard-card" style="margin-bottom: 0;">
+            <div class="leaderboard-user">
+              <div class="user-avatar" style="background-color: var(--bg-surface); font-size: 1.2rem;">${emoji}</div>
+              <div class="user-details">
+                <span class="user-name-row">${FlyToast.escape(g.title)}</span>
+                <span class="user-stats-sub">${FlyToast.escape(metricStr)} • Conquered</span>
+              </div>
+            </div>
+            <span class="score-main" style="color: var(--accent-green); font-size: 0.85rem; font-weight: 800;">✓ Done</span>
+          </div>
+        `;
+      }).join('');
     }
   }
 }

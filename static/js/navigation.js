@@ -276,7 +276,7 @@ export function renderGoalShowcase({ onUpdateStepper } = {}) {
         btn.setAttribute('role', 'tab');
         btn.dataset.theme = g.theme_key;
         btn.dataset.goalId = g.id;
-        const emoji = g.theme_key === 'volcano' ? '🌋' : g.theme_key === 'canopy' ? '🌴' : g.theme_key === 'whale' ? '🐋' : (g.category === 'weight' ? '🌲' : g.category === 'distance' ? '🦌' : g.category === 'elevation' ? '🐐' : '🎯');
+        const emoji = g.theme_key === 'volcano' ? '🌋' : g.theme_key === 'canopy' ? '🌴' : g.theme_key === 'whale' ? '🐋' : (g.category === 'weight' ? '🌲' : g.category === 'distance' ? '🦌' : g.category === 'elevation' ? '🐐' : g.category === 'ability' ? '⚡' : '🎯');
         const shortName = g.title.split(' ')[0];
         btn.innerHTML = `<span class="segment-emoji">${emoji}</span> <span class="segment-title">${FlyToast.escape(shortName)}</span>`;
         btn.addEventListener('click', () => {
@@ -293,17 +293,28 @@ export function renderGoalShowcase({ onUpdateStepper } = {}) {
   }
 
   // Update Hero Stats
+  const isAbility = currentGoal.category === 'ability';
   const pct = currentGoal.target_value > 0 ? (currentGoal.current_value / currentGoal.target_value) : 0;
-  const pctStr = (Math.min(100, pct * 100)).toFixed(1) + '%';
+  const pctStr = isAbility
+    ? (currentGoal.status === 'completed' ? '100%' : 'Feat')
+    : (Math.min(100, pct * 100)).toFixed(1) + '%';
 
   const titleEl = document.getElementById('heroGoalTitle');
   if (titleEl) titleEl.textContent = currentGoal.title;
   const pctEl = document.getElementById('heroGoalPct');
   if (pctEl) pctEl.textContent = pctStr;
   const curEl = document.getElementById('heroGoalCurrent');
-  if (curEl) curEl.textContent = `${formatNumber(currentGoal.current_value)} ${currentGoal.unit}`;
+  if (curEl) {
+    curEl.textContent = isAbility
+      ? (currentGoal.status === 'completed' ? '✓ Accomplished' : 'Ready to Conquer')
+      : `${formatNumber(currentGoal.current_value)} ${currentGoal.unit}`;
+  }
   const targetEl = document.getElementById('heroGoalTarget');
-  if (targetEl) targetEl.textContent = `Target: ${formatNumber(currentGoal.target_value)} ${currentGoal.unit}`;
+  if (targetEl) {
+    targetEl.textContent = isAbility
+      ? 'One-off Feat'
+      : `Target: ${formatNumber(currentGoal.target_value)} ${currentGoal.unit}`;
+  }
   const descEl = document.getElementById('heroGoalDesc');
   if (descEl) descEl.textContent = currentGoal.description;
 

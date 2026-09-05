@@ -63,6 +63,12 @@ pub trait UserStore: Send + Sync {
 pub trait GoalStore: Send + Sync {
     fn get_goals_for_room(&self, room_slug: &str) -> StoreResult<(Vec<Goal>, Vec<Goal>)>;
     fn create_custom_goal(&self, room_slug: &str, req: &CreateGoalRequest) -> StoreResult<Goal>;
+    fn checkoff_goal(
+        &self,
+        user: &UserProfile,
+        goal_id: i64,
+        notes: Option<&str>,
+    ) -> StoreResult<(Goal, Activity)>;
     fn create_goal_wishlist(
         &self,
         user_token: &str,

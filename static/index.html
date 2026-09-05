@@ -164,6 +164,7 @@
       <!-- Swipeable / Tabbed Logging Dock -->
       <section class="logging-card">
         <div class="log-mode-tabs">
+          <button id="modeAbilityBtn" class="log-mode-btn" data-mode="ability" style="display: none;">⚡ Feat</button>
           <button id="modeStepperBtn" class="log-mode-btn active" data-mode="stepper">Stepper</button>
           <button id="modeWorkoutBtn" class="log-mode-btn" data-mode="workout">Full Workout</button>
           <button id="modeFastAddBtn" class="log-mode-btn" data-mode="fastadd">Fast-Add</button>
@@ -299,6 +300,23 @@
           <button id="submitFastAddBtn" class="btn btn-primary" style="width: 100%;">
             Log
           </button>
+        </div>
+
+        <!-- Mode 4: One-Off Ability Feat Check-Off -->
+        <div id="panelAbilityCheckoff" class="log-panel" style="display: none;">
+          <div class="ability-feat-box" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px 16px; margin-bottom: 8px; text-align: center;">
+            <div style="font-size: 2.2rem; margin-bottom: 6px; line-height: 1;" id="abilityFeatEmoji">⚡</div>
+            <div id="abilityFeatTitle" style="font-weight: 800; font-size: 1.15rem; color: var(--text-primary); margin-bottom: 4px;">Muscle Up</div>
+            <div id="abilityFeatStatus" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 14px;">One-Off Feat</div>
+            
+            <div class="form-group" style="margin-bottom: 14px; text-align: left;">
+              <input id="abilityFeatNoteInput" type="text" class="form-input" placeholder="Notes (optional, e.g. first try, clean form)" maxlength="120">
+            </div>
+
+            <button id="abilityCheckoffBtn" type="button" class="btn btn-primary" style="width: 100%; font-size: 1rem; font-weight: 800; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span>✓</span> Mark Accomplished
+            </button>
+          </div>
         </div>
       </section>
 
@@ -452,6 +470,16 @@
         <span class="score-main" style="color: var(--accent-amber);">Active</span>
       </div>
 
+      <!-- Conquered Goals & Accomplished Feats -->
+      <section id="conqueredTrophiesSection" class="conquered-section" style="margin-top: 18px;">
+        <div class="section-title" style="margin-bottom: 8px;">
+          <span>Conquered Feats & Trophies</span>
+        </div>
+        <div id="conqueredTrophiesList" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Dynamically populated from currentRoomData.completed_goals -->
+        </div>
+      </section>
+
       <!-- Squad Quest Wishlist & Proposals -->
       <section id="wishlistSection" class="wishlist-section" style="margin-top: 18px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
@@ -550,6 +578,7 @@
             <option value="weight">Weight</option>
             <option value="distance">Distance</option>
             <option value="elevation">Elevation</option>
+            <option value="ability">Ability</option>
           </select>
         </div>
         <div class="form-group">
@@ -561,22 +590,24 @@
             <option value="km">km</option>
             <option value="ft">ft</option>
             <option value="m">m</option>
+            <option value="feat">feat</option>
           </select>
         </div>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="questTargetGroup">
         <label class="form-label" for="questTargetInput">Target Value</label>
         <input id="questTargetInput" type="number" class="form-input" placeholder="e.g. 50000" min="1" step="any">
       </div>
       <div class="form-group">
         <label class="form-label">Theme Palette</label>
-        <div id="questThemePicker" class="quest-theme-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+        <div id="questThemePicker" class="quest-theme-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
           <button type="button" class="btn btn-secondary quest-theme-btn active" data-theme="volcano">🌋 Volcano</button>
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="canopy">🌴 Canopy</button>
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="pando">🌲 Pando</button>
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="everest">🐐 Everest</button>
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="caribou">🦌 Caribou</button>
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="whale">🐋 Ocean</button>
+          <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="feat">⚡ Feat</button>
         </div>
       </div>
       <div class="action-buttons-row" style="margin-top: 14px;">
@@ -860,6 +891,7 @@
               <option value="weight">🏋️ Weight</option>
               <option value="distance">🏃 Distance</option>
               <option value="elevation">🧗 Elevation</option>
+              <option value="ability">⚡ Ability</option>
               <option value="custom">✨ Custom...</option>
             </select>
           </div>
@@ -872,6 +904,7 @@
               <option value="km">km</option>
               <option value="ft">ft</option>
               <option value="m">m</option>
+              <option value="feat">feat</option>
               <option value="custom_unit">✨ Custom...</option>
             </select>
           </div>

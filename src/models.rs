@@ -93,6 +93,17 @@ pub struct CreateGoalRequest {
     pub description: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CheckoffGoalRequest {
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CheckoffGoalResponse {
+    pub goal: Goal,
+    pub activity: Activity,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Activity {
     pub id: i64,
