@@ -522,7 +522,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   });
 
   test('renders quirky feat milestones and allows shuffling achievements', async ({ page }) => {
-    await page.click('.nav-btn[data-target="trophy"]');
+    await page.click('#navTrophyBtn');
     await expect(page.locator('#viewTrophy')).toBeVisible();
 
     // Verify Conquered Feats & Trophies section is visible and title is static
