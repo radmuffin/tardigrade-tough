@@ -247,24 +247,11 @@
 .achievement-top-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
 }
 
 .achievement-icon {
   font-size: 1.35rem;
   line-height: 1;
-}
-
-.achievement-badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 1px 5px;
-  border-radius: var(--radius-sm);
-  background: rgba(245, 158, 11, 0.12);
-  color: var(--accent-amber);
 }
 
 .achievement-value {
