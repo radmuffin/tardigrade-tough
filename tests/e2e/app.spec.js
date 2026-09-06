@@ -568,5 +568,56 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('#closeRoomBtn');
     await expect(page.locator('#profileModal')).not.toBeVisible();
   });
+
+  test('marks workout as private in stepper and confirms privacy badge', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('body[data-state="ready"]');
+
+    // Check private workout option
+    const privateCheck = page.locator('#stepperPrivate');
+    await expect(privateCheck).toBeVisible();
+    await privateCheck.check();
+
+    // Log a workout
+    await page.fill('#stepperReps', '12');
+    await page.fill('#stepperWeight', '150');
+    await page.click('#submitLogBtn');
+
+    // Navigate to activity feed
+    await page.click('#navActivityBtn');
+    const privateBadge = page.locator('.private-badge').first();
+    await expect(privateBadge).toBeVisible();
+    await expect(privateBadge).toContainText('Private');
+  });
+
+  test('configures squad departure policy and toggles keep member contributions', async ({ page }) => {
+    const squadSlug = `test-policy-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    await page.goto(`/r/${squadSlug}`);
+    await page.waitForSelector('body[data-state="ready"]');
+
+    // Open squad settings tab
+    await page.click('#profileBtn');
+    await expect(page.locator('#profileModal')).toBeVisible();
+    await page.click('#tabBtnSquad');
+
+    // Owner settings card should be visible for creator
+    const ownerSettings = page.locator('#squadOwnerSettingsCard');
+    await expect(ownerSettings).toBeVisible();
+
+    const keepToggle = page.locator('#squadKeepDepartedToggle');
+    await expect(keepToggle).toBeVisible();
+    await expect(keepToggle).toBeChecked();
+
+    // Toggle departure rule off
+    await keepToggle.uncheck();
+    await expect(keepToggle).not.toBeChecked();
+
+    // Toggle departure rule back on
+    await keepToggle.check();
+    await expect(keepToggle).toBeChecked();
+
+    await page.click('#closeProfileBtn');
+    await expect(page.locator('#profileModal')).not.toBeVisible();
+  });
 });
 
