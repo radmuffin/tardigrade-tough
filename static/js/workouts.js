@@ -746,7 +746,6 @@ export function setupWorkoutMode({ onReloadState } = {}) {
   });
 
   addRow('', '', '', '');
-  addRow('', '', '', '');
 
   submitBtn.addEventListener('click', async () => {
     const rows = container.querySelectorAll('.workout-entry-row');
