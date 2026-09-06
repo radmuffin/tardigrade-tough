@@ -244,13 +244,15 @@
             <button id="repeatSetBtn" class="btn btn-secondary" title="Quickly repeat your last logged set">
               +1 Same Set
             </button>
-            <label class="privacy-toggle-btn" for="stepperPrivate" title="Toggle private workout (solo only)">
-              <input type="checkbox" id="stepperPrivate">
-              <span>🔒 Private</span>
-            </label>
-            <button id="logSetBtn" class="btn btn-primary">
-              Log Set
-            </button>
+            <div class="submit-btn-group">
+              <button id="logSetBtn" class="btn btn-primary submit-main-btn">
+                Log Set
+              </button>
+              <label class="submit-privacy-toggle" for="stepperPrivate" title="Toggle Private (solo only)">
+                <input type="checkbox" id="stepperPrivate" class="sr-only">
+                <span class="incognito-icon">🕶️</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -270,13 +272,15 @@
             <button id="addWorkoutRowBtn" class="btn btn-secondary" style="flex: 1;">+ Add Row</button>
           </div>
           <div class="action-buttons-row">
-            <label class="privacy-toggle-btn" for="workoutBatchPrivate" title="Toggle private workout (solo only)">
-              <input type="checkbox" id="workoutBatchPrivate">
-              <span>🔒 Private</span>
-            </label>
-            <button id="submitWorkoutBtn" class="btn btn-primary">
-              Submit Workout
-            </button>
+            <div class="submit-btn-group" style="width: 100%;">
+              <button id="submitWorkoutBtn" class="btn btn-primary submit-main-btn">
+                Submit Workout
+              </button>
+              <label class="submit-privacy-toggle" for="workoutBatchPrivate" title="Toggle Private (solo only)">
+                <input type="checkbox" id="workoutBatchPrivate" class="sr-only">
+                <span class="incognito-icon">🕶️</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -325,13 +329,15 @@
           </div>
 
           <div class="action-buttons-row">
-            <label class="privacy-toggle-btn" for="fastAddPrivate" title="Toggle private workout (solo only)">
-              <input type="checkbox" id="fastAddPrivate">
-              <span>🔒 Private</span>
-            </label>
-            <button id="submitFastAddBtn" class="btn btn-primary">
-              Log
-            </button>
+            <div class="submit-btn-group" style="width: 100%;">
+              <button id="submitFastAddBtn" class="btn btn-primary submit-main-btn">
+                Log
+              </button>
+              <label class="submit-privacy-toggle" for="fastAddPrivate" title="Toggle Private (solo only)">
+                <input type="checkbox" id="fastAddPrivate" class="sr-only">
+                <span class="incognito-icon">🕶️</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -347,13 +353,15 @@
             </div>
 
             <div class="action-buttons-row">
-              <label class="privacy-toggle-btn" for="abilityFeatPrivate" title="Toggle private workout (solo only)">
-                <input type="checkbox" id="abilityFeatPrivate">
-                <span>🔒 Private</span>
-              </label>
-              <button id="abilityCheckoffBtn" type="button" class="btn btn-primary" style="font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <span>✓</span> Mark Accomplished
-              </button>
+              <div class="submit-btn-group" style="width: 100%;">
+                <button id="abilityCheckoffBtn" type="button" class="btn btn-primary submit-main-btn" style="font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <span>✓</span> Mark Accomplished
+                </button>
+                <label class="submit-privacy-toggle" for="abilityFeatPrivate" title="Toggle Private (solo only)">
+                  <input type="checkbox" id="abilityFeatPrivate" class="sr-only">
+                  <span class="incognito-icon">🕶️</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -1267,6 +1275,6 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=4.3"></script>
+  <script type="module" src="/app.js?v=4.4"></script>
 </body>
 </html>

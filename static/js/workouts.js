@@ -277,7 +277,23 @@ export function setupLoggingTabs() {
   if (tabFastAdd) tabFastAdd.addEventListener('click', () => setMode('fastadd'));
 }
 
+export function setupPrivacyToggles() {
+  ['stepperPrivate', 'workoutBatchPrivate', 'fastAddPrivate', 'abilityFeatPrivate'].forEach(id => {
+    const chk = document.getElementById(id);
+    if (!chk) return;
+    const updateActive = () => {
+      const label = chk.closest('.submit-privacy-toggle');
+      if (label) {
+        label.classList.toggle('is-active', chk.checked);
+      }
+    };
+    chk.addEventListener('change', updateActive);
+    updateActive();
+  });
+}
+
 export function setupSteppers({ onReloadState } = {}) {
+  setupPrivacyToggles();
   const wtInput = document.getElementById('stepperWeight');
   const repsInput = document.getElementById('stepperReps');
   const wtMinusBtn = document.getElementById('wtMinusBtn');
