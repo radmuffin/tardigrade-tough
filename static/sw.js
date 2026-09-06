@@ -4,7 +4,7 @@
  * and offline fallback for SPA routing.
  */
 
-const CACHE_NAME = 'tardigrade-tough-v13';
+const CACHE_NAME = 'tardigrade-tough-v14';
 
 const PRECACHE_ASSETS = [
   '/',
