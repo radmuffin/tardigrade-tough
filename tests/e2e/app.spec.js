@@ -602,7 +602,9 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.goto('/');
     await page.waitForSelector('body[data-state="ready"]');
 
-    // Check private workout option
+    // Check private workout option inside action-buttons-row
+    const privacyBtn = page.locator('.action-buttons-row label[for="stepperPrivate"]');
+    await expect(privacyBtn).toBeVisible();
     const privateCheck = page.locator('#stepperPrivate');
     await expect(privateCheck).toBeVisible();
     await privateCheck.check();

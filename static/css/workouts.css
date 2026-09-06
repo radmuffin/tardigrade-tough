@@ -173,6 +173,58 @@
 .action-buttons-row {
   display: flex;
   gap: 8px;
+  align-items: stretch;
+}
+
+.action-buttons-row > .privacy-toggle-btn {
+  flex: 0 0 auto;
+}
+
+.privacy-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.privacy-toggle-btn input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent-amber);
+  cursor: pointer;
+}
+
+.privacy-toggle-btn:hover {
+  background: var(--bg-surface-hover, rgba(255, 255, 255, 0.05));
+  color: var(--text-primary);
+}
+
+.privacy-toggle-btn:has(input:checked),
+.privacy-toggle-btn.is-active {
+  border-color: var(--accent-amber);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--accent-amber);
+}
+
+@media (max-width: 380px) {
+  .privacy-toggle-btn {
+    padding: 0 6px;
+    font-size: 0.74rem;
+    gap: 4px;
+  }
 }
 
 /* Custom Exercise Row */
