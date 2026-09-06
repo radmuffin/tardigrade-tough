@@ -18,7 +18,7 @@ import {
   setupWorkoutMode,
 } from './js/workouts.js';
 import { setupActivityFilters, renderFeed, setupCheers } from './js/activity-feed.js';
-import { renderTrophyRoom, renderWishlists } from './js/trophy.js';
+import { renderTrophyRoom, renderWishlists, setupTrophyListeners } from './js/trophy.js';
 import { setupModals, setupSheetImporter, setupActivityEditModal } from './js/modals.js';
 import { initWebSocket } from './js/realtime.js';
 import { setupPwa, updateOfflineStatus } from './js/pwa.js';
@@ -50,6 +50,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupFastAdd({ onReloadState: loadRoomState });
   setupWorkoutMode({ onReloadState: loadRoomState });
   setupCheers();
+  setupTrophyListeners();
   setupModals({ onReloadState: loadRoomState });
   setupSheetImporter({ onReloadState: loadRoomState });
   setupActivityEditModal({ onReloadState: loadRoomState });

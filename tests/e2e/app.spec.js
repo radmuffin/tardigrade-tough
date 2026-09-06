@@ -521,6 +521,34 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#wishlistSection')).toBeVisible();
   });
 
+  test('renders quirky feat milestones and allows shuffling achievements', async ({ page }) => {
+    await page.click('.nav-btn[data-target="trophy"]');
+    await expect(page.locator('#viewTrophy')).toBeVisible();
+
+    // Verify Odd Milestones section is visible
+    const section = page.locator('#achievementsSection');
+    await expect(section).toBeVisible();
+
+    // Verify 4 cards are rendered
+    const cards = page.locator('#achievementsGrid .achievement-card');
+    await expect(cards).toHaveCount(4);
+
+    // Verify initial milestone items contain expected quirky content
+    const firstTitle = await cards.first().locator('.achievement-title').textContent();
+    expect(firstTitle).toBeTruthy();
+
+    // Click shuffle and verify cards change/rotate
+    const shuffleBtn = page.locator('#shuffleAchievementsBtn');
+    await expect(shuffleBtn).toBeVisible();
+    await shuffleBtn.click();
+
+    // Verify 4 cards remain and cards rotated
+    await expect(cards).toHaveCount(4);
+    const newFirstTitle = await cards.first().locator('.achievement-title').textContent();
+    expect(newFirstTitle).not.toBe(firstTitle);
+  });
+
+
   test('configures PWA manifest, meta tags, and mobile capabilities', async ({ page }) => {
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(manifestHref).toBe('/manifest.json');

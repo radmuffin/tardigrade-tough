@@ -193,3 +193,91 @@
   background: rgba(16, 185, 129, 0.15);
   border-color: var(--accent-green);
 }
+
+/* Quirky Feat Milestones */
+.achievements-section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  transition: border-color var(--transition-normal);
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+@media (max-width: 380px) {
+  .achievements-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.achievement-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  cursor: pointer;
+}
+
+.achievement-card:hover {
+  border-color: var(--accent-amber);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.achievement-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.achievement-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.achievement-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--accent-amber);
+}
+
+.achievement-value {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.achievement-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.achievement-desc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
