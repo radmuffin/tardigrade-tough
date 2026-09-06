@@ -610,7 +610,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     // Log a workout
     await page.fill('#stepperReps', '12');
     await page.fill('#stepperWeight', '150');
-    await page.click('#submitLogBtn');
+    await page.click('#logSetBtn');
 
     // Navigate to activity feed
     await page.click('#navActivityBtn');
