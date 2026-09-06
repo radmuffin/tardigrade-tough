@@ -317,6 +317,12 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     // Copy app URL button is clickable
     await page.click('#copyAppUrlBtn');
 
+    // Share methods are available
+    await expect(page.locator('#shareSmsBtn')).toBeVisible();
+    await expect(page.locator('#shareWhatsappBtn')).toBeVisible();
+    await expect(page.locator('#shareEmailBtn')).toBeVisible();
+    await expect(page.locator('#shareTwitterBtn')).toBeVisible();
+
     // Close button dismisses modal
     await page.click('#closeShareModalBtn');
     await expect(shareModal).not.toBeVisible();
