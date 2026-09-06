@@ -178,6 +178,7 @@
           <div class="form-group">
             <label id="stepperExerciseLabel" class="form-label">Exercise</label>
             <select id="stepperExercise" class="form-select">
+              <option value="" disabled selected>Select Exercise</option>
               <option value="Back Squat">🏋️ Back Squat</option>
               <option value="Deadlift">🏋️ Deadlift</option>
               <option value="Bench Press">🏋️ Bench Press</option>
@@ -204,7 +205,7 @@
               <label id="stepperMetricLabel" class="form-label">Weight (lbs)</label>
               <div class="stepper-controls">
                 <button id="wtMinusBtn" class="stepper-btn" type="button" aria-label="Decrease weight by 10">-10</button>
-                <input id="stepperWeight" type="number" class="stepper-input" value="135" min="0" step="2.5" aria-label="Weight amount">
+                <input id="stepperWeight" type="number" class="stepper-input" placeholder="0" min="0" step="any" aria-label="Weight amount">
                 <button id="wtPlusBtn" class="stepper-btn" type="button" aria-label="Increase weight by 10">+10</button>
               </div>
               <div id="stepperMetricPresets" class="quick-presets preset-grid-plates">
@@ -221,7 +222,7 @@
               <label id="stepperCountLabel" class="form-label">Reps</label>
               <div class="stepper-controls">
                 <button id="repsMinusBtn" class="stepper-btn" type="button" aria-label="Decrease reps by 1">-1</button>
-                <input id="stepperReps" type="number" class="stepper-input" value="10" min="1" aria-label="Reps count">
+                <input id="stepperReps" type="number" class="stepper-input" placeholder="0" min="1" aria-label="Reps count">
                 <button id="repsPlusBtn" class="stepper-btn" type="button" aria-label="Increase reps by 1">+1</button>
               </div>
               <div id="stepperCountPresets" class="quick-presets preset-grid-reps">
@@ -236,7 +237,7 @@
           </div>
 
           <div id="computedImpactBar" class="computed-impact-bar">
-            <span>Total: <strong id="computedImpactVal">1,350 lbs</strong></span>
+            <span>Total: <strong id="computedImpactVal">0 lbs</strong></span>
             <span id="computedImpactRoute" style="display: none;"></span>
           </div>
 

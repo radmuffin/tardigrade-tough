@@ -88,6 +88,11 @@
   outline: none;
 }
 
+.stepper-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
 .quick-presets {
   display: flex;
   gap: 4px;

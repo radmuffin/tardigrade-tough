@@ -74,6 +74,8 @@ export function updateStepperForGoal(goal) {
     }
   }
 
+  const curEx = exSelect ? exSelect.value : '';
+
   if (!goal || goal.category === 'weight') {
     if (exLabel) exLabel.textContent = 'Exercise';
     if (metricLabel) metricLabel.textContent = `Weight (${goal?.unit || 'lbs'})`;
@@ -81,6 +83,7 @@ export function updateStepperForGoal(goal) {
     if (routeLabel) routeLabel.textContent = '';
     if (exSelect) {
       exSelect.innerHTML = `
+        <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
         <option value="Back Squat">🏋️ Back Squat</option>
         <option value="Deadlift">🏋️ Deadlift</option>
         <option value="Bench Press">🏋️ Bench Press</option>
@@ -92,6 +95,9 @@ export function updateStepperForGoal(goal) {
         ${customOpts}
         <option value="__add_custom__">+ Custom...</option>
       `;
+      if (curEx && curEx !== '__add_custom__' && Array.from(exSelect.options).some(o => o.value === curEx)) {
+        exSelect.value = curEx;
+      }
     }
     if (metricPresets) {
       metricPresets.className = 'quick-presets preset-grid-plates';
@@ -112,6 +118,7 @@ export function updateStepperForGoal(goal) {
     if (routeLabel) routeLabel.textContent = '';
     if (exSelect) {
       exSelect.innerHTML = `
+        <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
         <option value="Stair Climber">🧗 Stair Climber</option>
         <option value="Incline Treadmill">🏔️ Incline Treadmill</option>
         <option value="Mountain Hike">🥾 Mountain Hike</option>
@@ -120,9 +127,9 @@ export function updateStepperForGoal(goal) {
         ${customOpts}
         <option value="__add_custom__">+ Custom...</option>
       `;
-    }
-    if (wtInput && (wtInput.value === '135' || parseFloat(wtInput.value) <= 0)) {
-      wtInput.value = '100';
+      if (curEx && curEx !== '__add_custom__' && Array.from(exSelect.options).some(o => o.value === curEx)) {
+        exSelect.value = curEx;
+      }
     }
     if (metricPresets) {
       metricPresets.className = 'quick-presets preset-grid-plates';
@@ -143,6 +150,7 @@ export function updateStepperForGoal(goal) {
     if (routeLabel) routeLabel.textContent = '';
     if (exSelect) {
       exSelect.innerHTML = `
+        <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
         <option value="Outdoor Run">🏃 Outdoor Run</option>
         <option value="Trail Walk">🚶 Trail Walk</option>
         <option value="Road Cycling">🚴 Road Cycling</option>
@@ -151,9 +159,9 @@ export function updateStepperForGoal(goal) {
         ${customOpts}
         <option value="__add_custom__">+ Custom...</option>
       `;
-    }
-    if (wtInput && (wtInput.value === '135' || parseFloat(wtInput.value) <= 0)) {
-      wtInput.value = '3';
+      if (curEx && curEx !== '__add_custom__' && Array.from(exSelect.options).some(o => o.value === curEx)) {
+        exSelect.value = curEx;
+      }
     }
     if (metricPresets) {
       metricPresets.className = 'quick-presets preset-grid-plates';
@@ -175,12 +183,16 @@ export function updateStepperForGoal(goal) {
     if (routeLabel) routeLabel.textContent = '';
     if (exSelect) {
       exSelect.innerHTML = `
+        <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
         <option value="${FlyToast.escape(goal.title)}">${FlyToast.escape(goal.title)}</option>
         <option value="Custom Movement">Custom Movement</option>
         <option value="Rep Count">Rep Count</option>
         ${customOpts}
         <option value="__add_custom__">+ Custom...</option>
       `;
+      if (curEx && curEx !== '__add_custom__' && Array.from(exSelect.options).some(o => o.value === curEx)) {
+        exSelect.value = curEx;
+      }
     }
     if (metricPresets) {
       metricPresets.className = 'quick-presets preset-grid-plates';
@@ -308,7 +320,12 @@ export function setupSteppers({ onReloadState } = {}) {
       const activeGoals = state.currentRoomData?.active_goals || [];
       const currentGoal = activeGoals[state.selectedGoalIndex] || { category: 'weight' };
       const step = currentGoal.category === 'distance' ? 1 : 10;
-      wtInput.value = Math.max(0, (parseFloat(wtInput.value) || 0) - step);
+      const cur = parseFloat(wtInput.value);
+      if (isNaN(cur) || cur <= 0) {
+        wtInput.value = '0';
+      } else {
+        wtInput.value = String(Math.max(0, cur - step));
+      }
       updateImpact();
     });
   }
@@ -318,7 +335,12 @@ export function setupSteppers({ onReloadState } = {}) {
       const activeGoals = state.currentRoomData?.active_goals || [];
       const currentGoal = activeGoals[state.selectedGoalIndex] || { category: 'weight' };
       const step = currentGoal.category === 'distance' ? 1 : 10;
-      wtInput.value = (parseFloat(wtInput.value) || 0) + step;
+      const cur = parseFloat(wtInput.value);
+      if (isNaN(cur) || cur < 0) {
+        wtInput.value = String(step);
+      } else {
+        wtInput.value = String(cur + step);
+      }
       updateImpact();
     });
   }
@@ -327,14 +349,24 @@ export function setupSteppers({ onReloadState } = {}) {
 
   if (repsMinusBtn && repsInput) {
     repsMinusBtn.addEventListener('click', () => {
-      repsInput.value = Math.max(1, (parseInt(repsInput.value, 10) || 1) - 1);
+      const cur = parseInt(repsInput.value, 10);
+      if (isNaN(cur) || cur <= 1) {
+        repsInput.value = '1';
+      } else {
+        repsInput.value = String(cur - 1);
+      }
       updateImpact();
     });
   }
 
   if (repsPlusBtn && repsInput) {
     repsPlusBtn.addEventListener('click', () => {
-      repsInput.value = (parseInt(repsInput.value, 10) || 1) + 1;
+      const cur = parseInt(repsInput.value, 10);
+      if (isNaN(cur) || cur < 1) {
+        repsInput.value = '1';
+      } else {
+        repsInput.value = String(cur + 1);
+      }
       updateImpact();
     });
   }
@@ -386,7 +418,7 @@ export function setupSteppers({ onReloadState } = {}) {
       if (customExInput) customExInput.value = '';
     }
     if (stepperExSelect && stepperExSelect.value === '__add_custom__') {
-      stepperExSelect.value = lastSelectedEx || (stepperExSelect.options[0] ? stepperExSelect.options[0].value : '');
+      stepperExSelect.value = lastSelectedEx || '';
     }
   }
 
@@ -438,14 +470,48 @@ export function setupSteppers({ onReloadState } = {}) {
 
   if (logSetBtn) {
     logSetBtn.addEventListener('click', async () => {
-      let exercise = stepperExSelect ? stepperExSelect.value : 'Lift';
+      let exercise = stepperExSelect ? stepperExSelect.value : '';
       if (exercise === '__add_custom__') {
-        exercise = 'Custom Exercise';
+        exercise = '';
       }
-      const metricVal = wtInput ? (parseFloat(wtInput.value) || 0) : 0;
-      const reps = repsInput ? (parseInt(repsInput.value, 10) || 1) : 1;
+      if (!exercise) {
+        FlyToast.error('Please select an exercise');
+        if (stepperExSelect) stepperExSelect.focus();
+        return;
+      }
+      const rawWt = wtInput ? wtInput.value.trim() : '';
+      const rawReps = repsInput ? repsInput.value.trim() : '';
       const activeGoals = state.currentRoomData?.active_goals || [];
       const currentGoal = activeGoals[state.selectedGoalIndex] || { category: 'weight' };
+
+      const metricVal = parseFloat(rawWt) || 0;
+      const reps = parseInt(rawReps, 10) || 0;
+
+      if (!rawReps || reps <= 0) {
+        FlyToast.error('Please enter reps');
+        if (repsInput) repsInput.focus();
+        return;
+      }
+
+      if (currentGoal.category === 'weight') {
+        if (!rawWt || isNaN(parseFloat(rawWt))) {
+          FlyToast.error('Please enter weight');
+          if (wtInput) wtInput.focus();
+          return;
+        }
+      } else if (currentGoal.category === 'distance') {
+        if (!rawWt || metricVal <= 0) {
+          FlyToast.error('Please enter distance');
+          if (wtInput) wtInput.focus();
+          return;
+        }
+      } else if (currentGoal.category === 'elevation') {
+        if (!rawWt || metricVal <= 0) {
+          FlyToast.error('Please enter elevation');
+          if (wtInput) wtInput.focus();
+          return;
+        }
+      }
 
       const totalMetric = currentGoal.category === 'weight' ? metricVal * reps : metricVal * reps;
       const isPrivate = document.getElementById('stepperPrivate')?.checked || false;

@@ -102,28 +102,31 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     const repsInput = page.locator('#stepperReps');
     const impactVal = page.locator('#computedImpactVal');
 
-    // Default: 135 lbs x 10 reps = 1,350 lbs
-    await expect(impactVal).toContainText('1,350 lbs');
+    // Stepper starts with no prefilled defaults
+    await expect(weightInput).toHaveValue('');
+    await expect(repsInput).toHaveValue('');
+    await expect(impactVal).toContainText('0 lbs');
+    await expect(page.locator('#stepperExercise')).toHaveValue('');
 
     // Click +10 lbs button
     await page.click('#wtPlusBtn');
-    await expect(weightInput).toHaveValue('145');
-    await expect(impactVal).toContainText('1,450 lbs');
+    await expect(weightInput).toHaveValue('10');
+    await expect(impactVal).toContainText('0 lbs');
 
     // Click +5 reps preset chip
     await page.click('.preset-chip-rep[data-val="5"]');
     await expect(repsInput).toHaveValue('5');
-    await expect(impactVal).toContainText('725 lbs');
+    await expect(impactVal).toContainText('50 lbs');
 
     // Click +25 plate chip
     await page.click('.preset-chip[data-delta="+25"]');
-    await expect(weightInput).toHaveValue('170');
-    await expect(impactVal).toContainText('850 lbs');
+    await expect(weightInput).toHaveValue('35');
+    await expect(impactVal).toContainText('175 lbs');
 
     // Click -25 plate chip
     await page.click('.preset-chip[data-delta="-25"]');
-    await expect(weightInput).toHaveValue('145');
-    await expect(impactVal).toContainText('725 lbs');
+    await expect(weightInput).toHaveValue('10');
+    await expect(impactVal).toContainText('50 lbs');
   });
 
   test('opens and parses data in Google Sheet importer modal', async ({ page }) => {
@@ -609,6 +612,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#stepperPrivate')).toBeChecked();
 
     // Log a workout
+    await page.selectOption('#stepperExercise', 'Back Squat');
     await page.fill('#stepperReps', '12');
     await page.fill('#stepperWeight', '150');
     await page.click('#logSetBtn');
