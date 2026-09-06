@@ -34,11 +34,11 @@ export function setupSheetImporter({ onReloadState } = {}) {
   });
 
   function parsePastedData() {
+    parsedActivities = [];
     const raw = pasteArea.value.trim();
     if (!raw) {
       if (summaryBox) summaryBox.style.display = 'none';
       executeBtn.disabled = true;
-      parsedActivities = [];
       return;
     }
 
