@@ -48,6 +48,7 @@ pub fn map_activity(row: &Row) -> Result<Activity> {
         created_at: row.get(16)?,
         parent_activity_id: row.get(17).unwrap_or(None),
         is_pr: row.get::<_, i32>(18).unwrap_or(0) == 1,
+        is_combined: row.get::<_, i32>(19).unwrap_or(0) == 1,
     })
 }
 

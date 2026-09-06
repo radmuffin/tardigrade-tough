@@ -587,20 +587,49 @@ export function setupFastAdd({ onReloadState } = {}) {
       return;
     }
 
+    const excludePrCheckbox = document.getElementById('fastAddExcludePr');
+    const isCombined = excludePrCheckbox ? excludePrCheckbox.checked : false;
+
+    const exerciseInput = document.getElementById('fastAddExercise');
+    const setsInput = document.getElementById('fastAddSets');
+    const repsInput = document.getElementById('fastAddReps');
+    const notesInput = document.getElementById('fastAddNotes');
+
+    const exName = (exerciseInput?.value.trim()) || 'Fast Add';
+    const sets = parseInt(setsInput?.value, 10) || 1;
+    const reps = parseInt(repsInput?.value, 10) || 1;
+    const notes = notesInput?.value.trim() || '';
+
+    let weightPerRep = 0;
+    if (cat === 'weight') {
+      if (isCombined) {
+        weightPerRep = 0.0;
+      } else {
+        weightPerRep = (sets * reps > 1) ? +(val / (sets * reps)).toFixed(2) : val;
+      }
+    }
+
     const payload = {
       room_slug: state.roomSlug,
       activity_type: cat,
-      exercise_name: 'Fast Add',
+      exercise_name: exName,
       total_metric: val,
-      distance_val: cat === 'distance' ? val : 0,
-      elevation_val: cat === 'elevation' ? val : 0,
-      weight_per_rep: cat === 'weight' ? val : 0,
-      sets: 1,
-      reps: 1,
+      distance_val: cat === 'distance' ? (isCombined ? 0 : val) : 0,
+      elevation_val: cat === 'elevation' ? (isCombined ? 0 : val) : 0,
+      weight_per_rep: weightPerRep,
+      sets,
+      reps,
+      notes,
+      is_combined: isCombined,
+      is_pr: isCombined ? false : null,
     };
 
     await executeLogActivity(payload, { onReloadState });
     amtInput.value = '';
+    if (exerciseInput) exerciseInput.value = '';
+    if (setsInput) setsInput.value = '';
+    if (repsInput) repsInput.value = '';
+    if (notesInput) notesInput.value = '';
   });
 }
 

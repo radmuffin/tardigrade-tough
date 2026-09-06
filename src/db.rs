@@ -64,7 +64,9 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
             total_metric REAL NOT NULL,
             notes TEXT DEFAULT '',
             created_at TEXT NOT NULL,
-            parent_activity_id INTEGER DEFAULT NULL
+            parent_activity_id INTEGER DEFAULT NULL,
+            is_pr INTEGER NOT NULL DEFAULT 0,
+            is_combined INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS goal_wishlists (
@@ -116,6 +118,12 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
     // Ensure is_pr column exists in activities
     let _ = conn.execute(
         "ALTER TABLE activities ADD COLUMN is_pr INTEGER NOT NULL DEFAULT 0",
+        [],
+    );
+
+    // Ensure is_combined column exists in activities
+    let _ = conn.execute(
+        "ALTER TABLE activities ADD COLUMN is_combined INTEGER NOT NULL DEFAULT 0",
         [],
     );
 
@@ -824,7 +832,7 @@ pub fn get_user_personal_records(
             MAX(distance_val) AS max_distance,
             MAX(elevation_val) AS max_elevation
          FROM activities
-         WHERE user_token = ?
+         WHERE user_token = ? AND is_pr = 1 AND COALESCE(is_combined, 0) = 0
          GROUP BY LOWER(TRIM(exercise_name)), activity_type
          ORDER BY MAX(weight_per_rep) DESC, MAX(distance_val) DESC, MAX(elevation_val) DESC
          LIMIT 10"#,
@@ -993,8 +1001,11 @@ pub fn log_single_activity(
     }
     let notes = req.notes.as_deref().unwrap_or("").trim();
     let parent_activity_id = req.parent_activity_id;
+    let is_combined = req.is_combined.unwrap_or(false);
 
-    let is_pr = if let Some(explicit_pr) = req.is_pr {
+    let is_pr = if is_combined {
+        false
+    } else if let Some(explicit_pr) = req.is_pr {
         explicit_pr
     } else {
         let clean_exercise = exercise_name.trim().to_lowercase();
@@ -1003,7 +1014,7 @@ pub fn log_single_activity(
                 if weight_per_rep > 0.0 {
                     let prev_max: f64 = tx
                         .query_row(
-                            "SELECT COALESCE(MAX(weight_per_rep), 0.0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ?",
+                            "SELECT COALESCE(MAX(weight_per_rep), 0.0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ? AND COALESCE(is_combined, 0) = 0",
                             params![user.user_token, clean_exercise],
                             |r| r.get(0),
                         )
@@ -1012,7 +1023,7 @@ pub fn log_single_activity(
                 } else {
                     let prev_max_reps: i32 = tx
                         .query_row(
-                            "SELECT COALESCE(MAX(reps), 0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ? AND weight_per_rep = 0.0",
+                            "SELECT COALESCE(MAX(reps), 0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ? AND weight_per_rep = 0.0 AND COALESCE(is_combined, 0) = 0",
                             params![user.user_token, clean_exercise],
                             |r| r.get(0),
                         )
@@ -1023,7 +1034,7 @@ pub fn log_single_activity(
             "distance" if distance_val > 0.0 => {
                 let prev_max: f64 = tx
                     .query_row(
-                        "SELECT COALESCE(MAX(distance_val), 0.0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ?",
+                        "SELECT COALESCE(MAX(distance_val), 0.0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ? AND COALESCE(is_combined, 0) = 0",
                         params![user.user_token, clean_exercise],
                         |r| r.get(0),
                     )
@@ -1033,7 +1044,7 @@ pub fn log_single_activity(
             "elevation" if elevation_val > 0.0 => {
                 let prev_max: f64 = tx
                     .query_row(
-                        "SELECT COALESCE(MAX(elevation_val), 0.0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ?",
+                        "SELECT COALESCE(MAX(elevation_val), 0.0) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ? AND COALESCE(is_combined, 0) = 0",
                         params![user.user_token, clean_exercise],
                         |r| r.get(0),
                     )
@@ -1043,7 +1054,7 @@ pub fn log_single_activity(
             "ability" => {
                 let prev_count: i64 = tx
                     .query_row(
-                        "SELECT COUNT(*) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ? AND activity_type = 'ability'",
+                        "SELECT COUNT(*) FROM activities WHERE user_token = ? AND LOWER(TRIM(exercise_name)) = ? AND activity_type = 'ability' AND COALESCE(is_combined, 0) = 0",
                         params![user.user_token, clean_exercise],
                         |r| r.get(0),
                     )
@@ -1056,8 +1067,8 @@ pub fn log_single_activity(
 
     tx.execute(
         r#"INSERT INTO activities 
-           (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, is_pr)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+           (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, is_pr, is_combined)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
         params![
             room_slug,
             user.user_token,
@@ -1076,7 +1087,8 @@ pub fn log_single_activity(
             notes,
             activity_time,
             parent_activity_id,
-            if is_pr { 1 } else { 0 }
+            if is_pr { 1 } else { 0 },
+            if is_combined { 1 } else { 0 }
         ],
     )?;
 
@@ -1103,6 +1115,7 @@ pub fn log_single_activity(
         created_at: activity_time.to_string(),
         parent_activity_id,
         is_pr,
+        is_combined,
     })
 }
 
@@ -1192,13 +1205,142 @@ pub fn delete_activity(
     }
 }
 
+pub fn toggle_activity_pr(
+    conn: &mut Connection,
+    activity_id: i64,
+    user_token: &str,
+) -> Result<Option<Activity>> {
+    let tx = conn.transaction()?;
+    let current = tx.query_row(
+        "SELECT id, room_slug, is_pr, is_combined FROM activities WHERE id = ? AND user_token = ?",
+        params![activity_id, user_token],
+        |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, i32>(2)?,
+                r.get::<_, i32>(3)?,
+            ))
+        },
+    );
+
+    let (act_id, _room_slug, is_pr_val, is_comb_val) = match current {
+        Ok(v) => v,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+        Err(e) => return Err(e),
+    };
+
+    let new_is_pr = if is_pr_val == 1 { 0 } else { 1 };
+    let new_is_combined = if new_is_pr == 1 { 0 } else { is_comb_val };
+
+    tx.execute(
+        "UPDATE activities SET is_pr = ?, is_combined = ? WHERE id = ?",
+        params![new_is_pr, new_is_combined, act_id],
+    )?;
+
+    // Also update any child activities forwarded from this parent
+    let _ = tx.execute(
+        "UPDATE activities SET is_pr = ?, is_combined = ? WHERE parent_activity_id = ? AND user_token = ?",
+        params![new_is_pr, new_is_combined, act_id, user_token],
+    );
+
+    let updated_act = tx.query_row(
+        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0)
+           FROM activities WHERE id = ?"#,
+        params![act_id],
+        map_activity,
+    )?;
+
+    tx.commit()?;
+    Ok(Some(updated_act))
+}
+
+pub fn update_activity(
+    conn: &mut Connection,
+    activity_id: i64,
+    user_token: &str,
+    req: &UpdateActivityRequest,
+) -> Result<Option<Activity>> {
+    let tx = conn.transaction()?;
+    let current = tx.query_row(
+        r#"SELECT id, room_slug, exercise_name, sets, reps, weight_per_rep, notes, is_pr, is_combined
+           FROM activities WHERE id = ? AND user_token = ?"#,
+        params![activity_id, user_token],
+        |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, i32>(3)?,
+                r.get::<_, i32>(4)?,
+                r.get::<_, f64>(5)?,
+                r.get::<_, String>(6)?,
+                r.get::<_, i32>(7)?,
+                r.get::<_, i32>(8)?,
+            ))
+        },
+    );
+
+    let (act_id, _room, cur_ex, cur_sets, cur_reps, cur_wt, cur_notes, cur_pr, cur_comb) =
+        match current {
+            Ok(v) => v,
+            Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+            Err(e) => return Err(e),
+        };
+
+    let new_ex = req
+        .exercise_name
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(&cur_ex);
+    let new_sets = req.sets.unwrap_or(cur_sets).max(1);
+    let new_reps = req.reps.unwrap_or(cur_reps).max(1);
+    let new_wt = req.weight_per_rep.unwrap_or(cur_wt).max(0.0);
+    let new_notes = req.notes.as_deref().map(|s| s.trim()).unwrap_or(&cur_notes);
+    let new_pr = req.is_pr.map(|b| if b { 1 } else { 0 }).unwrap_or(cur_pr);
+    let new_comb = req
+        .is_combined
+        .map(|b| if b { 1 } else { 0 })
+        .unwrap_or(cur_comb);
+
+    tx.execute(
+        r#"UPDATE activities 
+           SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, notes = ?, is_pr = ?, is_combined = ?
+           WHERE id = ?"#,
+        params![
+            new_ex, new_sets, new_reps, new_wt, new_notes, new_pr, new_comb, act_id
+        ],
+    )?;
+
+    // Also update any child activities forwarded from this parent
+    let _ = tx.execute(
+        r#"UPDATE activities 
+           SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, notes = ?, is_pr = ?, is_combined = ?
+           WHERE parent_activity_id = ? AND user_token = ?"#,
+        params![
+            new_ex, new_sets, new_reps, new_wt, new_notes, new_pr, new_comb, act_id, user_token
+        ],
+    );
+
+    let updated_act = tx.query_row(
+        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0)
+           FROM activities WHERE id = ?"#,
+        params![act_id],
+        map_activity,
+    )?;
+
+    tx.commit()?;
+    Ok(Some(updated_act))
+}
+
 pub fn get_recent_activities(
     conn: &Connection,
     room_slug: &str,
     limit: i64,
 ) -> Result<Vec<Activity>> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0)
+        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0)
            FROM activities WHERE room_slug = ? ORDER BY id DESC LIMIT ?"#,
     )?;
 
@@ -1400,6 +1542,7 @@ pub fn checkoff_goal(
         created_at: None,
         parent_activity_id: None,
         is_pr: None,
+        is_combined: None,
     };
 
     let activity = log_single_activity(conn, user, &goal.room_slug, &req)?;

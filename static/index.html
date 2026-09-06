@@ -293,11 +293,32 @@
             <input id="fastAddInput" type="number" class="form-input" placeholder="e.g. 1850" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-mono);">
           </div>
 
-          <div id="fastAddPresets" class="quick-presets" style="margin-bottom: 14px;">
+          <div id="fastAddPresets" class="quick-presets" style="margin-bottom: 12px;">
             <button class="preset-chip-fast" data-amt="500">+500</button>
             <button class="preset-chip-fast" data-amt="1000">+1,000</button>
             <button class="preset-chip-fast" data-amt="2500">+2,500</button>
             <button class="preset-chip-fast" data-amt="5000">+5,000</button>
+          </div>
+
+          <div style="margin-bottom: 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px;">
+            <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; color: var(--text-primary); font-weight: 600;">
+              <input type="checkbox" id="fastAddExcludePr" checked>
+              <span>Combined volume (exclude from PR)</span>
+            </label>
+            
+            <details id="fastAddDetails" style="margin-top: 8px; font-size: 0.8rem;">
+              <summary style="cursor: pointer; color: var(--accent-primary); font-weight: 600; user-select: none;">
+                + Add more info (exercise, notes, reps)
+              </summary>
+              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                <input id="fastAddExercise" type="text" class="form-input" placeholder="Exercise (default: Fast Add)" maxlength="100" style="font-size: 0.85rem; padding: 6px 10px;">
+                <div style="display: flex; gap: 6px;">
+                  <input id="fastAddSets" type="number" min="1" class="form-input" placeholder="Sets (1)" style="font-size: 0.85rem; padding: 6px 10px; flex: 1;">
+                  <input id="fastAddReps" type="number" min="1" class="form-input" placeholder="Reps (1)" style="font-size: 0.85rem; padding: 6px 10px; flex: 1;">
+                </div>
+                <input id="fastAddNotes" type="text" class="form-input" placeholder="Notes (optional)" maxlength="500" style="font-size: 0.85rem; padding: 6px 10px;">
+              </div>
+            </details>
           </div>
 
           <button id="submitFastAddBtn" class="btn btn-primary" style="width: 100%;">
@@ -546,9 +567,31 @@
         </div>
       </div>
 
+      <div style="display: flex; gap: 8px;">
+        <div class="form-group" style="flex: 1;">
+          <label class="form-label">Category</label>
+          <select id="importCategory" class="form-select">
+            <option value="weight">🏋️ Weight (lbs)</option>
+            <option value="distance">🏃 Distance (mi)</option>
+            <option value="elevation">🧗 Elevation (ft)</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex: 1.4;">
+          <label class="form-label">Default Exercise</label>
+          <input id="importExerciseName" type="text" class="form-input" placeholder="Sheet Lift" maxlength="100">
+        </div>
+      </div>
+
       <div class="form-group">
-        <label class="form-label">Data (Weight & Reps)</label>
-        <textarea id="importPasteArea" class="form-textarea" rows="7" placeholder="Paste rows from Sheet here:&#10;10&#9;10&#10;25&#9;10&#10;118&#9;5&#10;208&#9;40&#10;15&#9;20&#10;7.5&#9;80&#10;15&#9;1200"></textarea>
+        <label class="form-label">Data (Weight &amp; Reps, or [Exercise, Wt, Reps])</label>
+        <textarea id="importPasteArea" class="form-textarea" rows="6" placeholder="Paste rows from Sheet here:&#10;Bench Press&#9;225&#9;5&#10;10&#9;10&#10;25&#9;10&#10;118&#9;5&#10;208&#9;40"></textarea>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; color: var(--text-primary); font-weight: 600;">
+          <input type="checkbox" id="importExcludePr">
+          <span>Combined volume (exclude from PR)</span>
+        </label>
       </div>
 
       <div id="importSummaryBox" class="computed-impact-bar" style="display: none;">
@@ -560,6 +603,59 @@
         <button id="closeImportBtn" class="btn btn-secondary">Cancel</button>
         <button id="executeImportBtn" class="btn btn-primary" disabled>Import</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Activity Edit Modal -->
+  <div id="activityEditModal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 class="modal-title" style="margin: 0;">⚙️ Activity Info &amp; PR</h3>
+        <button id="closeActivityEditModalBtn" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.85rem;">✕</button>
+      </div>
+      <form id="activityEditForm">
+        <input type="hidden" id="activityEditId">
+        <div class="form-group">
+          <label class="form-label">Exercise Name</label>
+          <input id="activityEditExercise" type="text" class="form-input" maxlength="100" placeholder="e.g. Bench Press" required>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Sets</label>
+            <input id="activityEditSets" type="number" min="1" class="form-input" value="1">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label">Reps</label>
+            <input id="activityEditReps" type="number" min="1" class="form-input" value="1">
+          </div>
+          <div class="form-group" style="flex: 1.2;" id="activityEditWeightGroup">
+            <label class="form-label" id="activityEditMetricLabel">Weight (ea)</label>
+            <input id="activityEditWeight" type="number" min="0" step="any" class="form-input" value="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <input id="activityEditNotes" type="text" class="form-input" maxlength="500" placeholder="Notes (optional)">
+        </div>
+        <div style="margin-top: 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px;">
+          <div class="form-group" style="margin-bottom: 8px;">
+            <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; color: var(--text-primary); font-weight: 600;">
+              <input type="checkbox" id="activityEditCombined">
+              <span>📦 Combined volume (exclude from PR)</span>
+            </label>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; color: var(--text-primary); font-weight: 600;">
+              <input type="checkbox" id="activityEditIsPr">
+              <span>👑 Personal Record (PR)</span>
+            </label>
+          </div>
+        </div>
+        <div class="action-buttons-row" style="margin-top: 14px; display: flex; gap: 8px;">
+          <button type="button" id="togglePrQuickBtn" class="btn btn-secondary" style="flex: 1; font-size: 0.82rem;">Toggle PR</button>
+          <button type="submit" id="saveActivityEditBtn" class="btn btn-primary" style="flex: 1.4;">Save Changes</button>
+        </div>
+      </form>
     </div>
   </div>
 

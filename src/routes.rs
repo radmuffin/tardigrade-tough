@@ -3,7 +3,7 @@ use crate::models::{
     Activity, BatchLogActivityRequest, CheckoffGoalRequest, CheckoffGoalResponse, CheerRequest,
     CreateGoalRequest, CreateGoalWishlistRequest, CreateRoomRequest, Goal, GoalWishlistItem,
     LogActivityRequest, PersonalRecord, RenameRoomRequest, Room, RoomDataResponse,
-    UpdateProfileRequest, UserPersonalStats, UserProfile as AppUserProfile,
+    UpdateActivityRequest, UpdateProfileRequest, UserPersonalStats, UserProfile as AppUserProfile,
 };
 use axum::async_trait;
 use axum::{
@@ -13,7 +13,7 @@ use axum::{
     },
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
     Json, Router,
 };
 use fly_common::prelude::{ApiResponse, DbPool, UserToken as FlyUserToken};
@@ -148,6 +148,12 @@ pub fn create_routes(state: AppState) -> Router {
         .route("/activities", post(log_activity))
         .route("/activities/batch", post(log_batch_activities))
         .route("/activities/:id", delete(delete_activity_handler))
+        .route("/activities/:id", patch(update_activity_handler))
+        .route("/activities/:id/update", post(update_activity_handler))
+        .route(
+            "/activities/:id/toggle-pr",
+            post(toggle_activity_pr_handler),
+        )
         .route("/cheer", post(cheer_handler))
         .route("/goals", post(create_goal_handler))
         .route("/goals/:id/checkoff", post(checkoff_goal_handler))
@@ -684,6 +690,65 @@ async fn delete_activity_handler(
             }
 
             (StatusCode::OK, Json(ApiResponse::ok(true)))
+        }
+        Ok(None) => (
+            StatusCode::FORBIDDEN,
+            Json(ApiResponse::err("Activity not found or unauthorized")),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
+    }
+}
+
+async fn toggle_activity_pr_handler(
+    user: UserToken,
+    Path(id): Path<i64>,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<Activity>>) {
+    match state.store.toggle_activity_pr(id, user.as_str()) {
+        Ok(Some(updated)) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: updated.room_slug.clone(),
+                event: "activity_updated".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "activity": updated,
+                }),
+            });
+
+            (StatusCode::OK, Json(ApiResponse::ok(updated)))
+        }
+        Ok(None) => (
+            StatusCode::FORBIDDEN,
+            Json(ApiResponse::err("Activity not found or unauthorized")),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
+    }
+}
+
+async fn update_activity_handler(
+    user: UserToken,
+    Path(id): Path<i64>,
+    State(state): State<AppState>,
+    Json(payload): Json<UpdateActivityRequest>,
+) -> (StatusCode, Json<ApiResponse<Activity>>) {
+    match state.store.update_activity(id, user.as_str(), &payload) {
+        Ok(Some(updated)) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: updated.room_slug.clone(),
+                event: "activity_updated".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "activity": updated,
+                }),
+            });
+
+            (StatusCode::OK, Json(ApiResponse::ok(updated)))
         }
         Ok(None) => (
             StatusCode::FORBIDDEN,

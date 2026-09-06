@@ -132,6 +132,54 @@
   vertical-align: middle;
 }
 
+.pr-badge.pr-badge-clickable {
+  cursor: pointer;
+  transition: transform var(--transition-fast, 0.15s ease), background var(--transition-fast, 0.15s ease);
+}
+
+.pr-badge.pr-badge-clickable:hover {
+  background: rgba(245, 158, 11, 0.35);
+  transform: translateY(-1px);
+}
+
+.combined-badge {
+  font-family: var(--font-mono);
+  font-size: 0.70rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+.edit-activity-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background var(--transition-fast, 0.15s ease), color var(--transition-fast, 0.15s ease), border-color var(--transition-fast, 0.15s ease);
+}
+
+.edit-activity-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+}
+
 .pr-pill {
   font-size: 0.76rem;
   font-weight: 700;

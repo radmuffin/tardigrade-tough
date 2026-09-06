@@ -19,7 +19,7 @@ import {
 } from './js/workouts.js';
 import { setupActivityFilters, renderFeed, setupCheers } from './js/activity-feed.js';
 import { renderTrophyRoom, renderWishlists } from './js/trophy.js';
-import { setupModals, setupSheetImporter } from './js/modals.js';
+import { setupModals, setupSheetImporter, setupActivityEditModal } from './js/modals.js';
 import { initWebSocket } from './js/realtime.js';
 import { setupPwa, updateOfflineStatus } from './js/pwa.js';
 
@@ -52,6 +52,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupCheers();
   setupModals({ onReloadState: loadRoomState });
   setupSheetImporter({ onReloadState: loadRoomState });
+  setupActivityEditModal({ onReloadState: loadRoomState });
   setupActivityFilters({ onFilterChange: () => renderFeed({ onReloadState: loadRoomState }) });
   setupPwa();
 

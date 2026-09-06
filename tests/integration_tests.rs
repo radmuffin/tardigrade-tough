@@ -82,6 +82,7 @@ fn test_multi_room_isolation_and_cross_contamination() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("log user a");
@@ -129,6 +130,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("weight log");
@@ -155,6 +157,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("distance log");
@@ -181,6 +184,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("elevation log");
@@ -229,6 +233,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
         LogActivityRequest {
             room_slug: Some("main".to_string()),
@@ -248,6 +253,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     ];
 
@@ -288,6 +294,7 @@ fn test_activity_deletion_and_rollback() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("log");
@@ -440,6 +447,7 @@ fn test_goal_completion_transition() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("trek log");
@@ -810,6 +818,7 @@ fn test_custom_quest_category_proposal_promotion_and_activity_logging() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("log pushups");
@@ -1501,6 +1510,7 @@ fn test_personal_record_detection_and_query() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("act1");
@@ -1529,6 +1539,7 @@ fn test_personal_record_detection_and_query() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("act2");
@@ -1557,6 +1568,7 @@ fn test_personal_record_detection_and_query() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("act3");
@@ -1603,6 +1615,7 @@ fn test_user_streak_and_tardigrade_state() {
             created_at: Some(today),
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("log today");
@@ -1730,6 +1743,7 @@ async fn test_data_store_trait_abstraction() {
                 created_at: None,
                 parent_activity_id: None,
                 is_pr: None,
+                is_combined: None,
             },
         )
         .expect("log_single_activity");
@@ -1957,6 +1971,7 @@ fn test_sally_multi_category_personal_progress_and_leaderboard() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("log weight");
@@ -1999,6 +2014,7 @@ fn test_sally_multi_category_personal_progress_and_leaderboard() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("log distance");
@@ -2026,6 +2042,7 @@ fn test_sally_multi_category_personal_progress_and_leaderboard() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("log elevation");
@@ -2053,6 +2070,7 @@ fn test_sally_multi_category_personal_progress_and_leaderboard() {
             created_at: None,
             parent_activity_id: None,
             is_pr: None,
+            is_combined: None,
         },
     )
     .expect("log feat");
@@ -2085,4 +2103,213 @@ fn test_sally_multi_category_personal_progress_and_leaderboard() {
     assert_eq!(lb[0].total_distance, 5.2);
     assert_eq!(lb[0].total_elevation, 800.0);
     assert_eq!(lb[0].total_sets, 7);
+}
+
+#[test]
+fn test_combined_volume_fast_add_and_import_pr_handling() {
+    let mut conn = setup_test_db();
+    let user = get_or_create_user(&conn, "token_comb_user", "comb-squad").expect("user");
+
+    // 1. Fast Add 5,000 lbs with is_combined = true
+    let act_fast = log_single_activity(
+        &mut conn,
+        &user,
+        "comb-squad",
+        &LogActivityRequest {
+            room_slug: Some("comb-squad".to_string()),
+            user_nickname: Some("Lifter".to_string()),
+            user_avatar_color: None,
+            user_avatar_emoji: None,
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Fast Add".to_string()),
+            sets: Some(1),
+            reps: Some(1),
+            weight_per_rep: Some(0.0),
+            distance_val: None,
+            elevation_val: None,
+            total_metric: Some(5000.0),
+            notes: Some("Session bulk".to_string()),
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+            is_combined: Some(true),
+        },
+    )
+    .expect("fast add act");
+
+    assert!(
+        !act_fast.is_pr,
+        "Combined fast add should not be marked as PR"
+    );
+    assert!(act_fast.is_combined, "Should have is_combined flag");
+
+    // PR shelf must have 0 PRs
+    let prs = get_user_personal_records(&conn, "token_comb_user").expect("prs");
+    assert_eq!(
+        prs.len(),
+        0,
+        "Combined fast add must not appear on PR shelf"
+    );
+
+    // 2. Log a genuine Bench Press 225 lbs (is_combined = false)
+    let act_bench = log_single_activity(
+        &mut conn,
+        &user,
+        "comb-squad",
+        &LogActivityRequest {
+            room_slug: Some("comb-squad".to_string()),
+            user_nickname: Some("Lifter".to_string()),
+            user_avatar_color: None,
+            user_avatar_emoji: None,
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Bench Press".to_string()),
+            sets: Some(3),
+            reps: Some(5),
+            weight_per_rep: Some(225.0),
+            distance_val: None,
+            elevation_val: None,
+            total_metric: Some(3375.0),
+            notes: None,
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+            is_combined: Some(false),
+        },
+    )
+    .expect("bench act");
+
+    assert!(act_bench.is_pr, "Genuine bench press should be marked PR");
+    assert!(!act_bench.is_combined);
+
+    let prs2 = get_user_personal_records(&conn, "token_comb_user").expect("prs2");
+    assert_eq!(prs2.len(), 1);
+    assert_eq!(prs2[0].exercise_name, "Bench Press");
+    assert_eq!(prs2[0].max_weight, 225.0);
+
+    // 3. Sheet import representing combined volume (1,200 lbs) with is_combined = true
+    let act_import_comb = log_single_activity(
+        &mut conn,
+        &user,
+        "comb-squad",
+        &LogActivityRequest {
+            room_slug: Some("comb-squad".to_string()),
+            user_nickname: Some("Lifter".to_string()),
+            user_avatar_color: None,
+            user_avatar_emoji: None,
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Sheet Lift".to_string()),
+            sets: Some(1),
+            reps: Some(1),
+            weight_per_rep: Some(0.0),
+            distance_val: None,
+            elevation_val: None,
+            total_metric: Some(1200.0),
+            notes: Some("Sheet Row #1".to_string()),
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+            is_combined: Some(true),
+        },
+    )
+    .expect("import comb");
+
+    assert!(!act_import_comb.is_pr);
+    assert!(act_import_comb.is_combined);
+
+    let prs3 = get_user_personal_records(&conn, "token_comb_user").expect("prs3");
+    assert_eq!(prs3.len(), 1, "Sheet combined volume should not add a PR");
+}
+
+#[test]
+fn test_activity_edit_and_toggle_pr() {
+    let mut conn = setup_test_db();
+    let user = get_or_create_user(&conn, "token_edit_user", "edit-squad").expect("user");
+
+    // Log an activity that triggered a PR by mistake (e.g. user forgot to check combined)
+    let act = log_single_activity(
+        &mut conn,
+        &user,
+        "edit-squad",
+        &LogActivityRequest {
+            room_slug: Some("edit-squad".to_string()),
+            user_nickname: Some("Lifter".to_string()),
+            user_avatar_color: None,
+            user_avatar_emoji: None,
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Fast Add".to_string()),
+            sets: Some(1),
+            reps: Some(1),
+            weight_per_rep: Some(5000.0),
+            distance_val: None,
+            elevation_val: None,
+            total_metric: Some(5000.0),
+            notes: None,
+            goal_id: None,
+            created_at: None,
+            parent_activity_id: None,
+            is_pr: None,
+            is_combined: None,
+        },
+    )
+    .expect("act");
+
+    assert!(act.is_pr);
+
+    // 1. Toggle PR off
+    let toggled = toggle_activity_pr(&mut conn, act.id, "token_edit_user")
+        .expect("toggle")
+        .expect("found");
+    assert!(!toggled.is_pr, "PR should be toggled off");
+
+    let prs = get_user_personal_records(&conn, "token_edit_user").expect("prs");
+    assert_eq!(
+        prs.len(),
+        0,
+        "Excluded activity must disappear from PR list"
+    );
+
+    // 2. Update activity with more information (Exercise name, Sets, Reps, Notes)
+    let updated = update_activity(
+        &mut conn,
+        act.id,
+        "token_edit_user",
+        &UpdateActivityRequest {
+            exercise_name: Some("Leg Press Session".to_string()),
+            sets: Some(5),
+            reps: Some(10),
+            weight_per_rep: Some(100.0),
+            notes: Some("Detailed set breakdown".to_string()),
+            is_pr: Some(false),
+            is_combined: Some(true),
+        },
+    )
+    .expect("update")
+    .expect("found");
+
+    assert_eq!(updated.exercise_name, "Leg Press Session");
+    assert_eq!(updated.sets, 5);
+    assert_eq!(updated.reps, 10);
+    assert_eq!(updated.weight_per_rep, 100.0);
+    assert_eq!(updated.notes, "Detailed set breakdown");
+    assert!(updated.is_combined);
+    assert!(!updated.is_pr);
+
+    // 3. Unauthorized user cannot update or toggle
+    let unauth = toggle_activity_pr(&mut conn, act.id, "wrong_token").expect("toggle unauth");
+    assert!(unauth.is_none());
+
+    let unauth_edit = update_activity(
+        &mut conn,
+        act.id,
+        "wrong_token",
+        &UpdateActivityRequest {
+            exercise_name: Some("Hacked".to_string()),
+            ..Default::default()
+        },
+    )
+    .expect("edit unauth");
+    assert!(unauth_edit.is_none());
 }

@@ -90,6 +90,17 @@ pub trait ActivityStore: Send + Sync {
         activity_id: i64,
         user_token: &str,
     ) -> StoreResult<Option<Vec<String>>>;
+    fn toggle_activity_pr(
+        &self,
+        activity_id: i64,
+        user_token: &str,
+    ) -> StoreResult<Option<Activity>>;
+    fn update_activity(
+        &self,
+        activity_id: i64,
+        user_token: &str,
+        req: &UpdateActivityRequest,
+    ) -> StoreResult<Option<Activity>>;
     fn get_recent_activities(&self, room_slug: &str, limit: i64) -> StoreResult<Vec<Activity>>;
     fn get_leaderboard(&self, room_slug: &str) -> StoreResult<Vec<LeaderboardMember>>;
 }

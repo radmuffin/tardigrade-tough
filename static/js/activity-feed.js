@@ -77,18 +77,26 @@ export function renderFeed({ onReloadState } = {}) {
     const avatarFontSize = isEmoji ? '1.1rem' : displayAvatar.length > 2 ? '0.74rem' : displayAvatar.length === 2 ? '0.82rem' : '0.9rem';
     const avatarFontWeight = isEmoji ? 'normal' : '700';
 
+    const prBadge = act.is_pr
+      ? ` <span class="pr-badge ${isMe ? 'pr-badge-clickable' : ''}" data-id="${act.id}" title="${isMe ? 'Click to edit info or PR' : 'Personal Record'}">👑 PR</span>`
+      : '';
+    const combBadge = act.is_combined
+      ? ` <span class="combined-badge" title="Combined volume (excluded from PR)">📦 Combined</span>`
+      : '';
+
     item.innerHTML = `
       <div class="activity-left">
         <div class="user-avatar" style="background-color: ${act.user_avatar_color}; width: 32px; height: 32px; font-size: ${avatarFontSize}; font-weight: ${avatarFontWeight};">
           ${FlyToast.escape(displayAvatar)}
         </div>
         <div class="activity-text">
-          <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)}${detailStr ? ` (${detailStr})` : ''}</span>${act.is_pr ? ' <span class="pr-badge">👑 PR</span>' : ''}</div>
+          <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)}${detailStr ? ` (${detailStr})` : ''}</span>${prBadge}${combBadge}</div>
           <div class="activity-meta">${act.notes ? `"${FlyToast.escape(act.notes)}" • ` : ''}${formatTimeAgo(act.created_at)}</div>
         </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
         <span class="activity-metric-badge">${metricText}</span>
+        ${isMe ? `<button class="edit-activity-btn" data-id="${act.id}" title="Edit Info / PR">✎</button>` : ''}
         ${isMe ? `<button class="delete-btn" data-id="${act.id}" title="Undo / Delete">✕</button>` : ''}
       </div>
     `;
@@ -97,6 +105,18 @@ export function renderFeed({ onReloadState } = {}) {
       const delBtn = item.querySelector('.delete-btn');
       if (delBtn) {
         delBtn.addEventListener('click', () => deleteActivity(act.id, { onReloadState }));
+      }
+      const editBtn = item.querySelector('.edit-activity-btn');
+      if (editBtn) {
+        editBtn.addEventListener('click', () => {
+          if (window.openActivityEditModal) window.openActivityEditModal(act);
+        });
+      }
+      const prClickable = item.querySelector('.pr-badge-clickable');
+      if (prClickable) {
+        prClickable.addEventListener('click', () => {
+          if (window.openActivityEditModal) window.openActivityEditModal(act);
+        });
       }
     }
 

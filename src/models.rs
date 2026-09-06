@@ -139,6 +139,8 @@ pub struct Activity {
     pub parent_activity_id: Option<i64>,
     #[serde(default)]
     pub is_pr: bool,
+    #[serde(default)]
+    pub is_combined: bool,
 }
 
 impl Activity {
@@ -161,6 +163,7 @@ impl Activity {
             created_at: Some(self.created_at.clone()),
             parent_activity_id: Some(self.id),
             is_pr: Some(self.is_pr),
+            is_combined: Some(self.is_combined),
         }
     }
 }
@@ -173,6 +176,17 @@ pub struct PersonalRecord {
     pub max_reps: i32,
     pub max_distance: f64,
     pub max_elevation: f64,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct UpdateActivityRequest {
+    pub exercise_name: Option<String>,
+    pub sets: Option<i32>,
+    pub reps: Option<i32>,
+    pub weight_per_rep: Option<f64>,
+    pub notes: Option<String>,
+    pub is_pr: Option<bool>,
+    pub is_combined: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -196,6 +210,8 @@ pub struct LogActivityRequest {
     pub parent_activity_id: Option<i64>,
     #[serde(default)]
     pub is_pr: Option<bool>,
+    #[serde(default)]
+    pub is_combined: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Default)]

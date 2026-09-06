@@ -157,6 +157,25 @@ impl ActivityStore for SqliteStore {
         crate::db::delete_activity(&mut conn, activity_id, user_token).map_err(Into::into)
     }
 
+    fn toggle_activity_pr(
+        &self,
+        activity_id: i64,
+        user_token: &str,
+    ) -> StoreResult<Option<Activity>> {
+        let mut conn = self.conn.lock().unwrap();
+        crate::db::toggle_activity_pr(&mut conn, activity_id, user_token).map_err(Into::into)
+    }
+
+    fn update_activity(
+        &self,
+        activity_id: i64,
+        user_token: &str,
+        req: &UpdateActivityRequest,
+    ) -> StoreResult<Option<Activity>> {
+        let mut conn = self.conn.lock().unwrap();
+        crate::db::update_activity(&mut conn, activity_id, user_token, req).map_err(Into::into)
+    }
+
     fn get_recent_activities(&self, room_slug: &str, limit: i64) -> StoreResult<Vec<Activity>> {
         let conn = self.conn.lock().unwrap();
         crate::db::get_recent_activities(&conn, room_slug, limit).map_err(Into::into)

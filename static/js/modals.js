@@ -9,6 +9,9 @@ export function setupSheetImporter({ onReloadState } = {}) {
   const pasteArea = document.getElementById('importPasteArea');
   const userNickInput = document.getElementById('importUserNick');
   const userColorSelect = document.getElementById('importUserColor');
+  const categorySelect = document.getElementById('importCategory');
+  const exerciseNameInput = document.getElementById('importExerciseName');
+  const excludePrCheckbox = document.getElementById('importExcludePr');
   const summaryBox = document.getElementById('importSummaryBox');
   const summaryText = document.getElementById('importSummaryText');
   const tonnageText = document.getElementById('importTonnageText');
@@ -41,56 +44,79 @@ export function setupSheetImporter({ onReloadState } = {}) {
     const lines = raw.split(/\r?\n/);
     parsedActivities = [];
     let totalTonnage = 0;
+    const cat = categorySelect?.value || 'weight';
+    const defaultEx = exerciseNameInput?.value.trim() || 'Sheet Lift';
+    const isCombined = excludePrCheckbox?.checked || false;
 
     lines.forEach((line, idx) => {
       const trimmed = line.trim();
       if (!trimmed) return;
 
-      const parts = trimmed.split(/[\t,;]+/).map(p => p.trim()).filter(Boolean);
+      let parts = trimmed.split(/[\t,;]+/).map(p => p.trim()).filter(Boolean);
+      if (parts.length === 1) {
+        const spaceParts = trimmed.split(/\s+/);
+        if (spaceParts.length > 1) {
+          parts = spaceParts;
+        }
+      }
 
+      let exercise = defaultEx;
       let weight = 0;
       let reps = 1;
       let sets = 1;
       let calculatedTotal = 0;
+      let notes = `Sheet Row #${idx + 1}`;
 
-      if (parts.length >= 2) {
+      if (parts.length >= 2 && isNaN(Number(parts[0]))) {
+        exercise = parts[0];
+        const num1 = parseFloat(parts[1]) || 0;
+        const num2 = parts.length >= 3 ? (parseFloat(parts[2]) || 1) : 1;
+        weight = num1;
+        reps = Math.round(num2);
+        calculatedTotal = weight * reps;
+        if (parts.length >= 4) {
+          notes = parts.slice(3).join(' ');
+        }
+      } else if (parts.length >= 2) {
         weight = parseFloat(parts[0]) || 0;
         reps = parseInt(parts[1], 10) || 1;
         calculatedTotal = weight * reps;
-      } else if (parts.length === 1) {
-        const spaceParts = trimmed.split(/\s+/);
-        if (spaceParts.length >= 2) {
-          weight = parseFloat(spaceParts[0]) || 0;
-          reps = parseInt(spaceParts[1], 10) || 1;
-          calculatedTotal = weight * reps;
-        } else {
-          calculatedTotal = parseFloat(parts[0]) || 0;
-          weight = calculatedTotal;
-          reps = 1;
+        if (parts.length >= 3) {
+          notes = parts.slice(2).join(' ');
         }
+      } else if (parts.length === 1) {
+        calculatedTotal = parseFloat(parts[0]) || 0;
+        weight = calculatedTotal;
+        reps = 1;
       }
 
       if (calculatedTotal > 0) {
         totalTonnage += calculatedTotal;
+        const weightPerRep = isCombined ? 0.0 : weight;
         parsedActivities.push({
           room_slug: state.roomSlug,
-          activity_type: 'weight',
-          exercise_name: 'Sheet Lift',
+          activity_type: cat,
+          exercise_name: exercise,
           sets,
           reps,
-          weight_per_rep: weight,
+          weight_per_rep: cat === 'weight' ? weightPerRep : 0,
+          distance_val: cat === 'distance' ? (isCombined ? 0 : calculatedTotal) : 0,
+          elevation_val: cat === 'elevation' ? (isCombined ? 0 : calculatedTotal) : 0,
           total_metric: calculatedTotal,
-          notes: `Sheet Row #${idx + 1}`,
+          notes,
+          is_combined: isCombined,
+          is_pr: isCombined ? false : null,
         });
       }
     });
 
+    const unitLabel = cat === 'distance' ? 'mi' : cat === 'elevation' ? 'ft' : 'lbs';
     if (parsedActivities.length > 0) {
       if (summaryBox) summaryBox.style.display = 'flex';
-      if (summaryText) summaryText.textContent = `Parsed: ${parsedActivities.length} sets`;
-      if (tonnageText) tonnageText.textContent = `+${formatNumber(totalTonnage)} lbs`;
+      if (summaryText) summaryText.textContent = `Parsed: ${parsedActivities.length} sets${isCombined ? ' (Combined)' : ''}`;
+      if (tonnageText) tonnageText.textContent = `+${formatNumber(totalTonnage)} ${unitLabel}`;
       executeBtn.disabled = false;
-      executeBtn.textContent = `Import ${parsedActivities.length} Sets (${formatNumber(totalTonnage)} lbs)`;
+      executeBtn.textContent = `Import ${parsedActivities.length} Sets (${formatNumber(totalTonnage)} ${unitLabel})`;
     } else {
       if (summaryBox) summaryBox.style.display = 'none';
       executeBtn.disabled = true;
@@ -98,6 +124,9 @@ export function setupSheetImporter({ onReloadState } = {}) {
   }
 
   pasteArea.addEventListener('input', parsePastedData);
+  if (categorySelect) categorySelect.addEventListener('change', parsePastedData);
+  if (exerciseNameInput) exerciseNameInput.addEventListener('input', parsePastedData);
+  if (excludePrCheckbox) excludePrCheckbox.addEventListener('change', parsePastedData);
 
   executeBtn.addEventListener('click', async () => {
     if (parsedActivities.length === 0) return;
@@ -132,6 +161,150 @@ export function setupSheetImporter({ onReloadState } = {}) {
       parsePastedData();
     }
   });
+}
+
+export function setupActivityEditModal({ onReloadState } = {}) {
+  const modal = document.getElementById('activityEditModal');
+  const closeBtn = document.getElementById('closeActivityEditModalBtn');
+  const form = document.getElementById('activityEditForm');
+  const idInput = document.getElementById('activityEditId');
+  const exInput = document.getElementById('activityEditExercise');
+  const setsInput = document.getElementById('activityEditSets');
+  const repsInput = document.getElementById('activityEditReps');
+  const wtInput = document.getElementById('activityEditWeight');
+  const notesInput = document.getElementById('activityEditNotes');
+  const combinedCheckbox = document.getElementById('activityEditCombined');
+  const isPrCheckbox = document.getElementById('activityEditIsPr');
+  const togglePrBtn = document.getElementById('togglePrQuickBtn');
+  const saveBtn = document.getElementById('saveActivityEditBtn');
+
+  if (!modal || !form) return;
+
+  window.openActivityEditModal = openActivityEditModal;
+
+  function closeModal() {
+    modal.classList.add('hidden');
+  }
+
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  if (combinedCheckbox) {
+    combinedCheckbox.addEventListener('change', () => {
+      if (combinedCheckbox.checked && isPrCheckbox) {
+        isPrCheckbox.checked = false;
+      }
+    });
+  }
+
+  if (isPrCheckbox) {
+    isPrCheckbox.addEventListener('change', () => {
+      if (isPrCheckbox.checked && combinedCheckbox) {
+        combinedCheckbox.checked = false;
+      }
+    });
+  }
+
+  if (togglePrBtn) {
+    togglePrBtn.addEventListener('click', async () => {
+      const actId = idInput?.value;
+      if (!actId) return;
+      try {
+        togglePrBtn.disabled = true;
+        togglePrBtn.textContent = 'Updating...';
+        const res = await state.client.post(`/activities/${actId}/toggle-pr`, {});
+        if (res && res.success) {
+          FlyToast.success('PR status updated!');
+          closeModal();
+          if (onReloadState) await onReloadState();
+        } else {
+          FlyToast.error(res?.error || 'Failed to update PR status');
+        }
+      } catch (err) {
+        FlyToast.error('Network error toggling PR');
+      } finally {
+        togglePrBtn.disabled = false;
+        togglePrBtn.textContent = 'Toggle PR';
+      }
+    });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const actId = idInput?.value;
+    if (!actId) return;
+
+    const payload = {
+      exercise_name: exInput?.value.trim() || 'Exercise',
+      sets: parseInt(setsInput?.value, 10) || 1,
+      reps: parseInt(repsInput?.value, 10) || 1,
+      weight_per_rep: parseFloat(wtInput?.value) || 0,
+      notes: notesInput?.value.trim() || '',
+      is_combined: combinedCheckbox ? combinedCheckbox.checked : false,
+      is_pr: isPrCheckbox ? isPrCheckbox.checked : false,
+    };
+
+    try {
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+      }
+      const res = await state.client.post(`/activities/${actId}/update`, payload);
+      if (res && res.success) {
+        FlyToast.success('Activity updated!');
+        closeModal();
+        if (onReloadState) await onReloadState();
+      } else {
+        FlyToast.error(res?.error || 'Failed to update activity');
+      }
+    } catch (err) {
+      FlyToast.error('Network error updating activity');
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Changes';
+      }
+    }
+  });
+}
+
+export function openActivityEditModal(act) {
+  const modal = document.getElementById('activityEditModal');
+  if (!modal || !act) return;
+
+  const idInput = document.getElementById('activityEditId');
+  const exInput = document.getElementById('activityEditExercise');
+  const setsInput = document.getElementById('activityEditSets');
+  const repsInput = document.getElementById('activityEditReps');
+  const wtInput = document.getElementById('activityEditWeight');
+  const metricLabel = document.getElementById('activityEditMetricLabel');
+  const notesInput = document.getElementById('activityEditNotes');
+  const combinedCheckbox = document.getElementById('activityEditCombined');
+  const isPrCheckbox = document.getElementById('activityEditIsPr');
+  const togglePrBtn = document.getElementById('togglePrQuickBtn');
+
+  if (idInput) idInput.value = act.id;
+  if (exInput) exInput.value = act.exercise_name || '';
+  if (setsInput) setsInput.value = act.sets || 1;
+  if (repsInput) repsInput.value = act.reps || 1;
+  if (wtInput) wtInput.value = act.weight_per_rep || 0;
+  if (notesInput) notesInput.value = act.notes || '';
+  if (combinedCheckbox) combinedCheckbox.checked = !!act.is_combined;
+  if (isPrCheckbox) isPrCheckbox.checked = !!act.is_pr;
+
+  if (metricLabel) {
+    if (act.activity_type === 'distance') metricLabel.textContent = 'Miles';
+    else if (act.activity_type === 'elevation') metricLabel.textContent = 'Elevation';
+    else metricLabel.textContent = 'Weight (ea)';
+  }
+
+  if (togglePrBtn) {
+    togglePrBtn.textContent = act.is_pr ? 'Exclude from PR' : 'Mark as PR';
+  }
+
+  modal.classList.remove('hidden');
 }
 
 export function setupModals({ onReloadState, onSwitchView } = {}) {
@@ -411,13 +584,16 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
           const prHtml = act.is_pr
             ? `<span class="activity-pr-badge" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">👑 PR</span>`
             : '';
+          const combHtml = act.is_combined
+            ? `<span class="combined-badge" style="font-size: 0.62rem; padding: 1px 4px; margin-left: 4px;">📦 Combined</span>`
+            : '';
 
           return `
             <div class="profile-recent-item">
               <div class="profile-recent-main">
                 <span class="profile-recent-icon">${icon}</span>
                 <span class="profile-recent-name" title="${FlyToast.escape(act.exercise_name)}">${FlyToast.escape(act.exercise_name)}</span>
-                ${prHtml}
+                ${prHtml}${combHtml}
               </div>
               <div class="profile-recent-right">
                 <span class="profile-recent-metric">${metricStr}</span>
