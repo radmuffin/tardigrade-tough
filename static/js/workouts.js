@@ -85,13 +85,13 @@ export function updateStepperForGoal(goal) {
       exSelect.innerHTML = `
         <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
         <option value="Back Squat">🏋️ Back Squat</option>
-        <option value="Deadlift">🏋️ Deadlift</option>
-        <option value="Bench Press">🏋️ Bench Press</option>
-        <option value="Leg Press">🏋️ Leg Press</option>
-        <option value="Overhead Press">🏋️ Overhead Press</option>
-        <option value="Barbell Row">🏋️ Barbell Row</option>
-        <option value="Dumbbell Lunge">🏋️ Dumbbell Lunge</option>
-        <option value="Bicep Curl">🏋️ Bicep Curl</option>
+        <option value="Deadlift">⛓️ Deadlift</option>
+        <option value="Bench Press">🛡️ Bench Press</option>
+        <option value="Leg Press">🦵 Leg Press</option>
+        <option value="Overhead Press">🚀 Overhead Press</option>
+        <option value="Barbell Row">🚣 Barbell Row</option>
+        <option value="Dumbbell Lunge">👟 Dumbbell Lunge</option>
+        <option value="Bicep Curl">💪 Bicep Curl</option>
         ${customOpts}
         <option value="__add_custom__">+ Custom...</option>
       `;
@@ -155,7 +155,7 @@ export function updateStepperForGoal(goal) {
         <option value="Trail Walk">🚶 Trail Walk</option>
         <option value="Road Cycling">🚴 Road Cycling</option>
         <option value="Rowing Machine">🚣 Rowing Machine</option>
-        <option value="Treadmill Run">🏃 Treadmill Run</option>
+        <option value="Treadmill Run">⚡ Treadmill Run</option>
         ${customOpts}
         <option value="__add_custom__">+ Custom...</option>
       `;
