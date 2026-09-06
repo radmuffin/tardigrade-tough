@@ -271,6 +271,29 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#profileModal')).not.toBeVisible();
   });
 
+  test('in solo mode, shows clean solo badge and hides redundant share squad card', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('body[data-state="ready"]');
+
+    // Open squad settings hub
+    await page.click('#profileBtn');
+    await expect(page.locator('#profileModal')).toBeVisible();
+    await page.click('#tabBtnSquad');
+
+    // Solo button says "Solo"
+    const soloBtnText = await page.locator('#quickSoloBtn .solo-badge-text').textContent();
+    expect(soloBtnText.trim()).toBe('Solo');
+
+    // Share Squad card should be hidden when in solo mode to avoid redundancy
+    await expect(page.locator('#shareSquadHubCard')).toBeHidden();
+
+    // Create squad card remains visible
+    await expect(page.locator('#createSquadCard')).toBeVisible();
+
+    await page.click('#closeProfileBtn');
+    await expect(page.locator('#profileModal')).not.toBeVisible();
+  });
+
   test('opens dedicated share app modal from footer share button', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('body[data-state="ready"]');
@@ -434,7 +457,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   });
 
   test('displays contact section, GitHub repo, and Sally dedication in modal', async ({ page }) => {
-    await page.click('#footerContactBtn');
+    await page.click('#footerAboutBtn');
     await expect(page.locator('#aboutModal')).toBeVisible();
     await expect(page.locator('#aboutStorySection')).toBeVisible();
     await expect(page.locator('#aboutStorySection')).toContainText('Made for Sally');

@@ -4,6 +4,7 @@ export function setupShareModal() {
   const shareModal = document.getElementById('shareModal');
   const closeShareModalBtn = document.getElementById('closeShareModalBtn');
   const closeShareModalCrossBtn = document.getElementById('closeShareModalCrossBtn');
+  const footerShareBtn = document.getElementById('footerShareBtn');
   const shareAppUrlInput = document.getElementById('shareAppUrlInput');
   const copyAppUrlBtn = document.getElementById('copyAppUrlBtn');
   const nativeShareAppBtn = document.getElementById('nativeShareAppBtn');
@@ -27,6 +28,12 @@ export function setupShareModal() {
 
   if (closeShareModalBtn) closeShareModalBtn.addEventListener('click', closeShareModal);
   if (closeShareModalCrossBtn) closeShareModalCrossBtn.addEventListener('click', closeShareModal);
+  if (footerShareBtn) {
+    footerShareBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openShareModal();
+    });
+  }
 
   shareModal.addEventListener('click', (e) => {
     if (e.target === shareModal) closeShareModal();

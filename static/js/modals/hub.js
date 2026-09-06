@@ -314,10 +314,8 @@ export function setupHubModal({ onReloadState } = {}) {
   const quickSoloBtn = document.getElementById('quickSoloBtn');
   const renameSquadControls = document.getElementById('renameSquadControls');
   const soloStatusNotice = document.getElementById('soloStatusNotice');
+  const shareSquadHubCard = document.getElementById('shareSquadHubCard');
   const shareSquadStatusBadge = document.getElementById('shareSquadStatusBadge');
-  const soloSharePrompt = document.getElementById('soloSharePrompt');
-  const promptSquadNameInput = document.getElementById('promptSquadNameInput');
-  const promptCreateSquadBtn = document.getElementById('promptCreateSquadBtn');
   const squadShareActiveControls = document.getElementById('squadShareActiveControls');
   const squadQrLabel = document.getElementById('squadQrLabel');
 
@@ -404,29 +402,17 @@ export function setupHubModal({ onReloadState } = {}) {
     }
 
     if (quickSoloBtn) {
-      if (isSolo) {
-        quickSoloBtn.classList.add('active');
-        quickSoloBtn.style.opacity = '0.9';
-        quickSoloBtn.innerHTML = '<span class="solo-badge-icon">🧘</span><span class="solo-badge-text">Solo (Active)</span>';
-      } else {
-        quickSoloBtn.classList.remove('active');
-        quickSoloBtn.style.opacity = '1';
-        quickSoloBtn.innerHTML = '<span class="solo-badge-icon">🧘</span><span class="solo-badge-text">Go Solo</span>';
-      }
+      quickSoloBtn.classList.toggle('active', isSolo);
+      quickSoloBtn.style.opacity = isSolo ? '0.9' : '1';
+      quickSoloBtn.innerHTML = '<span class="solo-badge-icon">🧘</span><span class="solo-badge-text">Solo</span>';
     }
 
     if (currentSquadCard) currentSquadCard.style.display = isSolo ? 'none' : 'block';
 
     if (isSolo) {
-      if (soloSharePrompt) soloSharePrompt.style.display = 'block';
-      if (squadShareActiveControls) squadShareActiveControls.style.display = 'none';
-      if (shareSquadStatusBadge) shareSquadStatusBadge.textContent = 'Solo';
-      if (promptSquadNameInput) {
-        if (!promptSquadNameInput.value) promptSquadNameInput.value = defaultSquadName;
-        promptSquadNameInput.placeholder = defaultSquadName;
-      }
+      if (shareSquadHubCard) shareSquadHubCard.style.display = 'none';
     } else {
-      if (soloSharePrompt) soloSharePrompt.style.display = 'none';
+      if (shareSquadHubCard) shareSquadHubCard.style.display = 'block';
       if (squadShareActiveControls) squadShareActiveControls.style.display = 'block';
       if (shareSquadStatusBadge) shareSquadStatusBadge.textContent = 'Active';
 
@@ -892,35 +878,7 @@ export function setupHubModal({ onReloadState } = {}) {
     });
   }
 
-  // Prompt Create & Share Squad (from Solo mode)
-  if (promptCreateSquadBtn) {
-    promptCreateSquadBtn.addEventListener('click', async () => {
-      const myNick = state.currentRoomData?.user_profile?.nickname || 'Athlete';
-      const defaultSquadName = (myNick && myNick !== 'Athlete') ? `${myNick}'s Squad` : 'Pando Squad';
-      const rawName = promptSquadNameInput ? promptSquadNameInput.value.trim() : '';
-      const finalName = rawName || defaultSquadName;
 
-      try {
-        promptCreateSquadBtn.disabled = true;
-        promptCreateSquadBtn.textContent = 'Creating...';
-        const res = await state.client.post('/room/create', { name: finalName });
-        if (res && res.success && res.data) {
-          try { localStorage.setItem('tardigrade_current_room', res.data.slug); } catch (_) {}
-          FlyToast.success(`Squad "${res.data.name}" created!`);
-          window.location.href = `/r/${res.data.slug}`;
-        } else {
-          FlyToast.error(res?.error || 'Failed to create squad');
-          promptCreateSquadBtn.disabled = false;
-          promptCreateSquadBtn.textContent = 'Create & Share';
-        }
-      } catch (err) {
-        console.error('Create squad error:', err);
-        FlyToast.error('Failed to create squad');
-        promptCreateSquadBtn.disabled = false;
-        promptCreateSquadBtn.textContent = 'Create & Share';
-      }
-    });
-  }
 
   // Create New Group / Squad
   if (createNewRoomBtn) {

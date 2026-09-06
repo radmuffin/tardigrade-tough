@@ -41,11 +41,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       openAboutModal(false);
       return;
     }
-    if (e.target.closest('#footerContactBtn')) {
-      e.preventDefault();
-      openAboutModal(true);
-      return;
-    }
+
     if (e.target.closest('#footerShareBtn')) {
       e.preventDefault();
       openShareModal();

@@ -556,8 +556,6 @@
         <span class="footer-sep">•</span>
         <button id="footerAboutBtn" class="footer-text-link" type="button">About</button>
         <span class="footer-sep">•</span>
-        <button id="footerContactBtn" class="footer-text-link" type="button">Contact</button>
-        <span class="footer-sep">•</span>
         <button id="footerShareBtn" class="footer-text-link" type="button">Share</button>
       </div>
     </footer>
@@ -934,7 +932,7 @@
               </label>
               <button id="quickSoloBtn" class="btn-solo-badge" type="button" title="Switch to private solo quest">
                 <span class="solo-badge-icon">🧘</span>
-                <span class="solo-badge-text">Go Solo</span>
+                <span class="solo-badge-text">Solo</span>
               </button>
             </div>
             <div id="userSquadsList" class="user-squads-list">
@@ -990,25 +988,12 @@
             </div>
           </div>
 
-          <!-- Section 2D: Share Your Squad (or prompt to create if in Solo Quest) -->
+          <!-- Section 2D: Share Your Squad (shown only when in an active squad) -->
           <div class="hub-card" id="shareSquadHubCard">
             <label class="form-label" style="color: var(--accent-blue); display: flex; justify-content: space-between; align-items: center;">
               <span>Share Squad</span>
               <span id="shareSquadStatusBadge" style="font-size: 0.72rem; color: var(--text-muted);"></span>
             </label>
-
-            <!-- Solo Mode Prompt: If in Solo, prompt to name and create squad -->
-            <div id="soloSharePrompt" style="display: none;" class="solo-prompt-box">
-              <div style="font-size: 0.84rem; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">
-                Name Your Squad
-              </div>
-              <div style="display: flex; gap: 6px;">
-                <input id="promptSquadNameInput" type="text" class="form-input" placeholder="Squad Name" maxlength="50" aria-label="Squad name to create">
-                <button id="promptCreateSquadBtn" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px;" type="button">
-                  Create & Share
-                </button>
-              </div>
-            </div>
 
             <!-- Active Squad Sharing Controls: Shown when in a squad -->
             <div id="squadShareActiveControls">
@@ -1271,6 +1256,6 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=4.0"></script>
+  <script type="module" src="/app.js?v=4.2"></script>
 </body>
 </html>
