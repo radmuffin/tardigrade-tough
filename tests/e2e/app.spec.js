@@ -545,8 +545,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     // Verify 4 cards remain and cards rotated
     await expect(cards).toHaveCount(4);
-    const newFirstTitle = await cards.first().locator('.achievement-title').textContent();
-    expect(newFirstTitle).not.toBe(firstTitle);
+    await expect(cards.first().locator('.achievement-title')).not.toHaveText(firstTitle);
   });
 
 

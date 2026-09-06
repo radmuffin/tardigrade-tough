@@ -207,7 +207,15 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+@keyframes achievementShuffleFade {
+  0% { opacity: 0.4; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.achievements-grid.shuffling {
+  animation: achievementShuffleFade 0.2s ease-out;
 }
 
 @media (max-width: 380px) {

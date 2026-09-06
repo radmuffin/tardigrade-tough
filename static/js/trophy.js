@@ -383,16 +383,11 @@ export function renderQuirkyAchievements(isShuffle = false) {
     displayed.push(pool[(startIdx + i) % pool.length]);
   }
 
+  container.innerHTML = renderAchievementCards(displayed);
   if (isShuffle) {
-    container.style.opacity = '0';
-    container.style.transform = 'scale(0.97)';
-    setTimeout(() => {
-      container.innerHTML = renderAchievementCards(displayed);
-      container.style.opacity = '1';
-      container.style.transform = 'scale(1)';
-    }, 120);
-  } else {
-    container.innerHTML = renderAchievementCards(displayed);
+    container.classList.remove('shuffling');
+    void container.offsetWidth;
+    container.classList.add('shuffling');
   }
 }
 
