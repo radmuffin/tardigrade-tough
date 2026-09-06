@@ -525,9 +525,10 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('.nav-btn[data-target="trophy"]');
     await expect(page.locator('#viewTrophy')).toBeVisible();
 
-    // Verify Odd Milestones section is visible
-    const section = page.locator('#achievementsSection');
+    // Verify Conquered Feats & Trophies section is visible and title is static
+    const section = page.locator('#conqueredTrophiesSection');
     await expect(section).toBeVisible();
+    await expect(section.locator('.section-title')).toHaveText('Conquered Feats & Trophies');
 
     // Verify 4 cards are rendered
     const cards = page.locator('#achievementsGrid .achievement-card');

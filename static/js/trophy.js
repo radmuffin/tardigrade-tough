@@ -34,8 +34,10 @@ export function renderTrophyRoom() {
   const listContainer = document.getElementById('conqueredTrophiesList');
   if (listContainer) {
     if (completed.length === 0) {
-      listContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.82rem; padding: 8px 0;">No trophies conquered yet.</div>';
+      listContainer.innerHTML = '';
+      listContainer.style.display = 'none';
     } else {
+      listContainer.style.display = 'flex';
       listContainer.innerHTML = completed.map(g => {
         const isAbility = g.category === 'ability';
         const emoji = isAbility ? '⚡' : (g.theme_key === 'whale' ? '🐋' : '🏆');
@@ -379,12 +381,6 @@ export function renderQuirkyAchievements(isShuffle = false) {
   const displayed = [];
   for (let i = 0; i < countToShow; i++) {
     displayed.push(pool[(startIdx + i) % pool.length]);
-  }
-
-  const counterEl = document.getElementById('milestonesCounter');
-  if (counterEl) {
-    const endNum = Math.min(startIdx + countToShow, pool.length);
-    counterEl.textContent = `(${startIdx + 1}–${endNum} of ${pool.length})`;
   }
 
   if (isShuffle) {
