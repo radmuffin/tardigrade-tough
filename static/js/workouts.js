@@ -336,7 +336,6 @@ export function setupSteppers({ onReloadState } = {}) {
   if (repsInput) repsInput.addEventListener('input', updateImpact);
 
   // Custom Exercise Dropdown & Input Controls
-  const toggleCustomExBtn = document.getElementById('toggleCustomExBtn');
   const customExRow = document.getElementById('customExerciseRow');
   const customExInput = document.getElementById('customExerciseInput');
   const addCustomExBtn = document.getElementById('addCustomExerciseBtn');
@@ -402,17 +401,6 @@ export function setupSteppers({ onReloadState } = {}) {
     FlyToast.success(`Added "${rawName}" to exercises!`);
   }
 
-  if (toggleCustomExBtn) {
-    toggleCustomExBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (customExRow && customExRow.style.display === 'flex') {
-        hideCustomExerciseInput();
-      } else {
-        showCustomExerciseInput();
-      }
-    });
-  }
-
   if (addCustomExBtn) {
     addCustomExBtn.addEventListener('click', handleAddCustomExercise);
   }
@@ -444,6 +432,7 @@ export function setupSteppers({ onReloadState } = {}) {
       const currentGoal = activeGoals[state.selectedGoalIndex] || { category: 'weight' };
 
       const totalMetric = currentGoal.category === 'weight' ? metricVal * reps : metricVal * reps;
+      const isPrivate = document.getElementById('stepperPrivate')?.checked || false;
 
       await executeLogActivity({
         room_slug: state.roomSlug,
@@ -456,6 +445,7 @@ export function setupSteppers({ onReloadState } = {}) {
         elevation_val: currentGoal.category === 'elevation' ? totalMetric : 0,
         total_metric: totalMetric,
         goal_id: currentGoal.id,
+        is_private: isPrivate,
       }, { onReloadState });
     });
   }
@@ -483,10 +473,11 @@ export function setupSteppers({ onReloadState } = {}) {
       if (!goalId) return;
 
       const notes = (featNoteInput ? featNoteInput.value.trim() : '') || 'Accomplished!';
+      const isPrivate = document.getElementById('abilityFeatPrivate')?.checked || false;
       try {
         checkoffBtn.disabled = true;
         checkoffBtn.innerHTML = '<span>⏳</span> Recording...';
-        const res = await state.client.post(`/goals/${goalId}/checkoff`, { notes });
+        const res = await state.client.post(`/goals/${goalId}/checkoff`, { notes, is_private: isPrivate });
         if (res && res.success) {
           if (featNoteInput) featNoteInput.value = '';
           FlyToast.success(`🎉 Accomplished: ${currentGoal?.title || 'Ability'}!`);
@@ -609,6 +600,9 @@ export function setupFastAdd({ onReloadState } = {}) {
       }
     }
 
+    const fastAddPrivateCheckbox = document.getElementById('fastAddPrivate');
+    const isPrivate = fastAddPrivateCheckbox ? fastAddPrivateCheckbox.checked : false;
+
     const payload = {
       room_slug: state.roomSlug,
       activity_type: cat,
@@ -622,6 +616,7 @@ export function setupFastAdd({ onReloadState } = {}) {
       notes,
       is_combined: isCombined,
       is_pr: isCombined ? false : null,
+      is_private: isPrivate,
     };
 
     await executeLogActivity(payload, { onReloadState });
@@ -673,6 +668,8 @@ export function setupWorkoutMode({ onReloadState } = {}) {
 
   submitBtn.addEventListener('click', async () => {
     const rows = container.querySelectorAll('.workout-entry-row');
+    const batchPrivateCheckbox = document.getElementById('workoutBatchPrivate');
+    const isPrivate = batchPrivateCheckbox ? batchPrivateCheckbox.checked : false;
     const activities = [];
 
     rows.forEach(r => {
@@ -689,6 +686,7 @@ export function setupWorkoutMode({ onReloadState } = {}) {
           sets: isNaN(sets) || sets <= 0 ? 1 : sets,
           reps: isNaN(reps) || reps <= 0 ? 10 : reps,
           weight_per_rep: isNaN(wt) || wt < 0 ? 0 : wt,
+          is_private: isPrivate,
         });
       }
     });

@@ -2,8 +2,9 @@ use crate::db::*;
 use crate::models::{
     Activity, BatchLogActivityRequest, CheckoffGoalRequest, CheckoffGoalResponse, CheerRequest,
     CreateGoalRequest, CreateGoalWishlistRequest, CreateRoomRequest, Goal, GoalWishlistItem,
-    LogActivityRequest, PersonalRecord, RenameRoomRequest, Room, RoomDataResponse,
-    UpdateActivityRequest, UpdateProfileRequest, UserPersonalStats, UserProfile as AppUserProfile,
+    LogActivityRequest, PersonalRecord, RemoveMemberRequest, RenameRoomRequest, Room,
+    RoomDataResponse, UpdateActivityRequest, UpdateProfileRequest, UpdateRoomSettingsRequest,
+    UserPersonalStats, UserProfile as AppUserProfile,
 };
 use axum::async_trait;
 use axum::{
@@ -137,12 +138,17 @@ pub fn create_routes(state: AppState) -> Router {
         .route("/room/create", post(create_room_handler))
         .route("/room/:slug", get(get_room_data))
         .route("/room/:slug/name", post(rename_room_handler))
+        .route("/room/:slug/settings", post(update_room_settings_handler))
         .route("/room/:slug/leave", post(leave_room_handler))
         .route(
             "/room/:slug/members/:token/remove",
             post(remove_member_handler),
         )
         .route("/room/:slug/members/:token", delete(remove_member_handler))
+        .route(
+            "/room/:slug/members/:token/purge-contributions",
+            post(purge_member_contributions_handler),
+        )
         .route("/users/profile", post(update_profile))
         .route("/user/prs", get(get_user_prs_handler))
         .route("/activities", post(log_activity))
@@ -153,6 +159,10 @@ pub fn create_routes(state: AppState) -> Router {
         .route(
             "/activities/:id/toggle-pr",
             post(toggle_activity_pr_handler),
+        )
+        .route(
+            "/activities/:id/toggle-private",
+            post(toggle_activity_private_handler),
         )
         .route("/cheer", post(cheer_handler))
         .route("/goals", post(create_goal_handler))
@@ -247,6 +257,10 @@ async fn get_room_data(
         .store
         .get_room_members(&target_slug)
         .unwrap_or_default();
+    let departed_contributors = state
+        .store
+        .get_departed_contributors(&target_slug)
+        .unwrap_or_default();
     let user_squads = state
         .store
         .get_user_squads(user.as_str())
@@ -267,6 +281,7 @@ async fn get_room_data(
             leaderboard,
             wishlists,
             members,
+            departed_contributors,
             user_squads,
             personal_records,
         })),
@@ -355,6 +370,68 @@ pub struct LeaveRoomResponse {
     pub solo_slug: String,
 }
 
+async fn update_room_settings_handler(
+    user: UserToken,
+    Path(slug): Path<String>,
+    State(state): State<AppState>,
+    Json(payload): Json<UpdateRoomSettingsRequest>,
+) -> (StatusCode, Json<ApiResponse<Room>>) {
+    let clean_slug = slug.trim().to_lowercase();
+    let keep_contribs = payload.keep_departed_contributions.unwrap_or(true);
+
+    match state
+        .store
+        .update_room_settings(&clean_slug, user.as_str(), keep_contribs)
+    {
+        Ok(room) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: clean_slug,
+                event: "room_settings_updated".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "room": room,
+                }),
+            });
+            (StatusCode::OK, Json(ApiResponse::ok(room)))
+        }
+        Err(e) => (StatusCode::FORBIDDEN, Json(ApiResponse::err(e))),
+    }
+}
+
+async fn purge_member_contributions_handler(
+    user: UserToken,
+    Path((slug, target_token)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<bool>>) {
+    let clean_slug = slug.trim().to_lowercase();
+    let clean_target = target_token.trim().to_string();
+
+    match state
+        .store
+        .purge_member_contributions(&clean_slug, user.as_str(), &clean_target)
+    {
+        Ok(_) => {
+            let (active_goals, _) = state
+                .store
+                .get_goals_for_room(&clean_slug)
+                .unwrap_or_default();
+            let leaderboard = state.store.get_leaderboard(&clean_slug).unwrap_or_default();
+            let _ = state.hub.broadcast(WsMessage {
+                room: clean_slug,
+                event: "contributions_purged".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "target_token": clean_target,
+                    "active_goals": active_goals,
+                    "leaderboard": leaderboard,
+                }),
+            });
+            (StatusCode::OK, Json(ApiResponse::ok(true)))
+        }
+        Err(e) => (StatusCode::FORBIDDEN, Json(ApiResponse::err(e))),
+    }
+}
+
 async fn leave_room_handler(
     user: UserToken,
     Path(slug): Path<String>,
@@ -364,6 +441,11 @@ async fn leave_room_handler(
 
     match state.store.leave_room(&clean_slug, user.as_str()) {
         Ok(solo_slug) => {
+            let (active_goals, _) = state
+                .store
+                .get_goals_for_room(&clean_slug)
+                .unwrap_or_default();
+            let leaderboard = state.store.get_leaderboard(&clean_slug).unwrap_or_default();
             let _ = state.hub.broadcast(WsMessage {
                 room: clean_slug.clone(),
                 event: "member_left".to_string(),
@@ -371,6 +453,8 @@ async fn leave_room_handler(
                 payload: serde_json::json!({
                     "user_token": user.as_str(),
                     "room": clean_slug,
+                    "active_goals": active_goals,
+                    "leaderboard": leaderboard,
                 }),
             });
             (
@@ -395,15 +479,24 @@ async fn remove_member_handler(
     user: UserToken,
     Path((slug, target_token)): Path<(String, String)>,
     State(state): State<AppState>,
+    payload: Option<Json<RemoveMemberRequest>>,
 ) -> (StatusCode, Json<ApiResponse<RemoveMemberResponse>>) {
     let clean_slug = slug.trim().to_lowercase();
     let clean_target = target_token.trim().to_string();
+    let keep_contributions = payload.and_then(|p| p.0.keep_contributions).unwrap_or(true);
 
-    match state
-        .store
-        .remove_room_member(&clean_slug, user.as_str(), &clean_target)
-    {
+    match state.store.remove_room_member(
+        &clean_slug,
+        user.as_str(),
+        &clean_target,
+        keep_contributions,
+    ) {
         Ok(solo_slug) => {
+            let (active_goals, _) = state
+                .store
+                .get_goals_for_room(&clean_slug)
+                .unwrap_or_default();
+            let leaderboard = state.store.get_leaderboard(&clean_slug).unwrap_or_default();
             let _ = state.hub.broadcast(WsMessage {
                 room: clean_slug.clone(),
                 event: "member_removed".to_string(),
@@ -412,6 +505,8 @@ async fn remove_member_handler(
                     "removed_token": clean_target,
                     "solo_slug": solo_slug,
                     "room": clean_slug,
+                    "active_goals": active_goals,
+                    "leaderboard": leaderboard,
                 }),
             });
             (
@@ -463,9 +558,10 @@ async fn log_activity(
     Json(mut payload): Json<LogActivityRequest>,
 ) -> (StatusCode, Json<ApiResponse<Activity>>) {
     payload.parent_activity_id = None;
+    let solo_slug = generate_solo_room_slug(user.as_str());
     let default_room = match state.store.get_user_current_room(user.as_str()) {
         Ok(Some(slug)) => slug,
-        _ => generate_solo_room_slug(user.as_str()),
+        _ => solo_slug.clone(),
     };
     let user_profile = match state.store.get_or_create_user(user.as_str(), &default_room) {
         Ok(u) => u,
@@ -477,73 +573,124 @@ async fn log_activity(
         }
     };
 
-    let room_slug = payload
+    let is_private = payload.is_private.unwrap_or(false);
+    let requested_room = payload
         .room_slug
         .clone()
         .unwrap_or_else(|| user_profile.current_room_slug.clone());
 
-    match state
-        .store
-        .log_single_activity(&user_profile, &room_slug, &payload)
-    {
-        Ok(activity) => {
-            // Broadcast activity to room
-            let (active_goals, _) = state
+    if is_private {
+        // Private workout: Log exclusively into user's solo room
+        let mut solo_payload = payload.clone();
+        solo_payload.room_slug = Some(solo_slug.clone());
+        match state
+            .store
+            .log_single_activity(&user_profile, &solo_slug, &solo_payload)
+        {
+            Ok(activity) => {
+                let (active_goals, _) = state
+                    .store
+                    .get_goals_for_room(&solo_slug)
+                    .unwrap_or_default();
+                let leaderboard = state.store.get_leaderboard(&solo_slug).unwrap_or_default();
+
+                let _ = state.hub.broadcast(WsMessage {
+                    room: solo_slug.clone(),
+                    event: "activity_logged".to_string(),
+                    sender_token: Some(user.as_str().to_string()),
+                    payload: serde_json::json!({
+                        "activity": activity,
+                        "active_goals": active_goals,
+                        "leaderboard": leaderboard,
+                    }),
+                });
+
+                (StatusCode::CREATED, Json(ApiResponse::ok(activity)))
+            }
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::err(e.to_string())),
+            ),
+        }
+    } else {
+        // Public workout: Log root activity into solo room
+        let mut solo_payload = payload.clone();
+        solo_payload.room_slug = Some(solo_slug.clone());
+        if !requested_room.starts_with("solo-") {
+            solo_payload.goal_id = None;
+        }
+
+        let root_activity =
+            match state
                 .store
-                .get_goals_for_room(&room_slug)
-                .unwrap_or_default();
-            let leaderboard = state.store.get_leaderboard(&room_slug).unwrap_or_default();
+                .log_single_activity(&user_profile, &solo_slug, &solo_payload)
+            {
+                Ok(act) => act,
+                Err(e) => {
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiResponse::err(e.to_string())),
+                    )
+                }
+            };
 
-            let _ = state.hub.broadcast(WsMessage {
-                room: room_slug.clone(),
-                event: "activity_logged".to_string(),
-                sender_token: Some(user.as_str().to_string()),
-                payload: serde_json::json!({
-                    "activity": activity,
-                    "active_goals": active_goals,
-                    "leaderboard": leaderboard,
-                }),
-            });
+        let (solo_goals, _) = state
+            .store
+            .get_goals_for_room(&solo_slug)
+            .unwrap_or_default();
+        let solo_leaderboard = state.store.get_leaderboard(&solo_slug).unwrap_or_default();
 
-            // If logged in a solo room, auto-forward to all squads the user belongs to
-            if room_slug.starts_with("solo-") {
-                if let Ok(squads) = state.store.get_user_squads(user.as_str()) {
-                    for squad in squads {
-                        let forwarded_req = activity.to_forwarded_request(&squad.slug);
+        let _ = state.hub.broadcast(WsMessage {
+            room: solo_slug.clone(),
+            event: "activity_logged".to_string(),
+            sender_token: Some(user.as_str().to_string()),
+            payload: serde_json::json!({
+                "activity": root_activity,
+                "active_goals": solo_goals,
+                "leaderboard": solo_leaderboard,
+            }),
+        });
 
-                        if let Ok(fwd_activity) = state.store.log_single_activity(
-                            &user_profile,
-                            &squad.slug,
-                            &forwarded_req,
-                        ) {
-                            let (sq_goals, _) = state
-                                .store
-                                .get_goals_for_room(&squad.slug)
-                                .unwrap_or_default();
-                            let sq_leaderboard =
-                                state.store.get_leaderboard(&squad.slug).unwrap_or_default();
+        let mut target_room_act: Option<Activity> = None;
+        if let Ok(squads) = state.store.get_user_squads(user.as_str()) {
+            for squad in squads {
+                let mut forwarded_req = root_activity.to_forwarded_request(&squad.slug);
+                if requested_room == squad.slug && payload.goal_id.is_some() {
+                    forwarded_req.goal_id = payload.goal_id;
+                }
 
-                            let _ = state.hub.broadcast(WsMessage {
-                                room: squad.slug.clone(),
-                                event: "activity_logged".to_string(),
-                                sender_token: Some(user.as_str().to_string()),
-                                payload: serde_json::json!({
-                                    "activity": fwd_activity,
-                                    "active_goals": sq_goals,
-                                    "leaderboard": sq_leaderboard,
-                                }),
-                            });
-                        }
+                if let Ok(fwd_activity) =
+                    state
+                        .store
+                        .log_single_activity(&user_profile, &squad.slug, &forwarded_req)
+                {
+                    let (sq_goals, _) = state
+                        .store
+                        .get_goals_for_room(&squad.slug)
+                        .unwrap_or_default();
+                    let sq_leaderboard =
+                        state.store.get_leaderboard(&squad.slug).unwrap_or_default();
+
+                    let _ = state.hub.broadcast(WsMessage {
+                        room: squad.slug.clone(),
+                        event: "activity_logged".to_string(),
+                        sender_token: Some(user.as_str().to_string()),
+                        payload: serde_json::json!({
+                            "activity": fwd_activity,
+                            "active_goals": sq_goals,
+                            "leaderboard": sq_leaderboard,
+                        }),
+                    });
+
+                    if squad.slug == requested_room {
+                        target_room_act = Some(fwd_activity);
                     }
                 }
             }
-
-            (StatusCode::CREATED, Json(ApiResponse::ok(activity)))
         }
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ApiResponse::err(e.to_string())),
-        ),
+
+        let result_act = target_room_act.unwrap_or(root_activity);
+        (StatusCode::CREATED, Json(ApiResponse::ok(result_act)))
     }
 }
 
@@ -559,9 +706,10 @@ async fn log_batch_activities(
         );
     }
 
+    let solo_slug = generate_solo_room_slug(user.as_str());
     let default_room = match state.store.get_user_current_room(user.as_str()) {
         Ok(Some(slug)) => slug,
-        _ => generate_solo_room_slug(user.as_str()),
+        _ => solo_slug.clone(),
     };
     let user_profile = match state.store.get_or_create_user(user.as_str(), &default_room) {
         Ok(u) => u,
@@ -573,12 +721,12 @@ async fn log_batch_activities(
         }
     };
 
-    let room_slug = payload
-        .room_slug
-        .clone()
-        .unwrap_or_else(|| user_profile.current_room_slug.clone());
-
-    let mut created = Vec::new();
+    let squads = state
+        .store
+        .get_user_squads(user.as_str())
+        .unwrap_or_default();
+    let mut solo_created = Vec::new();
+    let mut public_created = Vec::new();
 
     for mut req in payload.activities {
         req.parent_activity_id = None;
@@ -591,11 +739,18 @@ async fn log_batch_activities(
         if req.user_avatar_emoji.is_none() && payload.user_avatar_emoji.is_some() {
             req.user_avatar_emoji = payload.user_avatar_emoji.clone();
         }
+
+        let is_private = req.is_private.unwrap_or(false);
         match state
             .store
-            .log_single_activity(&user_profile, &room_slug, &req)
+            .log_single_activity(&user_profile, &solo_slug, &req)
         {
-            Ok(act) => created.push(act),
+            Ok(act) => {
+                if !is_private {
+                    public_created.push(act.clone());
+                }
+                solo_created.push(act);
+            }
             Err(e) => {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -607,60 +762,56 @@ async fn log_batch_activities(
 
     let (active_goals, _) = state
         .store
-        .get_goals_for_room(&room_slug)
+        .get_goals_for_room(&solo_slug)
         .unwrap_or_default();
-    let leaderboard = state.store.get_leaderboard(&room_slug).unwrap_or_default();
+    let leaderboard = state.store.get_leaderboard(&solo_slug).unwrap_or_default();
 
     let _ = state.hub.broadcast(WsMessage {
-        room: room_slug.clone(),
+        room: solo_slug.clone(),
         event: "batch_activities_logged".to_string(),
         sender_token: Some(user.as_str().to_string()),
         payload: serde_json::json!({
-            "count": created.len(),
+            "count": solo_created.len(),
             "active_goals": active_goals,
             "leaderboard": leaderboard,
         }),
     });
 
-    // If logged in a solo room, auto-forward batch to all squads the user belongs to
-    if room_slug.starts_with("solo-") && !created.is_empty() {
-        if let Ok(squads) = state.store.get_user_squads(user.as_str()) {
-            for squad in squads {
-                let mut squad_created = Vec::new();
-                for solo_act in &created {
-                    let fwd_req = solo_act.to_forwarded_request(&squad.slug);
-                    if let Ok(sq_act) =
-                        state
-                            .store
-                            .log_single_activity(&user_profile, &squad.slug, &fwd_req)
-                    {
-                        squad_created.push(sq_act);
-                    }
-                }
-                if !squad_created.is_empty() {
-                    let (sq_goals, _) = state
+    if !public_created.is_empty() {
+        for squad in squads {
+            let mut squad_created = Vec::new();
+            for root_act in &public_created {
+                let fwd_req = root_act.to_forwarded_request(&squad.slug);
+                if let Ok(sq_act) =
+                    state
                         .store
-                        .get_goals_for_room(&squad.slug)
-                        .unwrap_or_default();
-                    let sq_leaderboard =
-                        state.store.get_leaderboard(&squad.slug).unwrap_or_default();
-
-                    let _ = state.hub.broadcast(WsMessage {
-                        room: squad.slug.clone(),
-                        event: "batch_activities_logged".to_string(),
-                        sender_token: Some(user.as_str().to_string()),
-                        payload: serde_json::json!({
-                            "count": squad_created.len(),
-                            "active_goals": sq_goals,
-                            "leaderboard": sq_leaderboard,
-                        }),
-                    });
+                        .log_single_activity(&user_profile, &squad.slug, &fwd_req)
+                {
+                    squad_created.push(sq_act);
                 }
+            }
+            if !squad_created.is_empty() {
+                let (sq_goals, _) = state
+                    .store
+                    .get_goals_for_room(&squad.slug)
+                    .unwrap_or_default();
+                let sq_leaderboard = state.store.get_leaderboard(&squad.slug).unwrap_or_default();
+
+                let _ = state.hub.broadcast(WsMessage {
+                    room: squad.slug.clone(),
+                    event: "batch_activities_logged".to_string(),
+                    sender_token: Some(user.as_str().to_string()),
+                    payload: serde_json::json!({
+                        "count": squad_created.len(),
+                        "active_goals": sq_goals,
+                        "leaderboard": sq_leaderboard,
+                    }),
+                });
             }
         }
     }
 
-    (StatusCode::CREATED, Json(ApiResponse::ok(created)))
+    (StatusCode::CREATED, Json(ApiResponse::ok(solo_created)))
 }
 
 async fn delete_activity_handler(
@@ -717,6 +868,57 @@ async fn toggle_activity_pr_handler(
                     "activity": updated,
                 }),
             });
+
+            (StatusCode::OK, Json(ApiResponse::ok(updated)))
+        }
+        Ok(None) => (
+            StatusCode::FORBIDDEN,
+            Json(ApiResponse::err("Activity not found or unauthorized")),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::err(e.to_string())),
+        ),
+    }
+}
+
+async fn toggle_activity_private_handler(
+    user: UserToken,
+    Path(id): Path<i64>,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<Activity>>) {
+    match state.store.toggle_activity_private(id, user.as_str()) {
+        Ok(Some(updated)) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: updated.room_slug.clone(),
+                event: "activity_updated".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "activity": updated,
+                }),
+            });
+
+            // Notify all user squads of goal and leaderboard recalculations
+            if let Ok(squads) = state.store.get_user_squads(user.as_str()) {
+                for squad in squads {
+                    let (goals, completed) = state
+                        .store
+                        .get_goals_for_room(&squad.slug)
+                        .unwrap_or_default();
+                    let leaderboard = state.store.get_leaderboard(&squad.slug).unwrap_or_default();
+                    let _ = state.hub.broadcast(WsMessage {
+                        room: squad.slug.clone(),
+                        event: "activity_updated".to_string(),
+                        sender_token: Some(user.as_str().to_string()),
+                        payload: serde_json::json!({
+                            "activity": updated,
+                            "active_goals": goals,
+                            "completed_goals": completed,
+                            "leaderboard": leaderboard,
+                        }),
+                    });
+                }
+            }
 
             (StatusCode::OK, Json(ApiResponse::ok(updated)))
         }
@@ -843,8 +1045,12 @@ async fn checkoff_goal_handler(
     };
 
     let notes = payload.as_ref().and_then(|p| p.0.notes.as_deref());
+    let is_private = payload.as_ref().and_then(|p| p.0.is_private);
 
-    match state.store.checkoff_goal(&user_profile, goal_id, notes) {
+    match state
+        .store
+        .checkoff_goal(&user_profile, goal_id, notes, is_private)
+    {
         Ok((goal, activity)) => {
             let (active_goals, completed_goals) = state
                 .store
@@ -876,35 +1082,47 @@ async fn checkoff_goal_handler(
                 }),
             });
 
-            // If checked off in a solo room, auto-forward to all squads the user belongs to
-            if goal.room_slug.starts_with("solo-") {
+            // If public, auto-forward checkoff activity to all other squads and solo room
+            if !activity.is_private {
+                let mut target_rooms = Vec::new();
                 if let Ok(squads) = state.store.get_user_squads(user.as_str()) {
                     for squad in squads {
-                        let fwd_req = activity.to_forwarded_request(&squad.slug);
-                        if let Ok(sq_act) =
-                            state
-                                .store
-                                .log_single_activity(&user_profile, &squad.slug, &fwd_req)
-                        {
-                            let (sq_goals, sq_completed) = state
-                                .store
-                                .get_goals_for_room(&squad.slug)
-                                .unwrap_or_default();
-                            let sq_leaderboard =
-                                state.store.get_leaderboard(&squad.slug).unwrap_or_default();
-
-                            let _ = state.hub.broadcast(WsMessage {
-                                room: squad.slug.clone(),
-                                event: "activity_logged".to_string(),
-                                sender_token: Some(user.as_str().to_string()),
-                                payload: serde_json::json!({
-                                    "activity": sq_act,
-                                    "active_goals": sq_goals,
-                                    "completed_goals": sq_completed,
-                                    "leaderboard": sq_leaderboard,
-                                }),
-                            });
+                        if squad.slug != goal.room_slug {
+                            target_rooms.push(squad.slug);
                         }
+                    }
+                }
+                if !goal.room_slug.starts_with("solo-") {
+                    target_rooms.push(solo_room);
+                }
+
+                for target_room in target_rooms {
+                    let fwd_req = activity.to_forwarded_request(&target_room);
+                    if let Ok(fwd_act) =
+                        state
+                            .store
+                            .log_single_activity(&user_profile, &target_room, &fwd_req)
+                    {
+                        let (sq_goals, sq_completed) = state
+                            .store
+                            .get_goals_for_room(&target_room)
+                            .unwrap_or_default();
+                        let sq_leaderboard = state
+                            .store
+                            .get_leaderboard(&target_room)
+                            .unwrap_or_default();
+
+                        let _ = state.hub.broadcast(WsMessage {
+                            room: target_room.clone(),
+                            event: "activity_logged".to_string(),
+                            sender_token: Some(user.as_str().to_string()),
+                            payload: serde_json::json!({
+                                "activity": fwd_act,
+                                "active_goals": sq_goals,
+                                "completed_goals": sq_completed,
+                                "leaderboard": sq_leaderboard,
+                            }),
+                        });
                     }
                 }
             }

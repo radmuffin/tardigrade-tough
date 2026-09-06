@@ -35,15 +35,30 @@ pub type StoreResult<T> = Result<T, StoreError>;
 pub trait RoomStore: Send + Sync {
     fn get_or_create_room(&self, slug: &str) -> StoreResult<Room>;
     fn update_room_name(&self, slug: &str, new_name: &str) -> StoreResult<Room>;
+    fn update_room_settings(
+        &self,
+        slug: &str,
+        creator_token: &str,
+        keep_departed_contributions: bool,
+    ) -> std::result::Result<Room, String>;
     fn ensure_room_member(&self, room_slug: &str, user_token: &str) -> StoreResult<()>;
     fn get_room_members(&self, room_slug: &str) -> StoreResult<Vec<RoomMember>>;
+    fn get_departed_contributors(&self, room_slug: &str) -> StoreResult<Vec<DepartedContributor>>;
     fn leave_room(&self, room_slug: &str, user_token: &str) -> StoreResult<String>;
     fn remove_room_member(
         &self,
         room_slug: &str,
         creator_token: &str,
         target_token: &str,
+        keep_contributions: bool,
     ) -> std::result::Result<String, String>;
+    fn purge_member_contributions(
+        &self,
+        room_slug: &str,
+        creator_token: &str,
+        target_token: &str,
+    ) -> std::result::Result<(), String>;
+    fn sync_user_activities_to_room(&self, user_token: &str, room_slug: &str) -> StoreResult<i64>;
     fn create_room_for_user(&self, user_token: &str, name: Option<&str>) -> StoreResult<Room>;
     fn get_user_squads(&self, user_token: &str) -> StoreResult<Vec<UserSquadSummary>>;
 }
@@ -69,6 +84,7 @@ pub trait GoalStore: Send + Sync {
         user: &UserProfile,
         goal_id: i64,
         notes: Option<&str>,
+        is_private: Option<bool>,
     ) -> StoreResult<(Goal, Activity)>;
     fn create_goal_wishlist(
         &self,
@@ -91,6 +107,11 @@ pub trait ActivityStore: Send + Sync {
         user_token: &str,
     ) -> StoreResult<Option<Vec<String>>>;
     fn toggle_activity_pr(
+        &self,
+        activity_id: i64,
+        user_token: &str,
+    ) -> StoreResult<Option<Activity>>;
+    fn toggle_activity_private(
         &self,
         activity_id: i64,
         user_token: &str,

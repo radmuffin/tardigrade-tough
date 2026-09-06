@@ -243,16 +243,17 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#profileModal')).not.toBeVisible();
   });
 
-  test('provides squad invite link and QR code in share section', async ({ page }) => {
+  test('provides squad invite link and QR code in squad section', async ({ page }) => {
     const squadSlug = `test-share-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     await page.goto(`/r/${squadSlug}`);
     await page.waitForSelector('body[data-state="ready"]');
 
-    // Open room modal via footer share button
-    await page.click('#footerShareBtn');
+    // Open squad settings hub
+    await page.click('#profileBtn');
     await expect(page.locator('#profileModal')).toBeVisible();
+    await page.click('#tabBtnSquad');
 
-    // Check share link and QR code
+    // Check squad share link and QR code
     const shareInput = page.locator('#shareRoomUrlInput');
     await expect(shareInput).toBeVisible();
     const val = await shareInput.inputValue();
@@ -266,8 +267,36 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     // Copy button is clickable
     await page.click('#copyRoomUrlBtn');
 
-    await page.click('#closeRoomBtn');
+    await page.click('#closeProfileBtn');
     await expect(page.locator('#profileModal')).not.toBeVisible();
+  });
+
+  test('opens dedicated share app modal from footer share button', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('body[data-state="ready"]');
+
+    // Click footer share button
+    await page.click('#footerShareBtn');
+    const shareModal = page.locator('#shareModal');
+    await expect(shareModal).toBeVisible();
+
+    // Check app URL and app QR code
+    const appUrlInput = page.locator('#shareAppUrlInput');
+    await expect(appUrlInput).toBeVisible();
+    const val = await appUrlInput.inputValue();
+    expect(val.length).toBeGreaterThan(0);
+
+    const appQr = page.locator('#appQrImage');
+    await expect(appQr).toBeVisible();
+    const qrSrc = await appQr.getAttribute('src');
+    expect(qrSrc).toContain('/api/qr?url=');
+
+    // Copy app URL button is clickable
+    await page.click('#copyAppUrlBtn');
+
+    // Close button dismisses modal
+    await page.click('#closeShareModalBtn');
+    await expect(shareModal).not.toBeVisible();
   });
 
   test('displays personal telemetry stats, PRs, and recent developments in profile view with toggleable edit mode', async ({ page }) => {

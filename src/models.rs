@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Room {
     pub id: i64,
@@ -8,6 +12,8 @@ pub struct Room {
     pub created_at: String,
     #[serde(default)]
     pub creator_token: String,
+    #[serde(default = "default_true")]
+    pub keep_departed_contributions: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,6 +26,17 @@ pub struct RoomMember {
     pub role: String, // "creator" | "member"
     pub is_creator: bool,
     pub joined_at: String,
+    pub total_metric: f64,
+    pub total_sets: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DepartedContributor {
+    pub user_token: String,
+    pub nickname: String,
+    pub avatar_color: String,
+    #[serde(default)]
+    pub avatar_emoji: String,
     pub total_metric: f64,
     pub total_sets: i64,
 }
@@ -42,6 +59,16 @@ pub struct CreateRoomRequest {
 #[derive(Debug, Deserialize, Clone)]
 pub struct RenameRoomRequest {
     pub name: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct UpdateRoomSettingsRequest {
+    pub keep_departed_contributions: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct RemoveMemberRequest {
+    pub keep_contributions: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -107,6 +134,7 @@ pub struct CreateGoalRequest {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct CheckoffGoalRequest {
     pub notes: Option<String>,
+    pub is_private: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,6 +169,8 @@ pub struct Activity {
     pub is_pr: bool,
     #[serde(default)]
     pub is_combined: bool,
+    #[serde(default)]
+    pub is_private: bool,
 }
 
 impl Activity {
@@ -164,6 +194,7 @@ impl Activity {
             parent_activity_id: Some(self.id),
             is_pr: Some(self.is_pr),
             is_combined: Some(self.is_combined),
+            is_private: Some(self.is_private),
         }
     }
 }
@@ -187,6 +218,7 @@ pub struct UpdateActivityRequest {
     pub notes: Option<String>,
     pub is_pr: Option<bool>,
     pub is_combined: Option<bool>,
+    pub is_private: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -212,6 +244,8 @@ pub struct LogActivityRequest {
     pub is_pr: Option<bool>,
     #[serde(default)]
     pub is_combined: Option<bool>,
+    #[serde(default)]
+    pub is_private: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -286,6 +320,8 @@ pub struct RoomDataResponse {
     pub wishlists: Vec<GoalWishlistItem>,
     #[serde(default)]
     pub members: Vec<RoomMember>,
+    #[serde(default)]
+    pub departed_contributors: Vec<DepartedContributor>,
     #[serde(default)]
     pub user_squads: Vec<UserSquadSummary>,
     #[serde(default)]

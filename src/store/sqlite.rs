@@ -29,6 +29,16 @@ impl RoomStore for SqliteStore {
         crate::db::update_room_name(&conn, slug, new_name).map_err(Into::into)
     }
 
+    fn update_room_settings(
+        &self,
+        slug: &str,
+        creator_token: &str,
+        keep_departed_contributions: bool,
+    ) -> std::result::Result<Room, String> {
+        let conn = self.conn.lock().unwrap();
+        crate::db::update_room_settings(&conn, slug, creator_token, keep_departed_contributions)
+    }
+
     fn ensure_room_member(&self, room_slug: &str, user_token: &str) -> StoreResult<()> {
         let conn = self.conn.lock().unwrap();
         crate::db::ensure_room_member(&conn, room_slug, user_token).map_err(Into::into)
@@ -37,6 +47,11 @@ impl RoomStore for SqliteStore {
     fn get_room_members(&self, room_slug: &str) -> StoreResult<Vec<RoomMember>> {
         let conn = self.conn.lock().unwrap();
         crate::db::get_room_members(&conn, room_slug).map_err(Into::into)
+    }
+
+    fn get_departed_contributors(&self, room_slug: &str) -> StoreResult<Vec<DepartedContributor>> {
+        let conn = self.conn.lock().unwrap();
+        crate::db::get_departed_contributors(&conn, room_slug).map_err(Into::into)
     }
 
     fn leave_room(&self, room_slug: &str, user_token: &str) -> StoreResult<String> {
@@ -49,9 +64,31 @@ impl RoomStore for SqliteStore {
         room_slug: &str,
         creator_token: &str,
         target_token: &str,
+        keep_contributions: bool,
     ) -> std::result::Result<String, String> {
         let conn = self.conn.lock().unwrap();
-        crate::db::remove_room_member(&conn, room_slug, creator_token, target_token)
+        crate::db::remove_room_member(
+            &conn,
+            room_slug,
+            creator_token,
+            target_token,
+            keep_contributions,
+        )
+    }
+
+    fn purge_member_contributions(
+        &self,
+        room_slug: &str,
+        creator_token: &str,
+        target_token: &str,
+    ) -> std::result::Result<(), String> {
+        let conn = self.conn.lock().unwrap();
+        crate::db::purge_member_contributions(&conn, room_slug, creator_token, target_token)
+    }
+
+    fn sync_user_activities_to_room(&self, user_token: &str, room_slug: &str) -> StoreResult<i64> {
+        let conn = self.conn.lock().unwrap();
+        crate::db::sync_user_activities_to_room(&conn, user_token, room_slug).map_err(Into::into)
     }
 
     fn create_room_for_user(&self, user_token: &str, name: Option<&str>) -> StoreResult<Room> {
@@ -117,9 +154,10 @@ impl GoalStore for SqliteStore {
         user: &UserProfile,
         goal_id: i64,
         notes: Option<&str>,
+        is_private: Option<bool>,
     ) -> StoreResult<(Goal, Activity)> {
         let mut conn = self.conn.lock().unwrap();
-        crate::db::checkoff_goal(&mut conn, user, goal_id, notes).map_err(Into::into)
+        crate::db::checkoff_goal(&mut conn, user, goal_id, notes, is_private).map_err(Into::into)
     }
 
     fn create_goal_wishlist(
@@ -164,6 +202,15 @@ impl ActivityStore for SqliteStore {
     ) -> StoreResult<Option<Activity>> {
         let mut conn = self.conn.lock().unwrap();
         crate::db::toggle_activity_pr(&mut conn, activity_id, user_token).map_err(Into::into)
+    }
+
+    fn toggle_activity_private(
+        &self,
+        activity_id: i64,
+        user_token: &str,
+    ) -> StoreResult<Option<Activity>> {
+        let mut conn = self.conn.lock().unwrap();
+        crate::db::toggle_activity_private(&mut conn, activity_id, user_token).map_err(Into::into)
     }
 
     fn update_activity(

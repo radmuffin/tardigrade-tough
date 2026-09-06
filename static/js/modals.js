@@ -12,6 +12,7 @@ export function setupSheetImporter({ onReloadState } = {}) {
   const categorySelect = document.getElementById('importCategory');
   const exerciseNameInput = document.getElementById('importExerciseName');
   const excludePrCheckbox = document.getElementById('importExcludePr');
+  const importPrivateCheckbox = document.getElementById('importPrivate');
   const summaryBox = document.getElementById('importSummaryBox');
   const summaryText = document.getElementById('importSummaryText');
   const tonnageText = document.getElementById('importTonnageText');
@@ -41,12 +42,13 @@ export function setupSheetImporter({ onReloadState } = {}) {
       return;
     }
 
+    const cat = categorySelect ? categorySelect.value : 'weight';
+    const defaultEx = (exerciseNameInput ? exerciseNameInput.value.trim() : '') || (cat === 'distance' ? 'Run / Walk' : cat === 'elevation' ? 'Climb / Hike' : 'Sheet Lift');
+    const isCombined = excludePrCheckbox ? excludePrCheckbox.checked : false;
+    const isPrivate = importPrivateCheckbox ? importPrivateCheckbox.checked : false;
+
     const lines = raw.split(/\r?\n/);
-    parsedActivities = [];
     let totalTonnage = 0;
-    const cat = categorySelect?.value || 'weight';
-    const defaultEx = exerciseNameInput?.value.trim() || 'Sheet Lift';
-    const isCombined = excludePrCheckbox?.checked || false;
 
     lines.forEach((line, idx) => {
       const trimmed = line.trim();
@@ -106,6 +108,7 @@ export function setupSheetImporter({ onReloadState } = {}) {
           notes,
           is_combined: isCombined,
           is_pr: isCombined ? false : null,
+          is_private: isPrivate,
         });
       }
     });
@@ -127,6 +130,7 @@ export function setupSheetImporter({ onReloadState } = {}) {
   if (categorySelect) categorySelect.addEventListener('change', parsePastedData);
   if (exerciseNameInput) exerciseNameInput.addEventListener('input', parsePastedData);
   if (excludePrCheckbox) excludePrCheckbox.addEventListener('change', parsePastedData);
+  if (importPrivateCheckbox) importPrivateCheckbox.addEventListener('change', parsePastedData);
 
   executeBtn.addEventListener('click', async () => {
     if (parsedActivities.length === 0) return;
@@ -175,6 +179,7 @@ export function setupActivityEditModal({ onReloadState } = {}) {
   const notesInput = document.getElementById('activityEditNotes');
   const combinedCheckbox = document.getElementById('activityEditCombined');
   const isPrCheckbox = document.getElementById('activityEditIsPr');
+  const privateCheckbox = document.getElementById('activityEditIsPrivate');
   const togglePrBtn = document.getElementById('togglePrQuickBtn');
   const saveBtn = document.getElementById('saveActivityEditBtn');
 
@@ -244,6 +249,7 @@ export function setupActivityEditModal({ onReloadState } = {}) {
       notes: notesInput?.value.trim() || '',
       is_combined: combinedCheckbox ? combinedCheckbox.checked : false,
       is_pr: isPrCheckbox ? isPrCheckbox.checked : false,
+      is_private: privateCheckbox ? privateCheckbox.checked : false,
     };
 
     try {
@@ -283,6 +289,7 @@ export function openActivityEditModal(act) {
   const notesInput = document.getElementById('activityEditNotes');
   const combinedCheckbox = document.getElementById('activityEditCombined');
   const isPrCheckbox = document.getElementById('activityEditIsPr');
+  const privateCheckbox = document.getElementById('activityEditIsPrivate');
   const togglePrBtn = document.getElementById('togglePrQuickBtn');
 
   if (idInput) idInput.value = act.id;
@@ -293,6 +300,7 @@ export function openActivityEditModal(act) {
   if (notesInput) notesInput.value = act.notes || '';
   if (combinedCheckbox) combinedCheckbox.checked = !!act.is_combined;
   if (isPrCheckbox) isPrCheckbox.checked = !!act.is_pr;
+  if (privateCheckbox) privateCheckbox.checked = !!act.is_private;
 
   if (metricLabel) {
     if (act.activity_type === 'distance') metricLabel.textContent = 'Miles';
@@ -311,10 +319,28 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   const profileModal = document.getElementById('profileModal');
   const roomModal = document.getElementById('roomModal');
   const aboutModal = document.getElementById('aboutModal');
+  const shareModal = document.getElementById('shareModal');
+  const closeShareModalBtn = document.getElementById('closeShareModalBtn');
+  const closeShareModalCrossBtn = document.getElementById('closeShareModalCrossBtn');
   const hubBox = document.querySelector('.hub-modal-box');
   const nickInput = document.getElementById('nickInput');
   let selectedColor = '#10b981';
   let selectedEmoji = '🐻';
+
+  function openShareModal() {
+    if (!shareModal) return;
+    const appUrl = `${window.location.origin}/`;
+    if (shareAppUrlInput) shareAppUrlInput.value = appUrl;
+    if (appQrImage) appQrImage.src = `/api/qr?url=${encodeURIComponent(appUrl)}`;
+    if (nativeShareAppBtn && typeof navigator.share === 'function') {
+      nativeShareAppBtn.style.display = 'block';
+    }
+    shareModal.classList.remove('hidden');
+  }
+
+  function closeShareModal() {
+    if (shareModal) shareModal.classList.add('hidden');
+  }
 
   // Profile View vs Edit Panes
   const profileViewMode = document.getElementById('profileViewMode');
@@ -783,14 +809,6 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
       }
     }
 
-    // Section 2E: Share Tardigrade Tough (App)
-    const appUrl = `${window.location.origin}/`;
-    if (shareAppUrlInput) shareAppUrlInput.value = appUrl;
-    if (appQrImage) appQrImage.src = `/api/qr?url=${encodeURIComponent(appUrl)}`;
-    if (nativeShareAppBtn && typeof navigator.share === 'function') {
-      nativeShareAppBtn.style.display = 'block';
-    }
-
     // Populate Squad Members Roster
     const members = state.currentRoomData?.members || [];
     const creatorToken = state.currentRoomData?.room?.creator_token || '';
@@ -864,7 +882,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
           `;
         }).join('');
 
-        // Attach remove handlers
+        // Attach remove handlers with keep/purge choice
         squadMembersList.querySelectorAll('.btn-remove-member').forEach(btn => {
           btn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -873,8 +891,11 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
             if (!confirm(`Are you sure you want to remove "${targetNick}" from this squad?`)) {
               return;
             }
+            const keepContributions = confirm(`Keep "${targetNick}"'s workout contributions in squad goals?\n\n• Click OK to KEEP contributions\n• Click Cancel to PURGE contributions`);
             try {
-              const res = await state.client.post(`/room/${state.roomSlug}/members/${targetToken}/remove`);
+              const res = await state.client.post(`/room/${state.roomSlug}/members/${targetToken}/remove`, {
+                keep_contributions: keepContributions
+              });
               if (res && res.success) {
                 FlyToast.success(`Removed "${targetNick}" from squad`);
                 if (onReloadState) await onReloadState();
@@ -888,6 +909,103 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
             }
           });
         });
+      }
+
+      // Squad Owner Departure Settings & Departed Contributors
+      const squadOwnerSettingsCard = document.getElementById('squadOwnerSettingsCard');
+      const squadKeepDepartedToggle = document.getElementById('squadKeepDepartedToggle');
+      const departedContributorsSection = document.getElementById('departedContributorsSection');
+      const departedContributorsList = document.getElementById('departedContributorsList');
+
+      if (squadOwnerSettingsCard) {
+        if (isCreator && !isSolo) {
+          squadOwnerSettingsCard.style.display = 'block';
+          if (squadKeepDepartedToggle) {
+            squadKeepDepartedToggle.checked = state.currentRoomData?.room?.keep_departed_contributions !== false;
+            if (!squadKeepDepartedToggle.dataset.bound) {
+              squadKeepDepartedToggle.dataset.bound = 'true';
+              squadKeepDepartedToggle.addEventListener('change', async () => {
+                try {
+                  const res = await state.client.post(`/room/${state.roomSlug}/settings`, {
+                    keep_departed_contributions: squadKeepDepartedToggle.checked,
+                  });
+                  if (res && res.success) {
+                    if (state.currentRoomData?.room) {
+                      state.currentRoomData.room.keep_departed_contributions = squadKeepDepartedToggle.checked;
+                    }
+                    FlyToast.success('Squad departure rule updated');
+                  } else {
+                    FlyToast.error(res?.error || 'Failed to update setting');
+                    squadKeepDepartedToggle.checked = !squadKeepDepartedToggle.checked;
+                  }
+                } catch (err) {
+                  FlyToast.error('Failed to update setting');
+                  squadKeepDepartedToggle.checked = !squadKeepDepartedToggle.checked;
+                }
+              });
+            }
+          }
+
+          const departed = state.currentRoomData?.departed_contributors || [];
+          if (departedContributorsSection && departedContributorsList) {
+            if (departed.length > 0) {
+              departedContributorsSection.style.display = 'block';
+              departedContributorsList.innerHTML = departed.map(d => {
+                const dNick = FlyToast.escape(d.nickname || 'Departed Member');
+                const dToken = FlyToast.escape(d.user_token);
+                const dInitial = (d.nickname || 'L').substring(0, 1).toUpperCase();
+                const dAvatar = d.avatar_emoji || dInitial;
+                const dColor = FlyToast.escape(d.avatar_color || '#64748b');
+
+                return `
+                  <div class="squad-member-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                    <div class="member-left" style="display: flex; align-items: center; gap: 8px;">
+                      <span class="member-dot" style="background-color: ${dColor}; font-size: 11px; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;">
+                        ${FlyToast.escape(dAvatar)}
+                      </span>
+                      <div class="member-info">
+                        <strong class="member-nick" style="font-size: 0.85rem; color: var(--text-primary);">${dNick}</strong>
+                        <div style="font-size: 0.72rem; color: var(--text-secondary);">${d.total_sets || 0} sets · ${Math.round(d.total_metric || 0).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <button class="btn btn-danger-outline btn-purge-contributor" data-token="${dToken}" data-nick="${dNick}" type="button" style="font-size: 0.72rem; padding: 3px 8px;" title="Purge contributions">
+                      Purge
+                    </button>
+                  </div>
+                `;
+              }).join('');
+
+              departedContributorsList.querySelectorAll('.btn-purge-contributor').forEach(purgeBtn => {
+                purgeBtn.addEventListener('click', async (ev) => {
+                  ev.stopPropagation();
+                  const pToken = purgeBtn.dataset.token;
+                  const pNick = purgeBtn.dataset.nick || 'this member';
+                  if (!confirm(`Purge all past contributions by "${pNick}" from this squad? This will roll back squad goals.`)) {
+                    return;
+                  }
+                  try {
+                    const res = await state.client.post(`/room/${state.roomSlug}/members/${pToken}/purge-contributions`);
+                    if (res && res.success) {
+                      FlyToast.success(`Purged contributions for ${pNick}`);
+                      if (onReloadState) await onReloadState();
+                      populateSquadHubFields();
+                    } else {
+                      FlyToast.error(res?.error || 'Failed to purge contributions');
+                    }
+                  } catch (err) {
+                    console.error('Purge error:', err);
+                    FlyToast.error('Failed to purge contributions');
+                  }
+                });
+              });
+            } else {
+              departedContributorsSection.style.display = 'none';
+              departedContributorsList.innerHTML = '';
+            }
+          }
+        } else {
+          squadOwnerSettingsCard.style.display = 'none';
+        }
       }
     }
   }
@@ -1487,7 +1605,12 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
     }
     if (e.target.closest('#footerShareBtn')) {
       e.preventDefault();
-      openHub('squad');
+      openShareModal();
+      return;
+    }
+    if (e.target.closest('#closeShareModalBtn') || e.target.closest('#closeShareModalCrossBtn')) {
+      e.preventDefault();
+      closeShareModal();
       return;
     }
     if (e.target.closest('#closeRoomBtn')) {
@@ -1676,7 +1799,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   }
 
   // Close modals when clicking backdrop outside modal-box
-  [profileModal, roomModal, aboutModal, wishlistModal, createQuestModal].forEach(modal => {
+  [profileModal, roomModal, aboutModal, wishlistModal, createQuestModal, shareModal].forEach(modal => {
     if (!modal) return;
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
@@ -1684,6 +1807,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
         if (aboutModal) aboutModal.classList.add('hidden');
         if (wishlistModal) wishlistModal.classList.add('hidden');
         if (createQuestModal) createQuestModal.classList.add('hidden');
+        if (shareModal) closeShareModal();
       }
     });
   });

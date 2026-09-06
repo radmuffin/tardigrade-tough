@@ -159,6 +159,23 @@
   vertical-align: middle;
 }
 
+.private-badge {
+  font-family: var(--font-mono);
+  font-size: 0.70rem;
+  font-weight: 700;
+  color: var(--accent-amber, #f59e0b);
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
 .edit-activity-btn {
   background: transparent;
   border: 1px solid var(--border-color);

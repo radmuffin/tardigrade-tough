@@ -83,6 +83,9 @@ export function renderFeed({ onReloadState } = {}) {
     const combBadge = act.is_combined
       ? ` <span class="combined-badge" title="Combined volume (excluded from PR)">📦 Combined</span>`
       : '';
+    const privateBadge = act.is_private
+      ? ` <span class="private-badge" title="Private workout (solo only)">🔒 Private</span>`
+      : '';
 
     item.innerHTML = `
       <div class="activity-left">
@@ -90,7 +93,7 @@ export function renderFeed({ onReloadState } = {}) {
           ${FlyToast.escape(displayAvatar)}
         </div>
         <div class="activity-text">
-          <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)}${detailStr ? ` (${detailStr})` : ''}</span>${prBadge}${combBadge}</div>
+          <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)}${detailStr ? ` (${detailStr})` : ''}</span>${prBadge}${combBadge}${privateBadge}</div>
           <div class="activity-meta">${act.notes ? `"${FlyToast.escape(act.notes)}" • ` : ''}${formatTimeAgo(act.created_at)}</div>
         </div>
       </div>

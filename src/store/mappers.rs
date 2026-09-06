@@ -8,6 +8,7 @@ pub fn map_room(row: &Row) -> Result<Room> {
         name: row.get(2)?,
         created_at: row.get(3)?,
         creator_token: row.get(4).unwrap_or_default(),
+        keep_departed_contributions: row.get::<_, i32>(5).unwrap_or(1) == 1,
     })
 }
 
@@ -49,6 +50,7 @@ pub fn map_activity(row: &Row) -> Result<Activity> {
         parent_activity_id: row.get(17).unwrap_or(None),
         is_pr: row.get::<_, i32>(18).unwrap_or(0) == 1,
         is_combined: row.get::<_, i32>(19).unwrap_or(0) == 1,
+        is_private: row.get::<_, i32>(20).unwrap_or(0) == 1,
     })
 }
 

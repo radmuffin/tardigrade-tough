@@ -11,7 +11,8 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
             slug TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
             created_at TEXT NOT NULL,
-            creator_token TEXT NOT NULL DEFAULT ''
+            creator_token TEXT NOT NULL DEFAULT '',
+            keep_departed_contributions INTEGER NOT NULL DEFAULT 1
         );
 
         CREATE TABLE IF NOT EXISTS users (
@@ -66,7 +67,8 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
             created_at TEXT NOT NULL,
             parent_activity_id INTEGER DEFAULT NULL,
             is_pr INTEGER NOT NULL DEFAULT 0,
-            is_combined INTEGER NOT NULL DEFAULT 0
+            is_combined INTEGER NOT NULL DEFAULT 0,
+            is_private INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS goal_wishlists (
@@ -90,6 +92,24 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_room_members_user ON room_members(user_token);
     "#,
     )?;
+
+    // Ensure keep_departed_contributions column exists in rooms
+    let _ = conn.execute(
+        "ALTER TABLE rooms ADD COLUMN keep_departed_contributions INTEGER NOT NULL DEFAULT 1",
+        [],
+    );
+
+    // Ensure is_private column exists in activities
+    let _ = conn.execute(
+        "ALTER TABLE activities ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0",
+        [],
+    );
+
+    // Ensure index on is_private exists
+    let _ = conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_activities_private ON activities(is_private)",
+        [],
+    );
 
     // Ensure avatar_emoji column exists in users
     let _ = conn.execute(
@@ -224,7 +244,7 @@ pub fn seed_room_default_goals(conn: &Connection, slug: &str, now: &str) -> Resu
 
 pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
     let mut stmt =
-        conn.prepare("SELECT id, slug, name, created_at, creator_token FROM rooms WHERE slug = ?")?;
+        conn.prepare("SELECT id, slug, name, created_at, creator_token, COALESCE(keep_departed_contributions, 1) FROM rooms WHERE slug = ?")?;
     let found = stmt.query_row(params![slug], map_room);
 
     match found {
@@ -237,7 +257,7 @@ pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
                 format!("{} Crew", slug.replace('-', " "))
             };
             conn.execute(
-                "INSERT INTO rooms (slug, name, created_at, creator_token) VALUES (?, ?, ?, '')",
+                "INSERT INTO rooms (slug, name, created_at, creator_token, keep_departed_contributions) VALUES (?, ?, ?, '', 1)",
                 params![slug, pretty_name, now],
             )?;
             let id = conn.last_insert_rowid();
@@ -251,10 +271,39 @@ pub fn get_or_create_room(conn: &Connection, slug: &str) -> Result<Room> {
                 name: pretty_name,
                 created_at: now,
                 creator_token: String::new(),
+                keep_departed_contributions: true,
             })
         }
         Err(e) => Err(e),
     }
+}
+
+pub fn update_room_settings(
+    conn: &Connection,
+    slug: &str,
+    creator_token: &str,
+    keep_departed_contributions: bool,
+) -> std::result::Result<Room, String> {
+    let current_creator: String = conn
+        .query_row(
+            "SELECT COALESCE(creator_token, '') FROM rooms WHERE slug = ?",
+            params![slug],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    if current_creator != creator_token {
+        return Err("Only the squad creator can update squad settings".to_string());
+    }
+
+    let val = if keep_departed_contributions { 1 } else { 0 };
+    conn.execute(
+        "UPDATE rooms SET keep_departed_contributions = ? WHERE slug = ?",
+        params![val, slug],
+    )
+    .map_err(|e| e.to_string())?;
+
+    get_or_create_room(conn, slug).map_err(|e| e.to_string())
 }
 
 pub fn update_room_name(conn: &Connection, slug: &str, new_name: &str) -> Result<Room> {
@@ -313,6 +362,10 @@ pub fn ensure_room_member(conn: &Connection, room_slug: &str, user_token: &str) 
          ON CONFLICT(room_slug, user_token) DO UPDATE SET role = CASE WHEN room_members.role = 'creator' THEN 'creator' ELSE excluded.role END",
         params![room_slug, tok, role, now],
     )?;
+
+    if !room_slug.starts_with("solo-") {
+        let _ = sync_user_activities_to_room(conn, tok, room_slug);
+    }
 
     Ok(())
 }
@@ -392,11 +445,123 @@ pub fn get_room_members(conn: &Connection, room_slug: &str) -> Result<Vec<RoomMe
     Ok(members)
 }
 
+pub fn get_departed_contributors(
+    conn: &Connection,
+    room_slug: &str,
+) -> Result<Vec<DepartedContributor>> {
+    let mut stmt = conn.prepare(
+        r#"SELECT
+            a.user_token,
+            COALESCE(
+                NULLIF((SELECT a2.user_nickname FROM activities a2 WHERE a2.user_token = a.user_token AND a2.room_slug = a.room_slug AND NULLIF(a2.user_nickname, '') IS NOT NULL ORDER BY a2.id DESC LIMIT 1), ''),
+                NULLIF(u.nickname, ''),
+                'Former Member'
+            ) as nick,
+            COALESCE(
+                NULLIF((SELECT a2.user_avatar_color FROM activities a2 WHERE a2.user_token = a.user_token AND a2.room_slug = a.room_slug AND NULLIF(a2.user_avatar_color, '') IS NOT NULL ORDER BY a2.id DESC LIMIT 1), ''),
+                NULLIF(u.avatar_color, ''),
+                '#64748b'
+            ) as col,
+            COALESCE(
+                NULLIF((SELECT a2.user_avatar_emoji FROM activities a2 WHERE a2.user_token = a.user_token AND a2.room_slug = a.room_slug AND NULLIF(a2.user_avatar_emoji, '') IS NOT NULL ORDER BY a2.id DESC LIMIT 1), ''),
+                NULLIF(u.avatar_emoji, ''),
+                ''
+            ) as emoji,
+            COALESCE(SUM(a.total_metric), 0.0) as total_metric,
+            COALESCE(COUNT(*), 0) as total_sets
+           FROM activities a
+           LEFT JOIN users u ON a.user_token = u.user_token
+           WHERE a.room_slug = ? AND a.user_token NOT IN (SELECT user_token FROM room_members WHERE room_slug = ?)
+           GROUP BY a.user_token
+           ORDER BY total_metric DESC"#
+    )?;
+
+    let rows = stmt.query_map(params![room_slug, room_slug], |row| {
+        Ok(DepartedContributor {
+            user_token: row.get(0)?,
+            nickname: row.get(1)?,
+            avatar_color: row.get(2)?,
+            avatar_emoji: row.get(3)?,
+            total_metric: row.get(4)?,
+            total_sets: row.get(5)?,
+        })
+    })?;
+
+    Ok(rows.filter_map(Result::ok).collect())
+}
+
+pub fn recalculate_room_goals(conn: &Connection, room_slug: &str) -> Result<()> {
+    conn.execute(
+        r#"UPDATE goals
+           SET current_value = (
+               SELECT COALESCE(SUM(a.total_metric), 0.0)
+               FROM activities a
+               WHERE (a.goal_id = goals.id OR (a.goal_id IS NULL AND a.room_slug = goals.room_slug AND a.activity_type = goals.category))
+           )
+           WHERE room_slug = ?"#,
+        params![room_slug],
+    )?;
+    conn.execute(
+        "UPDATE goals SET status = 'active' WHERE room_slug = ? AND current_value < target_value AND status = 'completed'",
+        params![room_slug],
+    )?;
+    conn.execute(
+        "UPDATE goals SET status = 'completed' WHERE room_slug = ? AND current_value >= target_value AND target_value > 0.0 AND status = 'active'",
+        params![room_slug],
+    )?;
+    Ok(())
+}
+
+pub fn purge_member_contributions(
+    conn: &Connection,
+    room_slug: &str,
+    creator_token: &str,
+    target_token: &str,
+) -> std::result::Result<(), String> {
+    let current_creator: String = conn
+        .query_row(
+            "SELECT COALESCE(creator_token, '') FROM rooms WHERE slug = ?",
+            params![room_slug],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    if current_creator != creator_token {
+        return Err("Only the squad creator can purge member contributions".to_string());
+    }
+
+    conn.execute(
+        "DELETE FROM activities WHERE room_slug = ? AND user_token = ?",
+        params![room_slug, target_token],
+    )
+    .map_err(|e| e.to_string())?;
+
+    recalculate_room_goals(conn, room_slug).map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 pub fn leave_room(conn: &Connection, room_slug: &str, user_token: &str) -> Result<String> {
+    let keep_contribs: i32 = conn
+        .query_row(
+            "SELECT COALESCE(keep_departed_contributions, 1) FROM rooms WHERE slug = ?",
+            params![room_slug],
+            |r| r.get(0),
+        )
+        .unwrap_or(1);
+
     let _ = conn.execute(
         "DELETE FROM room_members WHERE room_slug = ? AND user_token = ?",
         params![room_slug, user_token],
     );
+
+    if keep_contribs == 0 {
+        let _ = conn.execute(
+            "DELETE FROM activities WHERE room_slug = ? AND user_token = ?",
+            params![room_slug, user_token],
+        );
+        let _ = recalculate_room_goals(conn, room_slug);
+    }
 
     let solo_slug = generate_solo_room_slug(user_token);
     conn.execute(
@@ -445,6 +610,7 @@ pub fn remove_room_member(
     room_slug: &str,
     creator_token: &str,
     target_token: &str,
+    keep_contributions: bool,
 ) -> std::result::Result<String, String> {
     let current_creator: String = conn
         .query_row(
@@ -468,6 +634,14 @@ pub fn remove_room_member(
     )
     .map_err(|e| e.to_string())?;
 
+    if !keep_contributions {
+        let _ = conn.execute(
+            "DELETE FROM activities WHERE room_slug = ? AND user_token = ?",
+            params![room_slug, target_token],
+        );
+        let _ = recalculate_room_goals(conn, room_slug);
+    }
+
     let solo_slug = generate_solo_room_slug(target_token);
     conn.execute(
         "UPDATE users SET current_room_slug = ? WHERE user_token = ? AND current_room_slug = ?",
@@ -476,6 +650,124 @@ pub fn remove_room_member(
     .map_err(|e| e.to_string())?;
 
     Ok(solo_slug)
+}
+
+pub fn sync_user_activities_to_room(
+    conn: &Connection,
+    user_token: &str,
+    target_room_slug: &str,
+) -> Result<i64> {
+    if target_room_slug.starts_with("solo-") {
+        return Ok(0);
+    }
+
+    let mut stmt = conn.prepare(
+        r#"SELECT id, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''),
+                  activity_type, exercise_name, sets, reps, weight_per_rep, distance_val,
+                  elevation_val, total_metric, notes, created_at, COALESCE(is_pr, 0), COALESCE(is_combined, 0)
+           FROM activities r
+           WHERE r.user_token = ?
+             AND COALESCE(r.is_private, 0) = 0
+             AND (r.parent_activity_id IS NULL OR r.parent_activity_id = 0)
+             AND NOT EXISTS (
+                 SELECT 1 FROM activities c
+                 WHERE c.room_slug = ?
+                   AND (c.parent_activity_id = r.id OR c.id = r.id)
+             )
+           ORDER BY r.id ASC"#,
+    )?;
+
+    struct RootAct {
+        id: i64,
+        user_nickname: String,
+        user_avatar_color: String,
+        user_avatar_emoji: String,
+        activity_type: String,
+        exercise_name: String,
+        sets: i32,
+        reps: i32,
+        weight_per_rep: f64,
+        distance_val: f64,
+        elevation_val: f64,
+        total_metric: f64,
+        notes: String,
+        created_at: String,
+        is_pr: i32,
+        is_combined: i32,
+    }
+
+    let missing_rows = stmt
+        .query_map(params![user_token, target_room_slug], |row| {
+            Ok(RootAct {
+                id: row.get(0)?,
+                user_nickname: row.get(1)?,
+                user_avatar_color: row.get(2)?,
+                user_avatar_emoji: row.get(3)?,
+                activity_type: row.get(4)?,
+                exercise_name: row.get(5)?,
+                sets: row.get(6)?,
+                reps: row.get(7)?,
+                weight_per_rep: row.get(8)?,
+                distance_val: row.get(9)?,
+                elevation_val: row.get(10)?,
+                total_metric: row.get(11)?,
+                notes: row.get(12)?,
+                created_at: row.get(13)?,
+                is_pr: row.get(14)?,
+                is_combined: row.get(15)?,
+            })
+        })?
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
+
+    if missing_rows.is_empty() {
+        return Ok(0);
+    }
+
+    let mut count = 0;
+    for act in missing_rows {
+        let goal_id: Option<i64> = conn
+            .query_row(
+                "SELECT id FROM goals WHERE room_slug = ? AND category = ? AND status = 'active' ORDER BY id ASC LIMIT 1",
+                params![target_room_slug, act.activity_type],
+                |r| r.get(0),
+            )
+            .ok();
+
+        conn.execute(
+            r#"INSERT INTO activities
+               (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id,
+                activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val,
+                total_metric, notes, created_at, parent_activity_id, is_pr, is_combined, is_private)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)"#,
+            params![
+                target_room_slug,
+                user_token,
+                act.user_nickname,
+                act.user_avatar_color,
+                act.user_avatar_emoji,
+                goal_id,
+                act.activity_type,
+                act.exercise_name,
+                act.sets,
+                act.reps,
+                act.weight_per_rep,
+                act.distance_val,
+                act.elevation_val,
+                act.total_metric,
+                act.notes,
+                act.created_at,
+                act.id,
+                act.is_pr,
+                act.is_combined,
+            ],
+        )?;
+        count += 1;
+    }
+
+    let _ = recalculate_room_goals(conn, target_room_slug);
+
+    Ok(count)
 }
 
 pub fn create_room_for_user(
@@ -515,7 +807,7 @@ pub fn create_room_for_user(
 
     let now = Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO rooms (slug, name, created_at, creator_token) VALUES (?, ?, ?, ?)",
+        "INSERT INTO rooms (slug, name, created_at, creator_token, keep_departed_contributions) VALUES (?, ?, ?, ?, 1)",
         params![slug, chosen_name, now, tok],
     )?;
     let id = conn.last_insert_rowid();
@@ -533,6 +825,8 @@ pub fn create_room_for_user(
             "UPDATE users SET current_room_slug = ? WHERE user_token = ?",
             params![slug, tok],
         )?;
+
+        let _ = sync_user_activities_to_room(conn, tok, &slug);
     }
 
     Ok(Room {
@@ -541,6 +835,7 @@ pub fn create_room_for_user(
         name: chosen_name.to_string(),
         created_at: now,
         creator_token: tok.to_string(),
+        keep_departed_contributions: true,
     })
 }
 
@@ -877,7 +1172,14 @@ pub fn log_single_activity(
     room_slug: &str,
     req: &LogActivityRequest,
 ) -> Result<Activity> {
-    get_or_create_room(conn, room_slug)?;
+    let is_private = req.is_private.unwrap_or(false);
+    let target_room = if is_private {
+        generate_solo_room_slug(&user.user_token)
+    } else {
+        room_slug.to_string()
+    };
+
+    get_or_create_room(conn, &target_room)?;
     let tx = conn.transaction()?;
 
     let activity_type = req.activity_type.trim().to_lowercase();
@@ -928,7 +1230,7 @@ pub fn log_single_activity(
             "SELECT id FROM goals WHERE room_slug = ? AND category = ? AND status = 'active' ORDER BY id ASC LIMIT 1",
         )?;
         goal_id = goal_stmt
-            .query_row(params![room_slug, activity_type], |r| r.get(0))
+            .query_row(params![target_room, activity_type], |r| r.get(0))
             .ok();
     }
 
@@ -1067,10 +1369,10 @@ pub fn log_single_activity(
 
     tx.execute(
         r#"INSERT INTO activities 
-           (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, is_pr, is_combined)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+           (room_slug, user_token, user_nickname, user_avatar_color, user_avatar_emoji, goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, is_pr, is_combined, is_private)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
         params![
-            room_slug,
+            target_room,
             user.user_token,
             nickname,
             avatar_color,
@@ -1088,7 +1390,8 @@ pub fn log_single_activity(
             activity_time,
             parent_activity_id,
             if is_pr { 1 } else { 0 },
-            if is_combined { 1 } else { 0 }
+            if is_combined { 1 } else { 0 },
+            if is_private { 1 } else { 0 }
         ],
     )?;
 
@@ -1097,7 +1400,7 @@ pub fn log_single_activity(
 
     Ok(Activity {
         id,
-        room_slug: room_slug.to_string(),
+        room_slug: target_room,
         user_token: user.user_token.clone(),
         user_nickname: nickname.to_string(),
         user_avatar_color: avatar_color.to_string(),
@@ -1116,6 +1419,7 @@ pub fn log_single_activity(
         parent_activity_id,
         is_pr,
         is_combined,
+        is_private,
     })
 }
 
@@ -1128,33 +1432,66 @@ pub fn delete_activity(
 
     let found = {
         let mut stmt = tx.prepare(
-            "SELECT goal_id, total_metric, user_token, room_slug FROM activities WHERE id = ?",
+            "SELECT id, goal_id, total_metric, user_token, room_slug, parent_activity_id FROM activities WHERE id = ?",
         )?;
         stmt.query_row(params![activity_id], |r| {
             Ok((
-                r.get::<_, Option<i64>>(0)?,
-                r.get::<_, f64>(1)?,
-                r.get::<_, String>(2)?,
+                r.get::<_, i64>(0)?,
+                r.get::<_, Option<i64>>(1)?,
+                r.get::<_, f64>(2)?,
                 r.get::<_, String>(3)?,
+                r.get::<_, String>(4)?,
+                r.get::<_, Option<i64>>(5)?,
             ))
         })
     };
 
-    if let Ok((goal_id, total_metric, owner_token, room_slug)) = found {
+    if let Ok((_act_id, goal_id, total_metric, owner_token, room_slug, parent_activity_id)) = found
+    {
         // Only owner can delete
         if owner_token != user_token {
             return Ok(None);
         }
 
-        let mut affected_rooms = vec![room_slug];
+        let root_id = parent_activity_id.unwrap_or(activity_id);
+        let mut affected_rooms = vec![room_slug.clone()];
 
-        // Find any child activities forwarded from this parent activity
+        // Find root activity if we started from a child
+        if let Some(pid) = parent_activity_id {
+            let root_info = {
+                let mut r_stmt = tx.prepare("SELECT goal_id, total_metric, room_slug FROM activities WHERE id = ? AND user_token = ?")?;
+                r_stmt
+                    .query_row(params![pid, user_token], |r| {
+                        Ok((
+                            r.get::<_, Option<i64>>(0)?,
+                            r.get::<_, f64>(1)?,
+                            r.get::<_, String>(2)?,
+                        ))
+                    })
+                    .ok()
+            };
+            if let Some((r_gid, r_metric, r_room)) = root_info {
+                if let Some(gid) = r_gid {
+                    tx.execute(
+                        "UPDATE goals SET current_value = MAX(0.0, current_value - ?) WHERE id = ?",
+                        params![r_metric, gid],
+                    )?;
+                    tx.execute("UPDATE goals SET status = 'active' WHERE id = ? AND current_value < target_value AND status = 'completed'", params![gid])?;
+                }
+                tx.execute("DELETE FROM activities WHERE id = ?", params![pid])?;
+                if !affected_rooms.contains(&r_room) {
+                    affected_rooms.push(r_room);
+                }
+            }
+        }
+
+        // Find any child activities forwarded from this root activity
         let child_rows = {
             let mut child_stmt = tx.prepare(
                 "SELECT id, goal_id, total_metric, room_slug FROM activities WHERE parent_activity_id = ? AND user_token = ?",
             )?;
             let rows = child_stmt
-                .query_map(params![activity_id, user_token], |r| {
+                .query_map(params![root_id, user_token], |r| {
                     Ok((
                         r.get::<_, i64>(0)?,
                         r.get::<_, Option<i64>>(1)?,
@@ -1245,7 +1582,7 @@ pub fn toggle_activity_pr(
     );
 
     let updated_act = tx.query_row(
-        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0)
+        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0), COALESCE(is_private, 0)
            FROM activities WHERE id = ?"#,
         params![act_id],
         map_activity,
@@ -1263,7 +1600,7 @@ pub fn update_activity(
 ) -> Result<Option<Activity>> {
     let tx = conn.transaction()?;
     let current = tx.query_row(
-        r#"SELECT id, room_slug, exercise_name, sets, reps, weight_per_rep, notes, is_pr, is_combined
+        r#"SELECT id, room_slug, exercise_name, sets, reps, weight_per_rep, notes, is_pr, is_combined, COALESCE(is_private, 0)
            FROM activities WHERE id = ? AND user_token = ?"#,
         params![activity_id, user_token],
         |r| {
@@ -1277,11 +1614,12 @@ pub fn update_activity(
                 r.get::<_, String>(6)?,
                 r.get::<_, i32>(7)?,
                 r.get::<_, i32>(8)?,
+                r.get::<_, i32>(9)?,
             ))
         },
     );
 
-    let (act_id, _room, cur_ex, cur_sets, cur_reps, cur_wt, cur_notes, cur_pr, cur_comb) =
+    let (act_id, _room, cur_ex, cur_sets, cur_reps, cur_wt, cur_notes, cur_pr, cur_comb, cur_priv) =
         match current {
             Ok(v) => v,
             Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
@@ -1303,28 +1641,75 @@ pub fn update_activity(
         .is_combined
         .map(|b| if b { 1 } else { 0 })
         .unwrap_or(cur_comb);
+    let new_priv = req
+        .is_private
+        .map(|b| if b { 1 } else { 0 })
+        .unwrap_or(cur_priv);
 
     tx.execute(
         r#"UPDATE activities 
-           SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, notes = ?, is_pr = ?, is_combined = ?
+           SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, notes = ?, is_pr = ?, is_combined = ?, is_private = ?
            WHERE id = ?"#,
         params![
-            new_ex, new_sets, new_reps, new_wt, new_notes, new_pr, new_comb, act_id
+            new_ex, new_sets, new_reps, new_wt, new_notes, new_pr, new_comb, new_priv, act_id
         ],
     )?;
 
-    // Also update any child activities forwarded from this parent
-    let _ = tx.execute(
-        r#"UPDATE activities 
-           SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, notes = ?, is_pr = ?, is_combined = ?
-           WHERE parent_activity_id = ? AND user_token = ?"#,
-        params![
-            new_ex, new_sets, new_reps, new_wt, new_notes, new_pr, new_comb, act_id, user_token
-        ],
-    );
+    if cur_priv == 0 && new_priv == 1 {
+        // Toggled to private: purge child copies in squads and recalculate goals
+        let child_rooms: Vec<String> = {
+            let mut stmt = tx.prepare(
+                "SELECT DISTINCT room_slug FROM activities WHERE parent_activity_id = ?",
+            )?;
+            let rows = stmt.query_map(params![act_id], |r| r.get(0))?;
+            rows.filter_map(Result::ok).collect()
+        };
+        tx.execute(
+            "DELETE FROM activities WHERE parent_activity_id = ?",
+            params![act_id],
+        )?;
+        for r in child_rooms {
+            let _ = tx.execute(
+                r#"UPDATE goals
+                   SET current_value = (
+                       SELECT COALESCE(SUM(a.total_metric), 0.0)
+                       FROM activities a
+                       WHERE (a.goal_id = goals.id OR (a.goal_id IS NULL AND a.room_slug = goals.room_slug AND a.activity_type = goals.category))
+                   )
+                   WHERE room_slug = ?"#,
+                params![r],
+            );
+            let _ = tx.execute(
+                "UPDATE goals SET status = 'active' WHERE room_slug = ? AND current_value < target_value AND status = 'completed'",
+                params![r],
+            );
+        }
+    } else if cur_priv == 1 && new_priv == 0 {
+        // Toggled from private to public: sync to all squads user belongs to
+        let squads: Vec<String> = {
+            let mut stmt = tx.prepare(
+                "SELECT room_slug FROM room_members WHERE user_token = ? AND room_slug NOT LIKE 'solo-%'",
+            )?;
+            let rows = stmt.query_map(params![user_token], |r| r.get(0))?;
+            rows.filter_map(Result::ok).collect()
+        };
+        for sq in squads {
+            let _ = sync_user_activities_to_room(&tx, user_token, &sq);
+        }
+    } else {
+        // Also update any child activities forwarded from this parent
+        let _ = tx.execute(
+            r#"UPDATE activities 
+               SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, notes = ?, is_pr = ?, is_combined = ?, is_private = ?
+               WHERE parent_activity_id = ? AND user_token = ?"#,
+            params![
+                new_ex, new_sets, new_reps, new_wt, new_notes, new_pr, new_comb, new_priv, act_id, user_token
+            ],
+        );
+    }
 
     let updated_act = tx.query_row(
-        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0)
+        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0), COALESCE(is_private, 0)
            FROM activities WHERE id = ?"#,
         params![act_id],
         map_activity,
@@ -1334,13 +1719,36 @@ pub fn update_activity(
     Ok(Some(updated_act))
 }
 
+pub fn toggle_activity_private(
+    conn: &mut Connection,
+    activity_id: i64,
+    user_token: &str,
+) -> Result<Option<Activity>> {
+    let current_private: i32 = match conn.query_row(
+        "SELECT COALESCE(is_private, 0) FROM activities WHERE id = ? AND user_token = ?",
+        params![activity_id, user_token],
+        |r| r.get(0),
+    ) {
+        Ok(v) => v,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+        Err(e) => return Err(e),
+    };
+
+    let new_private = current_private == 0;
+    let req = UpdateActivityRequest {
+        is_private: Some(new_private),
+        ..Default::default()
+    };
+    update_activity(conn, activity_id, user_token, &req)
+}
+
 pub fn get_recent_activities(
     conn: &Connection,
     room_slug: &str,
     limit: i64,
 ) -> Result<Vec<Activity>> {
     let mut stmt = conn.prepare(
-        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0)
+        r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0), COALESCE(is_private, 0)
            FROM activities WHERE room_slug = ? ORDER BY id DESC LIMIT ?"#,
     )?;
 
@@ -1496,6 +1904,7 @@ pub fn checkoff_goal(
     user: &UserProfile,
     goal_id: i64,
     notes: Option<&str>,
+    is_private: Option<bool>,
 ) -> Result<(Goal, Activity)> {
     let goal: Goal = {
         let mut stmt = conn.prepare(
@@ -1543,6 +1952,7 @@ pub fn checkoff_goal(
         parent_activity_id: None,
         is_pr: None,
         is_combined: None,
+        is_private,
     };
 
     let activity = log_single_activity(conn, user, &goal.room_slug, &req)?;

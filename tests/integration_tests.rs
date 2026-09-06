@@ -83,6 +83,7 @@ fn test_multi_room_isolation_and_cross_contamination() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("log user a");
@@ -131,6 +132,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("weight log");
@@ -158,6 +160,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("distance log");
@@ -185,6 +188,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("elevation log");
@@ -234,6 +238,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
         LogActivityRequest {
             room_slug: Some("main".to_string()),
@@ -254,6 +259,7 @@ fn test_batch_activity_import_transaction_atomicity() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     ];
 
@@ -295,6 +301,7 @@ fn test_activity_deletion_and_rollback() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("log");
@@ -448,6 +455,7 @@ fn test_goal_completion_transition() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("trek log");
@@ -819,6 +827,7 @@ fn test_custom_quest_category_proposal_promotion_and_activity_logging() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("log pushups");
@@ -1511,6 +1520,7 @@ fn test_personal_record_detection_and_query() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("act1");
@@ -1540,6 +1550,7 @@ fn test_personal_record_detection_and_query() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("act2");
@@ -1569,6 +1580,7 @@ fn test_personal_record_detection_and_query() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("act3");
@@ -1616,6 +1628,7 @@ fn test_user_streak_and_tardigrade_state() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("log today");
@@ -1744,6 +1757,7 @@ async fn test_data_store_trait_abstraction() {
                 parent_activity_id: None,
                 is_pr: None,
                 is_combined: None,
+                is_private: None,
             },
         )
         .expect("log_single_activity");
@@ -1972,6 +1986,7 @@ fn test_sally_multi_category_personal_progress_and_leaderboard() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("log weight");
@@ -2015,6 +2030,7 @@ fn test_sally_multi_category_personal_progress_and_leaderboard() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("log distance");
@@ -2043,6 +2059,7 @@ fn test_sally_multi_category_personal_progress_and_leaderboard() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("log elevation");
@@ -2071,6 +2088,7 @@ fn test_sally_multi_category_personal_progress_and_leaderboard() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("log feat");
@@ -2134,6 +2152,7 @@ fn test_combined_volume_fast_add_and_import_pr_handling() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: Some(true),
+            is_private: None,
         },
     )
     .expect("fast add act");
@@ -2176,6 +2195,7 @@ fn test_combined_volume_fast_add_and_import_pr_handling() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: Some(false),
+            is_private: None,
         },
     )
     .expect("bench act");
@@ -2212,6 +2232,7 @@ fn test_combined_volume_fast_add_and_import_pr_handling() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: Some(true),
+            is_private: None,
         },
     )
     .expect("import comb");
@@ -2252,6 +2273,7 @@ fn test_activity_edit_and_toggle_pr() {
             parent_activity_id: None,
             is_pr: None,
             is_combined: None,
+            is_private: None,
         },
     )
     .expect("act");
@@ -2284,6 +2306,7 @@ fn test_activity_edit_and_toggle_pr() {
             notes: Some("Detailed set breakdown".to_string()),
             is_pr: Some(false),
             is_combined: Some(true),
+            is_private: None,
         },
     )
     .expect("update")
@@ -2312,4 +2335,204 @@ fn test_activity_edit_and_toggle_pr() {
     )
     .expect("edit unauth");
     assert!(unauth_edit.is_none());
+}
+
+#[test]
+fn test_universal_workout_sync_on_squad_join() {
+    let mut conn = setup_test_db();
+    let user = get_or_create_user(&conn, "token_universal", "solo-token_universal").expect("user");
+
+    // 1. User logs workouts in their solo room prior to joining any squad
+    let _act1 = log_single_activity(
+        &mut conn,
+        &user,
+        "solo-token_universal",
+        &LogActivityRequest {
+            room_slug: Some("solo-token_universal".to_string()),
+            user_nickname: Some("UniversalLifter".to_string()),
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Deadlift".to_string()),
+            sets: Some(5),
+            reps: Some(5),
+            weight_per_rep: Some(300.0),
+            total_metric: Some(7500.0),
+            is_private: Some(false),
+            ..Default::default()
+        },
+    )
+    .expect("act1");
+
+    let _act2_private = log_single_activity(
+        &mut conn,
+        &user,
+        "solo-token_universal",
+        &LogActivityRequest {
+            room_slug: Some("solo-token_universal".to_string()),
+            user_nickname: Some("UniversalLifter".to_string()),
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Secret Squats".to_string()),
+            sets: Some(3),
+            reps: Some(10),
+            weight_per_rep: Some(200.0),
+            total_metric: Some(6000.0),
+            is_private: Some(true),
+            ..Default::default()
+        },
+    )
+    .expect("act2_private");
+
+    // 2. User joins/creates a new squad "beast-squad"
+    let squad = create_room_for_user(&conn, "token_universal", Some("Beast Squad")).expect("squad");
+
+    // 3. Past non-private workouts should automatically be in beast-squad, but private workout should NOT
+    let acts = get_recent_activities(&conn, &squad.slug, 50).expect("acts");
+    assert_eq!(
+        acts.len(),
+        1,
+        "Only public workout should sync to beast-squad"
+    );
+    assert_eq!(acts[0].exercise_name, "Deadlift");
+    assert_eq!(acts[0].total_metric, 7500.0);
+
+    // Verify goals in beast-squad received the 7,500 lbs
+    let (goals, _) = get_goals_for_room(&conn, &squad.slug).expect("goals");
+    let weight_goal = goals
+        .iter()
+        .find(|g| g.category == "weight")
+        .expect("wt goal");
+    assert_eq!(weight_goal.current_value, 7500.0);
+}
+
+#[test]
+fn test_private_workout_isolation_and_toggle() {
+    let mut conn = setup_test_db();
+    let user = get_or_create_user(&conn, "token_priv_user", "solo-token_priv_user").expect("user");
+    let squad =
+        create_room_for_user(&conn, "token_priv_user", Some("Privacy Squad")).expect("squad");
+
+    // 1. Log a private workout directly
+    let priv_act = log_single_activity(
+        &mut conn,
+        &user,
+        &squad.slug, // Even if room_slug is squad, is_private=true forces routing to solo
+        &LogActivityRequest {
+            room_slug: Some(squad.slug.clone()),
+            user_nickname: Some("Stealthy".to_string()),
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Stealth Press".to_string()),
+            sets: Some(1),
+            reps: Some(1),
+            weight_per_rep: Some(100.0),
+            total_metric: Some(100.0),
+            is_private: Some(true),
+            ..Default::default()
+        },
+    )
+    .expect("priv_act");
+
+    assert!(priv_act.is_private);
+    let solo_slug = generate_solo_room_slug("token_priv_user");
+    assert_eq!(priv_act.room_slug, solo_slug);
+
+    // Verify squad has 0 activities and 0 goal value
+    let squad_acts = get_recent_activities(&conn, &squad.slug, 50).expect("squad_acts");
+    assert_eq!(squad_acts.len(), 0);
+    let (goals, _) = get_goals_for_room(&conn, &squad.slug).expect("goals");
+    let wt = goals.iter().find(|g| g.category == "weight").unwrap();
+    assert_eq!(wt.current_value, 0.0);
+
+    // 2. Toggle private -> public
+    let toggled = toggle_activity_private(&mut conn, priv_act.id, "token_priv_user")
+        .expect("toggle")
+        .expect("found");
+    assert!(!toggled.is_private);
+
+    // Squad should now have the activity and goal value updated
+    let squad_acts_after = get_recent_activities(&conn, &squad.slug, 50).expect("squad_acts_after");
+    assert_eq!(squad_acts_after.len(), 1);
+    let (goals_after, _) = get_goals_for_room(&conn, &squad.slug).expect("goals_after");
+    let wt_after = goals_after.iter().find(|g| g.category == "weight").unwrap();
+    assert_eq!(wt_after.current_value, 100.0);
+
+    // 3. Toggle public -> private
+    let toggled_back = toggle_activity_private(&mut conn, priv_act.id, "token_priv_user")
+        .expect("toggle back")
+        .expect("found");
+    assert!(toggled_back.is_private);
+
+    // Squad copy should be deleted and goal rolled back
+    let squad_acts_final = get_recent_activities(&conn, &squad.slug, 50).expect("squad_acts_final");
+    assert_eq!(squad_acts_final.len(), 0);
+    let (goals_final, _) = get_goals_for_room(&conn, &squad.slug).expect("goals_final");
+    let wt_final = goals_final.iter().find(|g| g.category == "weight").unwrap();
+    assert_eq!(wt_final.current_value, 0.0);
+}
+
+#[test]
+fn test_departed_member_keep_or_purge_contributions() {
+    let mut conn = setup_test_db();
+    let _owner = get_or_create_user(&conn, "token_owner", "solo-token_owner").expect("owner");
+    let member = get_or_create_user(&conn, "token_leaver", "solo-token_leaver").expect("member");
+
+    let squad = create_room_for_user(&conn, "token_owner", Some("Alpha Squad")).expect("squad");
+    ensure_room_member(&conn, &squad.slug, "token_leaver").expect("join");
+
+    // Member logs 10,000 lbs in squad
+    let _act = log_single_activity(
+        &mut conn,
+        &member,
+        &squad.slug,
+        &LogActivityRequest {
+            room_slug: Some(squad.slug.clone()),
+            user_nickname: Some("Leaver".to_string()),
+            activity_type: "weight".to_string(),
+            exercise_name: Some("Leg Press".to_string()),
+            sets: Some(10),
+            reps: Some(10),
+            weight_per_rep: Some(100.0),
+            total_metric: Some(10000.0),
+            is_private: Some(false),
+            ..Default::default()
+        },
+    )
+    .expect("act");
+
+    // Goals should have 10,000 lbs
+    let (goals, _) = get_goals_for_room(&conn, &squad.slug).expect("goals");
+    let wt = goals.iter().find(|g| g.category == "weight").unwrap();
+    assert_eq!(wt.current_value, 10000.0);
+
+    // 1. Remove member with keep_contributions = true
+    remove_room_member(&conn, &squad.slug, "token_owner", "token_leaver", true)
+        .expect("remove keep");
+    let (goals_kept, _) = get_goals_for_room(&conn, &squad.slug).expect("goals_kept");
+    let wt_kept = goals_kept.iter().find(|g| g.category == "weight").unwrap();
+    assert_eq!(
+        wt_kept.current_value, 10000.0,
+        "Contributions should be kept"
+    );
+
+    // Check departed contributors list
+    let departed = get_departed_contributors(&conn, &squad.slug).expect("departed");
+    assert_eq!(departed.len(), 1);
+    assert_eq!(departed[0].user_token, "token_leaver");
+    assert_eq!(departed[0].total_metric, 10000.0);
+
+    // 2. Owner purges departed member's contributions
+    purge_member_contributions(&conn, &squad.slug, "token_owner", "token_leaver").expect("purge");
+
+    // Goals should now be rolled back to 0.0
+    let (goals_purged, _) = get_goals_for_room(&conn, &squad.slug).expect("goals_purged");
+    let wt_purged = goals_purged
+        .iter()
+        .find(|g| g.category == "weight")
+        .unwrap();
+    assert_eq!(
+        wt_purged.current_value, 0.0,
+        "Goals should be rolled back after purge"
+    );
+
+    // Departed list should now be empty
+    let departed_after = get_departed_contributors(&conn, &squad.slug).expect("departed_after");
+    assert_eq!(departed_after.len(), 0);
 }
