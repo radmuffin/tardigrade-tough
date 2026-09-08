@@ -186,7 +186,14 @@ export function renderFeed({ onReloadState } = {}) {
           </div>
           <div class="activity-text">
             <div><strong class="activity-user">${FlyToast.escape(act.user_nickname)}</strong> <span style="color: var(--text-secondary);">${FlyToast.escape(act.exercise_name)}${detailStr ? ` (${detailStr})` : ''}</span>${prBadge}${combBadge}${privateBadge}</div>
-            <div class="activity-meta">${act.notes ? `"${FlyToast.escape(act.notes)}" • ` : ''}${formatTimeAgo(act.created_at)}</div>
+            <div class="activity-meta">
+              <span>${act.notes ? `"${FlyToast.escape(act.notes)}" • ` : ''}${formatTimeAgo(act.created_at)}</span>
+              <span class="activity-inline-reactions">
+                <button class="activity-react-btn" data-emoji="💪" title="Cheer 💪" type="button">💪</button>
+                <button class="activity-react-btn" data-emoji="🔥" title="Cheer 🔥" type="button">🔥</button>
+                <button class="activity-react-btn" data-emoji="👏" title="Cheer 👏" type="button">👏</button>
+              </span>
+            </div>
           </div>
         </div>
         <div style="display: flex; align-items: center; gap: 6px;">
@@ -248,16 +255,21 @@ export async function deleteActivity(id, { onReloadState } = {}) {
 }
 
 export function setupCheers() {
-  document.querySelectorAll('.cheer-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const emoji = btn.dataset.emoji;
-      if (state.diorama) {
-        state.diorama.spawnEmojiReaction(emoji);
-      }
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.cheer-btn, .activity-cheer-bar-btn, .activity-react-btn');
+    if (!btn) return;
+    const emoji = btn.dataset.emoji;
+    if (!emoji) return;
 
-      try {
-        await state.client.post('/cheer', { room_slug: state.roomSlug, emoji });
-      } catch (_) {}
-    });
+    btn.classList.add('cheer-pop');
+    setTimeout(() => btn.classList.remove('cheer-pop'), 250);
+
+    if (state.diorama) {
+      state.diorama.spawnEmojiReaction(emoji);
+    }
+
+    try {
+      await state.client.post('/cheer', { room_slug: state.roomSlug, emoji });
+    } catch (_) {}
   });
 }

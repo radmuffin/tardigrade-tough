@@ -339,4 +339,69 @@
   color: var(--text-muted);
 }
 
+/* Activity Cheer Bar & Buttons */
+.activity-cheer-bar {
+  margin-bottom: 12px;
+}
+
+.activity-cheer-bar-btn {
+  flex: 1;
+  max-width: 50px;
+  height: 40px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  font-size: 1.25rem;
+  padding: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform 0.1s ease, background-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.activity-cheer-bar-btn:hover {
+  background: var(--bg-surface);
+  transform: scale(1.1);
+}
+
+.activity-cheer-bar-btn:active, .activity-cheer-bar-btn.cheer-pop {
+  transform: scale(0.9);
+}
+
+/* Inline Reactions on Individual Feed Items */
+.activity-inline-reactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.activity-react-btn {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full, 9999px);
+  padding: 1px 5px;
+  font-size: 0.74rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.activity-react-btn:hover {
+  background: var(--bg-surface);
+  transform: scale(1.2);
+  border-color: var(--accent-amber);
+}
+
+.activity-react-btn:active, .activity-react-btn.cheer-pop {
+  transform: scale(0.85);
+}
+
 

@@ -1,7 +1,7 @@
 import { FlyToast } from '/_fly/fly-ui.js';
 import { state, formatNumber } from './state.js';
 
-export const VIEW_ORDER = ['quests', 'leaderboard', 'activity', 'trophy'];
+export const VIEW_ORDER = ['quests', 'activity', 'leaderboard', 'trophy'];
 export let currentView = 'quests';
 
 export const CANONICAL_THEME_ORDER = ['pando', 'everest', 'caribou'];

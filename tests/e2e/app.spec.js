@@ -194,6 +194,22 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(countBadge).toHaveText('×2');
   });
 
+  test('submits cheer reactions from Activity view cheer bar', async ({ page }) => {
+    await page.click('#navActivityBtn');
+    await expect(page.locator('#viewActivity')).toBeVisible();
+
+    const activityCheerBtn = page.locator('.activity-cheer-bar-btn[data-emoji="💪"]').first();
+    await expect(activityCheerBtn).toBeVisible();
+    await activityCheerBtn.click();
+    await expect(activityCheerBtn).toBeEnabled();
+
+    // Verify reaction toast appears
+    const toastContainer = page.locator('#reactionToastContainer');
+    const pill = toastContainer.locator('.reaction-toast-pill').first();
+    await expect(pill).toBeVisible();
+    await expect(pill.locator('.reaction-toast-emoji')).toHaveText('💪');
+  });
+
   test('switches between logging modes (Rapid Stepper, Full Workout, Fast-Add)', async ({ page }) => {
     await page.click('#floatingLogBtn');
     await expect(page.locator('#activityLoggerModal')).toBeVisible();
@@ -580,7 +596,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   test('supports touch swipe gestures between views', async ({ page }) => {
     await expect(page.locator('#viewQuests')).toBeVisible();
 
-    // Swipe left: Quests -> Leaderboard
+    // Swipe left: Quests -> Activity (swapped order)
     await page.evaluate(() => {
       const startX = 300;
       const endX = 100;
@@ -595,10 +611,10 @@ test.describe('Tardigrade Tough Web App E2E', () => {
       endEvt.changedTouches = [{ clientX: endX, clientY: y }];
       document.body.dispatchEvent(endEvt);
     });
-    await expect(page.locator('#viewLeaderboard')).toBeVisible();
-    await expect(page.locator('#navLeaderboardBtn')).toHaveClass(/active/);
+    await expect(page.locator('#viewActivity')).toBeVisible();
+    await expect(page.locator('#navActivityBtn')).toHaveClass(/active/);
 
-    // Swipe right: Leaderboard -> Quests
+    // Swipe right: Activity -> Quests
     await page.evaluate(() => {
       const startX = 100;
       const endX = 300;

@@ -86,13 +86,13 @@
         <span class="swipe-dot-pill"></span>
         <span class="swipe-dot-label">Quests</span>
       </button>
-      <button id="navLeaderboardBtn" class="swipe-indicator-dot" data-view="leaderboard" role="tab" aria-selected="false" title="Leaderboard View">
-        <span class="swipe-dot-pill"></span>
-        <span class="swipe-dot-label">Podiums</span>
-      </button>
       <button id="navActivityBtn" class="swipe-indicator-dot" data-view="activity" role="tab" aria-selected="false" title="Activity View">
         <span class="swipe-dot-pill"></span>
         <span class="swipe-dot-label">Activity</span>
+      </button>
+      <button id="navLeaderboardBtn" class="swipe-indicator-dot" data-view="leaderboard" role="tab" aria-selected="false" title="Leaderboard View">
+        <span class="swipe-dot-pill"></span>
+        <span class="swipe-dot-label">Podiums</span>
       </button>
       <button id="navTrophyBtn" class="swipe-indicator-dot" data-view="trophy" role="tab" aria-selected="false" title="Trophies View">
         <span class="swipe-dot-pill"></span>
@@ -182,7 +182,59 @@
     </main>
 
     <!-- ===================================================================== -->
-    <!-- VIEW 2: LEADERBOARD & CREW PODIUMS                                    -->
+    <!-- VIEW 2: ACTIVITY FEED & PERSONAL LOG HISTORY                          -->
+    <!-- ===================================================================== -->
+    <main id="viewActivity" class="app-view" style="display: none;">
+      <div class="view-header-card">
+        <div class="activity-header-top">
+          <div class="activity-header-text">
+            <h2 class="view-title">⚡ Live Activity</h2>
+          </div>
+          <button id="openImportModalBtn" class="activity-import-btn" type="button" title="Import workouts from Google Sheets">
+            <span>📥</span>
+            <span>Import</span>
+          </button>
+        </div>
+        <div class="activity-filter-tabs">
+          <button id="filterAllCrewBtn" class="activity-filter-btn active">All Crew</button>
+          <button id="filterMyLiftsBtn" class="activity-filter-btn">My Sets</button>
+        </div>
+      </div>
+
+      <!-- Today's Total Summary Banner -->
+      <div id="activityDayBanner" class="activity-day-banner">
+        <div class="day-banner-left">
+          <span class="day-banner-icon">📅</span>
+          <div>
+            <div id="activityDayBannerTitle" class="day-banner-title">Today's Work</div>
+            <div class="day-banner-sub" id="activityDayBannerSub">My Sets Today</div>
+          </div>
+        </div>
+        <div class="day-banner-metrics" id="activityDayBannerMetrics">
+          <span id="activityDayBannerVal" class="day-banner-metric-val">0 lbs</span>
+          <span id="activityDayBannerSets" class="day-banner-metric-sets">0 sets</span>
+        </div>
+      </div>
+
+      <!-- Real-time Tap-to-Cheer Bar on Activity View -->
+      <section class="cheer-bar activity-cheer-bar">
+        <div class="cheer-buttons">
+          <button class="activity-cheer-bar-btn" data-emoji="💪" title="Beast Mode">💪</button>
+          <button class="activity-cheer-bar-btn" data-emoji="🔥" title="On Fire">🔥</button>
+          <button class="activity-cheer-bar-btn" data-emoji="👏" title="Applause">👏</button>
+          <button class="activity-cheer-bar-btn" data-emoji="🌲" title="Pando Power">🌲</button>
+          <button class="activity-cheer-bar-btn" data-emoji="🐐" title="Goat Climb">🐐</button>
+          <button class="activity-cheer-bar-btn" data-emoji="🐻" title="Water Bear">🐻</button>
+        </div>
+      </section>
+
+      <div id="activityFeedList" class="activity-feed">
+        <!-- Injected dynamically -->
+      </div>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 3: LEADERBOARD & CREW PODIUMS                                    -->
     <!-- ===================================================================== -->
     <main id="viewLeaderboard" class="app-view" style="display: none;">
       <div class="view-header-card">
@@ -218,46 +270,6 @@
 
       <!-- Vertical Category Leaderboard Sections (All visible vertically without sliding) -->
       <div id="leaderboardList" class="leaderboard-vertical-sections">
-        <!-- Injected dynamically -->
-      </div>
-    </main>
-
-    <!-- ===================================================================== -->
-    <!-- VIEW 3: ACTIVITY FEED & PERSONAL LOG HISTORY                          -->
-    <!-- ===================================================================== -->
-    <main id="viewActivity" class="app-view" style="display: none;">
-      <div class="view-header-card">
-        <div class="activity-header-top">
-          <div class="activity-header-text">
-            <h2 class="view-title">⚡ Live Activity</h2>
-          </div>
-          <button id="openImportModalBtn" class="activity-import-btn" type="button" title="Import workouts from Google Sheets">
-            <span>📥</span>
-            <span>Import</span>
-          </button>
-        </div>
-        <div class="activity-filter-tabs">
-          <button id="filterAllCrewBtn" class="activity-filter-btn active">All Crew</button>
-          <button id="filterMyLiftsBtn" class="activity-filter-btn">My Sets</button>
-        </div>
-      </div>
-
-      <!-- Today's Total Summary Banner -->
-      <div id="activityDayBanner" class="activity-day-banner">
-        <div class="day-banner-left">
-          <span class="day-banner-icon">📅</span>
-          <div>
-            <div id="activityDayBannerTitle" class="day-banner-title">Today's Work</div>
-            <div class="day-banner-sub" id="activityDayBannerSub">My Sets Today</div>
-          </div>
-        </div>
-        <div class="day-banner-metrics" id="activityDayBannerMetrics">
-          <span id="activityDayBannerVal" class="day-banner-metric-val">0 lbs</span>
-          <span id="activityDayBannerSets" class="day-banner-metric-sets">0 sets</span>
-        </div>
-      </div>
-
-      <div id="activityFeedList" class="activity-feed">
         <!-- Injected dynamically -->
       </div>
     </main>
