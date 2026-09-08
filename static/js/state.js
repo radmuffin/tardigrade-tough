@@ -8,7 +8,12 @@ export function getRoomFromUrl() {
 }
 
 export function formatNumber(num) {
-  return Math.round(num || 0).toLocaleString('en-US');
+  const n = num || 0;
+  if (Number.isInteger(n)) {
+    return n.toLocaleString('en-US');
+  }
+  const rounded = Math.round(n * 100) / 100;
+  return rounded.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 export function isToday(dateOrIso) {

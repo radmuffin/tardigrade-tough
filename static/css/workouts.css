@@ -99,7 +99,13 @@
   margin-top: 6px;
 }
 
-.preset-grid-plates,
+.preset-grid-plates {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 6px;
+}
+
 .preset-grid-reps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

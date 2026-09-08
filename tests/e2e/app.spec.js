@@ -660,7 +660,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     // Navigate to activity feed
     await page.click('#navActivityBtn');
-    const privateBadge = page.locator('.private-badge').first();
+    const privateBadge = page.locator('#activityFeed .private-badge').first();
     await expect(privateBadge).toBeVisible();
     await expect(privateBadge).toContainText('Private');
   });
@@ -718,6 +718,43 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     await page.click('#closeProfileBtn');
     await expect(page.locator('#profileModal')).not.toBeVisible();
+  });
+
+  test('supports half pound increments on stepper weight', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('body[data-state="ready"]');
+
+    // Open activity logger modal via floating button
+    await page.click('#floatingLogBtn');
+    await expect(page.locator('#activityLoggerModal')).toBeVisible();
+
+    const weightInput = page.locator('#stepperWeight');
+    const repsInput = page.locator('#stepperReps');
+    const impactVal = page.locator('#computedImpactVal');
+
+    // Click +0.5 half-pound chip
+    await page.click('.preset-chip[data-delta="+0.5"]');
+    await expect(weightInput).toHaveValue('0.5');
+
+    // Click +5 chip
+    await page.click('.preset-chip[data-delta="+5"]');
+    await expect(weightInput).toHaveValue('5.5');
+
+    // Click +0.5 again
+    await page.click('.preset-chip[data-delta="+0.5"]');
+    await expect(weightInput).toHaveValue('6');
+
+    // Click -0.5 chip
+    await page.click('.preset-chip[data-delta="-0.5"]');
+    await expect(weightInput).toHaveValue('5.5');
+
+    // Set reps to 2
+    await repsInput.fill('2');
+    await expect(impactVal).toContainText('11 lbs');
+
+    // Close logger modal
+    await page.click('#closeActivityLoggerModalBtn');
+    await expect(page.locator('#activityLoggerModal')).not.toBeVisible();
   });
 });
 

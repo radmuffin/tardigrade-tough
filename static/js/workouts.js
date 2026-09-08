@@ -106,6 +106,8 @@ export function updateStepperForGoal(goal) {
         <button class="preset-chip preset-minus" data-delta="-45">-45</button>
         <button class="preset-chip preset-minus" data-delta="-25">-25</button>
         <button class="preset-chip preset-minus" data-delta="-5">-5</button>
+        <button class="preset-chip preset-minus" data-delta="-0.5">-0.5</button>
+        <button class="preset-chip preset-plus" data-delta="+0.5">+0.5</button>
         <button class="preset-chip preset-plus" data-delta="+5">+5</button>
         <button class="preset-chip preset-plus" data-delta="+25">+25</button>
         <button class="preset-chip preset-plus" data-delta="+45">+45</button>
@@ -240,7 +242,9 @@ function attachMetricPresetListeners() {
     chip.onclick = () => {
       const delta = parseFloat(chip.dataset.delta);
       if (!isNaN(delta)) {
-        wtInput.value = Math.max(0, (parseFloat(wtInput.value) || 0) + delta);
+        const cur = parseFloat(wtInput.value) || 0;
+        const next = Math.max(0, Math.round((cur + delta) * 100) / 100);
+        wtInput.value = next === 0 && delta < 0 ? '0' : String(next);
         updateImpact();
       }
     };
@@ -793,7 +797,7 @@ export function setupWorkoutMode({ onReloadState } = {}) {
       <input type="text" class="form-input row-ex" placeholder="Exercise (e.g. Squat)" value="${ex}" style="flex: 2; padding: 8px;">
       <input type="number" class="form-input row-sets" placeholder="Sets" value="${sets}" style="width: 60px; padding: 8px;">
       <input type="number" class="form-input row-reps" placeholder="Reps" value="${reps}" style="width: 60px; padding: 8px;">
-      <input type="number" class="form-input row-wt" placeholder="Lbs" value="${wt}" style="width: 75px; padding: 8px;">
+      <input type="number" step="any" class="form-input row-wt" placeholder="Lbs" value="${wt}" style="width: 75px; padding: 8px;">
       <button class="delete-btn row-del" style="font-size: 1.1rem; padding: 4px 8px;">✕</button>
     `;
 
