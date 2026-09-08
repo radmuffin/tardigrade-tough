@@ -71,6 +71,7 @@ function getChangedFiles() {
 
 function resolveAffectedTests(changedFiles) {
   const plan = {
+    jsCheck: false,
     rustFmt: false,
     rustClippy: false,
     rustFull: false,
@@ -80,6 +81,7 @@ function resolveAffectedTests(changedFiles) {
 
   if (!changedFiles || changedFiles.length === 0) {
     plan.description.push('Running standard baseline verification.');
+    plan.jsCheck = true;
     plan.rustFull = true;
     plan.rustClippy = true;
     plan.rustFmt = true;
@@ -98,6 +100,7 @@ function resolveAffectedTests(changedFiles) {
       norm.endsWith('Dockerfile')
     ) {
       plan.description.push(`Critical build/manifest change: ${norm}`);
+      plan.jsCheck = true;
       plan.rustFull = true;
       plan.rustClippy = true;
       plan.rustFmt = true;
@@ -105,6 +108,7 @@ function resolveAffectedTests(changedFiles) {
     }
 
     if (norm.startsWith('static/') || norm.startsWith('tests/e2e/')) {
+      plan.jsCheck = true;
       plan.e2eSpecs.add('tests/e2e/app.spec.js');
       plan.description.push(`Frontend/E2E change: ${norm}`);
     }
@@ -149,6 +153,11 @@ function main() {
   }
 
   let passed = true;
+
+  if (plan.jsCheck) {
+    passed = passed && runCommand('node --experimental-vm-modules scripts/check-js.js', 'Static JS ES Module Syntax Validation');
+    if (!passed) process.exit(1);
+  }
 
   if (plan.rustFmt) {
     passed = passed && runCommand('cargo fmt --all -- --check', 'Rust Code Formatting Check');

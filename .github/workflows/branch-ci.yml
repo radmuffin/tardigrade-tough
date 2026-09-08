@@ -19,11 +19,15 @@ jobs:
   backend-lint:
     name: Lint & Format
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Validate Static JS ES Modules
+        run: node --experimental-vm-modules scripts/check-js.js
 
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -42,6 +46,7 @@ jobs:
   backend-test:
     name: Backend Test Suite
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -60,6 +65,7 @@ jobs:
   e2e-test:
     name: Playwright E2E Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

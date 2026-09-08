@@ -75,8 +75,6 @@ export function updateStepperForGoal(goal) {
     }
   }
 
-  const curEx = exSelect ? exSelect.value : '';
-
   if (!goal) return;
 
   // Elevation and distance ONLY go through quickadd (Fast-Add)
@@ -90,10 +88,6 @@ export function updateStepperForGoal(goal) {
 
   // Rapid Stepper is strictly for weight lifting (Weight lbs & Reps)
   const curEx = exSelect ? exSelect.value : '';
-  const customExercises = getCustomExercises();
-  const customOpts = customExercises
-    .map(name => `<option value="${FlyToast.escape(name)}">✨ ${FlyToast.escape(name)}</option>`)
-    .join('');
 
   if (exLabel) exLabel.textContent = 'Exercise';
   if (metricLabel) metricLabel.textContent = 'Weight (lbs)';

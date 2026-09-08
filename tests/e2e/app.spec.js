@@ -126,10 +126,13 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(weightInput).toHaveValue('35');
     await expect(impactVal).toContainText('175 lbs');
 
-    // Click -25 plate chip
     await page.click('.preset-chip[data-delta="-25"]');
     await expect(weightInput).toHaveValue('10');
     await expect(impactVal).toContainText('50 lbs');
+
+    // Close logger modal
+    await page.click('#closeActivityLoggerModalBtn');
+    await expect(page.locator('#activityLoggerModal')).not.toBeVisible();
   });
 
   test('opens and parses data in Google Sheet importer modal', async ({ page }) => {
@@ -217,6 +220,10 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     // 4. Switch back to Rapid Stepper
     await page.click('#modeStepperBtn');
     await expect(page.locator('#panelStepper')).toBeVisible();
+
+    // Close logger modal
+    await page.click('#closeActivityLoggerModalBtn');
+    await expect(page.locator('#activityLoggerModal')).not.toBeVisible();
   });
 
   test('supports room-based URL navigation and loads squad data', async ({ page }) => {
@@ -665,7 +672,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(privateBadge).toContainText('Private');
   });
 
-  test('opens and closes activity logger modal via floating button, hero button, and Escape key', async ({ page }) => {
+  test('opens and closes activity logger modal via floating button and Escape key', async ({ page }) => {
     await page.goto('/');
     await page.waitForSelector('body[data-state="ready"]');
 

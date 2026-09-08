@@ -6,8 +6,9 @@
   "scripts": {
     "test": "node scripts/test-affected.js",
     "test:affected": "node scripts/test-affected.js",
-    "test:all": "cargo test --all-targets && cargo clippy --all-targets",
+    "test:all": "cargo test --all-targets && cargo clippy --all-targets && npm run check:js",
     "test:e2e": "playwright test",
+    "check:js": "node --experimental-vm-modules scripts/check-js.js",
     "setup:hooks": "node -e \"const fs=require('fs');if(fs.existsSync('.git')){fs.mkdirSync('.git/hooks',{recursive:true});fs.writeFileSync('.git/hooks/pre-push','#!/bin/sh\\necho \\\"⚡ [Pre-Push] Running affected tests...\\\"\\nnpm run test:affected\\n',{mode:0o755});console.log('✔ Pre-push hook installed!');}\"",
     "lint": "cargo clippy --all-targets",
     "fmt": "cargo fmt --all",
