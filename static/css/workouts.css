@@ -566,9 +566,4 @@
   line-height: 1;
 }
 
-/* Ensure app footer clears the floating button */
-.app-footer {
-  padding-bottom: calc(72px + env(safe-area-inset-bottom, 16px));
-}
-
 
