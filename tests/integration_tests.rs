@@ -2307,6 +2307,7 @@ fn test_activity_edit_and_toggle_pr() {
             is_pr: Some(false),
             is_combined: Some(true),
             is_private: None,
+            ..Default::default()
         },
     )
     .expect("update")
@@ -2316,9 +2317,33 @@ fn test_activity_edit_and_toggle_pr() {
     assert_eq!(updated.sets, 5);
     assert_eq!(updated.reps, 10);
     assert_eq!(updated.weight_per_rep, 100.0);
+    assert_eq!(updated.total_metric, 5000.0);
     assert_eq!(updated.notes, "Detailed set breakdown");
     assert!(updated.is_combined);
     assert!(!updated.is_pr);
+
+    // 3. Update volume and verify room goal recalculates
+    let updated2 = update_activity(
+        &mut conn,
+        act.id,
+        "token_edit_user",
+        &UpdateActivityRequest {
+            sets: Some(5),
+            reps: Some(10),
+            weight_per_rep: Some(200.0),
+            ..Default::default()
+        },
+    )
+    .expect("update 2")
+    .expect("found");
+    assert_eq!(updated2.total_metric, 10_000.0);
+
+    let (active_goals, _) = get_goals_for_room(&conn, "edit-squad").expect("goals");
+    let pando = active_goals
+        .iter()
+        .find(|g| g.category == "weight")
+        .expect("pando");
+    assert_eq!(pando.current_value, 10_000.0);
 
     // 3. Unauthorized user cannot update or toggle
     let unauth = toggle_activity_pr(&mut conn, act.id, "wrong_token").expect("toggle unauth");

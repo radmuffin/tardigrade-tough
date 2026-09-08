@@ -630,7 +630,7 @@ pub fn update_activity(
 ) -> Result<Option<Activity>> {
     let tx = conn.transaction()?;
     let current = tx.query_row(
-        r#"SELECT id, room_slug, exercise_name, sets, reps, weight_per_rep, notes, is_pr, is_combined, COALESCE(is_private, 0)
+        r#"SELECT id, room_slug, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, is_pr, is_combined, COALESCE(is_private, 0)
            FROM activities WHERE id = ? AND user_token = ?"#,
         params![activity_id, user_token],
         |r| {
@@ -638,23 +638,41 @@ pub fn update_activity(
                 r.get::<_, i64>(0)?,
                 r.get::<_, String>(1)?,
                 r.get::<_, String>(2)?,
-                r.get::<_, i32>(3)?,
+                r.get::<_, String>(3)?,
                 r.get::<_, i32>(4)?,
-                r.get::<_, f64>(5)?,
-                r.get::<_, String>(6)?,
-                r.get::<_, i32>(7)?,
-                r.get::<_, i32>(8)?,
-                r.get::<_, i32>(9)?,
+                r.get::<_, i32>(5)?,
+                r.get::<_, f64>(6)?,
+                r.get::<_, f64>(7)?,
+                r.get::<_, f64>(8)?,
+                r.get::<_, f64>(9)?,
+                r.get::<_, String>(10)?,
+                r.get::<_, i32>(11)?,
+                r.get::<_, i32>(12)?,
+                r.get::<_, i32>(13)?,
             ))
         },
     );
 
-    let (act_id, _room, cur_ex, cur_sets, cur_reps, cur_wt, cur_notes, cur_pr, cur_comb, cur_priv) =
-        match current {
-            Ok(v) => v,
-            Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
-            Err(e) => return Err(e),
-        };
+    let (
+        act_id,
+        room,
+        act_type,
+        cur_ex,
+        cur_sets,
+        cur_reps,
+        cur_wt,
+        cur_dist,
+        cur_elev,
+        cur_total,
+        cur_notes,
+        cur_pr,
+        cur_comb,
+        cur_priv,
+    ) = match current {
+        Ok(v) => v,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+        Err(e) => return Err(e),
+    };
 
     let new_ex = req
         .exercise_name
@@ -665,8 +683,9 @@ pub fn update_activity(
     let new_sets = req.sets.unwrap_or(cur_sets).max(1);
     let new_reps = req.reps.unwrap_or(cur_reps).max(1);
     let new_wt = req.weight_per_rep.unwrap_or(cur_wt).max(0.0);
+    let new_dist = req.distance_val.unwrap_or(cur_dist).max(0.0);
+    let new_elev = req.elevation_val.unwrap_or(cur_elev).max(0.0);
     let new_notes = req.notes.as_deref().map(|s| s.trim()).unwrap_or(&cur_notes);
-    let new_pr = req.is_pr.map(|b| if b { 1 } else { 0 }).unwrap_or(cur_pr);
     let new_comb = req
         .is_combined
         .map(|b| if b { 1 } else { 0 })
@@ -676,12 +695,62 @@ pub fn update_activity(
         .map(|b| if b { 1 } else { 0 })
         .unwrap_or(cur_priv);
 
+    let new_total_metric = if let Some(explicit) = req.total_metric {
+        explicit.max(0.0)
+    } else {
+        match act_type.as_str() {
+            "weight" => (new_sets as f64) * (new_reps as f64) * new_wt,
+            "distance" => {
+                if new_dist > 0.0 {
+                    new_dist
+                } else if new_wt > 0.0 {
+                    (new_sets as f64) * (new_reps as f64) * new_wt
+                } else {
+                    cur_total
+                }
+            }
+            "elevation" => {
+                if new_elev > 0.0 {
+                    new_elev
+                } else if new_wt > 0.0 {
+                    (new_sets as f64) * (new_reps as f64) * new_wt
+                } else {
+                    cur_total
+                }
+            }
+            "ability" => 1.0,
+            _ => {
+                if new_wt > 0.0 {
+                    (new_sets as f64) * (new_reps as f64) * new_wt
+                } else if new_dist > 0.0 {
+                    new_dist
+                } else if new_elev > 0.0 {
+                    new_elev
+                } else {
+                    (new_sets as f64) * (new_reps as f64)
+                }
+            }
+        }
+    };
+
+    let new_pr = if new_comb == 1 {
+        0
+    } else if let Some(b) = req.is_pr {
+        if b {
+            1
+        } else {
+            0
+        }
+    } else {
+        cur_pr
+    };
+
     tx.execute(
         r#"UPDATE activities 
-           SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, notes = ?, is_pr = ?, is_combined = ?, is_private = ?
+           SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, distance_val = ?, elevation_val = ?, total_metric = ?, notes = ?, is_pr = ?, is_combined = ?, is_private = ?
            WHERE id = ?"#,
         params![
-            new_ex, new_sets, new_reps, new_wt, new_notes, new_pr, new_comb, new_priv, act_id
+            new_ex, new_sets, new_reps, new_wt, new_dist, new_elev, new_total_metric, new_notes, new_pr, new_comb, new_priv, act_id
         ],
     )?;
 
@@ -699,20 +768,7 @@ pub fn update_activity(
             params![act_id],
         )?;
         for r in child_rooms {
-            let _ = tx.execute(
-                r#"UPDATE goals
-                   SET current_value = (
-                       SELECT COALESCE(SUM(a.total_metric), 0.0)
-                       FROM activities a
-                       WHERE (a.goal_id = goals.id OR (a.goal_id IS NULL AND a.room_slug = goals.room_slug AND a.activity_type = goals.category))
-                   )
-                   WHERE room_slug = ?"#,
-                params![r],
-            );
-            let _ = tx.execute(
-                "UPDATE goals SET status = 'active' WHERE room_slug = ? AND current_value < target_value AND status = 'completed'",
-                params![r],
-            );
+            let _ = recalculate_room_goals(&tx, &r);
         }
     } else if cur_priv == 1 && new_priv == 0 {
         // Toggled from private to public: sync to all squads user belongs to
@@ -728,15 +784,27 @@ pub fn update_activity(
         }
     } else {
         // Also update any child activities forwarded from this parent
+        let child_rooms: Vec<String> = {
+            let mut stmt = tx.prepare(
+                "SELECT DISTINCT room_slug FROM activities WHERE parent_activity_id = ?",
+            )?;
+            let rows = stmt.query_map(params![act_id], |r| r.get(0))?;
+            rows.filter_map(Result::ok).collect()
+        };
         let _ = tx.execute(
             r#"UPDATE activities 
-               SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, notes = ?, is_pr = ?, is_combined = ?, is_private = ?
+               SET exercise_name = ?, sets = ?, reps = ?, weight_per_rep = ?, distance_val = ?, elevation_val = ?, total_metric = ?, notes = ?, is_pr = ?, is_combined = ?, is_private = ?
                WHERE parent_activity_id = ? AND user_token = ?"#,
             params![
-                new_ex, new_sets, new_reps, new_wt, new_notes, new_pr, new_comb, new_priv, act_id, user_token
+                new_ex, new_sets, new_reps, new_wt, new_dist, new_elev, new_total_metric, new_notes, new_pr, new_comb, new_priv, act_id, user_token
             ],
         );
+        for r in child_rooms {
+            let _ = recalculate_room_goals(&tx, &r);
+        }
     }
+
+    let _ = recalculate_room_goals(&tx, &room);
 
     let updated_act = tx.query_row(
         r#"SELECT id, room_slug, user_token, user_nickname, user_avatar_color, COALESCE(user_avatar_emoji, ''), goal_id, activity_type, exercise_name, sets, reps, weight_per_rep, distance_val, elevation_val, total_metric, notes, created_at, parent_activity_id, COALESCE(is_pr, 0), COALESCE(is_combined, 0), COALESCE(is_private, 0)

@@ -16,6 +16,7 @@ import {
   updateStepperForGoal,
   setupFastAdd,
   setupWorkoutMode,
+  renderQuickRecentSets,
 } from './js/workouts.js';
 import { setupActivityFilters, renderFeed, setupCheers } from './js/activity-feed.js';
 import { renderTrophyRoom, renderWishlists, setupTrophyListeners } from './js/trophy.js';
@@ -158,6 +159,9 @@ export function renderAll() {
 
   // Active Goal Showcase
   renderGoalShowcase({ onUpdateStepper: updateStepperForGoal });
+
+  // Quick Recent Sets & Today's Total on Quests View
+  renderQuickRecentSets({ onReloadState: loadRoomState });
 
   // Leaderboard
   renderLeaderboard();

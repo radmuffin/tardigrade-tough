@@ -1,5 +1,5 @@
 import { FlyToast, FlyTheme } from '/_fly/fly-ui.js';
-import { state, formatNumber } from '../state.js';
+import { state, formatNumber, isToday } from '../state.js';
 import { formatTimeAgo } from '../activity-feed.js';
 
 export function setupHubModal({ onReloadState } = {}) {
@@ -183,6 +183,42 @@ export function setupHubModal({ onReloadState } = {}) {
         totalDist += m.total_distance || 0;
         totalElev += m.total_elevation || 0;
         totalSets += m.total_sets || 0;
+      }
+    }
+
+    const profileStatToday = document.getElementById('profileStatToday');
+    if (profileStatToday) {
+      let todayWeight = 0;
+      let todayDistance = 0;
+      let todayElevation = 0;
+      let todaySets = 0;
+
+      const myActs = (state.currentRoomData.recent_activities || []).filter(
+        act => act.user_token === myToken && isToday(act.created_at)
+      );
+
+      myActs.forEach(act => {
+        if (act.activity_type === 'weight') {
+          todayWeight += act.total_metric || 0;
+        } else if (act.activity_type === 'distance') {
+          todayDistance += act.distance_val || act.total_metric || 0;
+        } else if (act.activity_type === 'elevation') {
+          todayElevation += act.elevation_val || act.total_metric || 0;
+        } else if (act.weight_per_rep > 0) {
+          todayWeight += act.total_metric || 0;
+        }
+        todaySets += (act.sets || 1);
+      });
+
+      const parts = [];
+      if (todayWeight > 0) parts.push(`${formatNumber(todayWeight)} lbs`);
+      if (todayDistance > 0) parts.push(`${Number.isInteger(todayDistance) ? todayDistance : (Math.round(todayDistance * 10) / 10)} mi`);
+      if (todayElevation > 0) parts.push(`${formatNumber(todayElevation)} ft`);
+
+      if (parts.length === 0) {
+        profileStatToday.textContent = '0 lbs · 0 sets (Rest day)';
+      } else {
+        profileStatToday.textContent = `${parts.join(' · ')} · ${todaySets} set${todaySets === 1 ? '' : 's'}`;
       }
     }
 

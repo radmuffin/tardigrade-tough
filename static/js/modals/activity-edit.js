@@ -75,16 +75,31 @@ export function setupActivityEditModal({ onReloadState } = {}) {
     const actId = idInput?.value;
     if (!actId) return;
 
+    const actType = modal.dataset.actType || 'weight';
+    const numVal = parseFloat(wtInput?.value) || 0;
+
     const payload = {
       exercise_name: exInput?.value.trim() || 'Exercise',
       sets: parseInt(setsInput?.value, 10) || 1,
       reps: parseInt(repsInput?.value, 10) || 1,
-      weight_per_rep: parseFloat(wtInput?.value) || 0,
       notes: notesInput?.value.trim() || '',
       is_combined: combinedCheckbox ? combinedCheckbox.checked : false,
       is_pr: isPrCheckbox ? isPrCheckbox.checked : false,
       is_private: privateCheckbox ? privateCheckbox.checked : false,
     };
+
+    if (actType === 'distance') {
+      payload.distance_val = numVal;
+      payload.total_metric = numVal;
+      payload.weight_per_rep = 0;
+    } else if (actType === 'elevation') {
+      payload.elevation_val = numVal;
+      payload.total_metric = numVal;
+      payload.weight_per_rep = 0;
+    } else {
+      payload.weight_per_rep = numVal;
+      payload.total_metric = payload.sets * payload.reps * numVal;
+    }
 
     try {
       if (saveBtn) {
@@ -126,20 +141,28 @@ export function openActivityEditModal(act) {
   const privateCheckbox = document.getElementById('activityEditIsPrivate');
   const togglePrBtn = document.getElementById('togglePrQuickBtn');
 
+  modal.dataset.actType = act.activity_type || 'weight';
+
   if (idInput) idInput.value = act.id;
   if (exInput) exInput.value = act.exercise_name || '';
   if (setsInput) setsInput.value = act.sets || 1;
   if (repsInput) repsInput.value = act.reps || 1;
-  if (wtInput) wtInput.value = act.weight_per_rep || 0;
   if (notesInput) notesInput.value = act.notes || '';
   if (combinedCheckbox) combinedCheckbox.checked = !!act.is_combined;
   if (isPrCheckbox) isPrCheckbox.checked = !!act.is_pr;
   if (privateCheckbox) privateCheckbox.checked = !!act.is_private;
 
-  if (metricLabel) {
-    if (act.activity_type === 'distance') metricLabel.textContent = 'Miles';
-    else if (act.activity_type === 'elevation') metricLabel.textContent = 'Elevation';
-    else metricLabel.textContent = 'Weight (ea)';
+  if (metricLabel && wtInput) {
+    if (act.activity_type === 'distance') {
+      metricLabel.textContent = 'Distance (mi)';
+      wtInput.value = act.distance_val > 0 ? act.distance_val : (act.total_metric || 0);
+    } else if (act.activity_type === 'elevation') {
+      metricLabel.textContent = 'Elevation (ft)';
+      wtInput.value = act.elevation_val > 0 ? act.elevation_val : (act.total_metric || 0);
+    } else {
+      metricLabel.textContent = 'Weight (ea)';
+      wtInput.value = act.weight_per_rep || 0;
+    }
   }
 
   if (togglePrBtn) {

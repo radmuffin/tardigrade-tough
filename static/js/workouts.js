@@ -1,5 +1,6 @@
 import { FlyToast } from '/_fly/fly-ui.js';
-import { state, formatNumber } from './state.js';
+import { state, formatNumber, isToday } from './state.js';
+import { formatTimeAgo, deleteActivity } from './activity-feed.js';
 
 export function getCustomExercises() {
   try {
@@ -516,6 +517,10 @@ export function setupSteppers({ onReloadState } = {}) {
       const totalMetric = currentGoal.category === 'weight' ? metricVal * reps : metricVal * reps;
       const isPrivate = document.getElementById('stepperPrivate')?.checked || false;
 
+      if (!logSetBtn.dataset.origHtml) logSetBtn.dataset.origHtml = logSetBtn.innerHTML;
+      const unit = currentGoal.category === 'distance' ? 'mi' : currentGoal.category === 'elevation' ? 'ft' : 'lbs';
+      const successMsg = `<span>✓</span> Logged +${formatNumber(totalMetric)} ${unit}!`;
+
       await executeLogActivity({
         room_slug: state.roomSlug,
         activity_type: currentGoal.category,
@@ -528,17 +533,26 @@ export function setupSteppers({ onReloadState } = {}) {
         total_metric: totalMetric,
         goal_id: currentGoal.id,
         is_private: isPrivate,
-      }, { onReloadState });
+      }, {
+        onReloadState,
+        triggerButton: logSetBtn,
+        buttonSuccessText: successMsg,
+      });
     });
   }
 
   if (repeatSetBtn) {
     repeatSetBtn.addEventListener('click', async () => {
+      if (!repeatSetBtn.dataset.origHtml) repeatSetBtn.dataset.origHtml = repeatSetBtn.innerHTML;
       if (state.lastLoggedSet) {
         await executeLogActivity({
           ...state.lastLoggedSet,
           notes: 'Repeat set',
-        }, { onReloadState });
+        }, {
+          onReloadState,
+          triggerButton: repeatSetBtn,
+          buttonSuccessText: '<span>✓</span> +1 Added!',
+        });
         return;
       }
       if (logSetBtn) logSetBtn.click();
@@ -556,6 +570,7 @@ export function setupSteppers({ onReloadState } = {}) {
 
       const notes = (featNoteInput ? featNoteInput.value.trim() : '') || 'Accomplished!';
       const isPrivate = document.getElementById('abilityFeatPrivate')?.checked || false;
+      if (!checkoffBtn.dataset.origHtml) checkoffBtn.dataset.origHtml = checkoffBtn.innerHTML;
       try {
         checkoffBtn.disabled = true;
         checkoffBtn.innerHTML = '<span>⏳</span> Recording...';
@@ -563,6 +578,10 @@ export function setupSteppers({ onReloadState } = {}) {
         if (res && res.success) {
           if (featNoteInput) featNoteInput.value = '';
           FlyToast.success(`🎉 Accomplished: ${currentGoal?.title || 'Ability'}!`);
+          if (navigator.vibrate) {
+            try { navigator.vibrate([40, 30, 40]); } catch (_) {}
+          }
+          flashButtonSuccess(checkoffBtn, '<span>✓</span> Accomplished! 🏆', checkoffBtn.dataset.origHtml);
           if (state.diorama) {
             state.diorama.spawnCelebrationBurst('⚡ Feat Unlocked!');
           }
@@ -583,20 +602,56 @@ export function setupSteppers({ onReloadState } = {}) {
   updateImpact();
 }
 
-export async function executeLogActivity(req, { onReloadState } = {}) {
+export function flashButtonSuccess(btn, successHtml, originalHtml, durationMs = 1600) {
+  if (!btn) return;
+  btn.classList.add('btn-log-success');
+  btn.innerHTML = successHtml;
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.classList.remove('btn-log-success');
+    btn.innerHTML = originalHtml;
+    btn.disabled = false;
+  }, durationMs);
+}
+
+export async function executeLogActivity(req, { onReloadState, triggerButton, buttonSuccessText } = {}) {
   state.lastLoggedSet = req;
 
   if (navigator.onLine) {
     try {
       const res = await state.client.post('/activities', req);
       if (res && res.success) {
-        const unit = res.data.activity_type === 'weight' ? 'lbs' : res.data.activity_type === 'elevation' ? 'ft' : 'mi';
-        FlyToast.success(`Logged ${formatNumber(res.data.total_metric)} ${unit}!`);
+        state.justLoggedActivityId = res.data.id;
+        const act = res.data;
+        const unit = act.activity_type === 'weight' ? 'lbs' : act.activity_type === 'elevation' ? 'ft' : 'mi';
+        const exName = act.exercise_name || req.exercise_name || 'Set';
+        let detail = '';
+        if (act.activity_type === 'weight') {
+          detail = `${act.sets}x${act.reps} @ ${act.weight_per_rep} lbs (+${formatNumber(act.total_metric)} lbs)`;
+        } else if (act.activity_type === 'distance') {
+          detail = `${act.total_metric} mi`;
+        } else if (act.activity_type === 'elevation') {
+          detail = `${formatNumber(act.total_metric)} ft`;
+        } else {
+          detail = `+${formatNumber(act.total_metric)}`;
+        }
+        FlyToast.success(`✓ Logged ${exName}: ${detail}`);
+
+        if (navigator.vibrate) {
+          try { navigator.vibrate([40, 30, 40]); } catch (_) {}
+        }
+
+        if (triggerButton) {
+          const originalText = triggerButton.dataset.origHtml || triggerButton.innerHTML;
+          const flashText = buttonSuccessText || '<span>✓</span> Logged!';
+          flashButtonSuccess(triggerButton, flashText, originalText);
+        }
+
         if (onReloadState) await onReloadState();
         if (state.diorama) {
           state.diorama.spawnCelebrationBurst(`+${formatNumber(res.data.total_metric)} ${unit}`);
         }
-        return;
+        return res.data;
       }
     } catch (err) {
       console.warn('Online log failed, fallback to queue:', err);
@@ -606,7 +661,12 @@ export async function executeLogActivity(req, { onReloadState } = {}) {
   if (state.offlineSync) {
     state.offlineSync.enqueue(req);
   }
-  FlyToast.info('Logged offline! Will auto-sync when connection returns.');
+  FlyToast.info('✓ Logged offline! Will auto-sync when connection returns.');
+  if (triggerButton) {
+    const originalText = triggerButton.dataset.origHtml || triggerButton.innerHTML;
+    flashButtonSuccess(triggerButton, '<span>✓</span> Logged Offline!', originalText);
+  }
+  if (onReloadState) await onReloadState();
 }
 
 export function setupFastAdd({ onReloadState } = {}) {
@@ -701,7 +761,12 @@ export function setupFastAdd({ onReloadState } = {}) {
       is_private: isPrivate,
     };
 
-    await executeLogActivity(payload, { onReloadState });
+    if (!submitBtn.dataset.origHtml) submitBtn.dataset.origHtml = submitBtn.innerHTML;
+    await executeLogActivity(payload, {
+      onReloadState,
+      triggerButton: submitBtn,
+      buttonSuccessText: `<span>✓</span> Logged +${formatNumber(val)}!`,
+    });
     amtInput.value = '';
     if (exerciseInput) exerciseInput.value = '';
     if (setsInput) setsInput.value = '';
@@ -777,6 +842,8 @@ export function setupWorkoutMode({ onReloadState } = {}) {
       return;
     }
 
+    if (!submitBtn.dataset.origHtml) submitBtn.dataset.origHtml = submitBtn.innerHTML;
+
     if (navigator.onLine) {
       try {
         const res = await state.client.post('/activities/batch', {
@@ -784,7 +851,11 @@ export function setupWorkoutMode({ onReloadState } = {}) {
           activities,
         });
         if (res && res.success) {
-          FlyToast.success(`Submitted ${activities.length} exercises!`);
+          FlyToast.success(`✓ Submitted ${activities.length} exercises!`);
+          if (navigator.vibrate) {
+            try { navigator.vibrate([40, 30, 40]); } catch (_) {}
+          }
+          flashButtonSuccess(submitBtn, `<span>✓</span> ${activities.length} Logged!`, submitBtn.dataset.origHtml);
           container.innerHTML = '';
           addRow('', '', '', '');
           if (onReloadState) await onReloadState();
@@ -798,8 +869,130 @@ export function setupWorkoutMode({ onReloadState } = {}) {
     if (state.offlineSync) {
       activities.forEach(a => state.offlineSync.enqueue(a));
     }
-    FlyToast.info(`Logged ${activities.length} exercises offline!`);
+    FlyToast.info(`✓ Logged ${activities.length} exercises offline!`);
+    flashButtonSuccess(submitBtn, `<span>✓</span> ${activities.length} Offline!`, submitBtn.dataset.origHtml);
     container.innerHTML = '';
     addRow('', '', '', '');
+    if (onReloadState) await onReloadState();
+  });
+}
+
+export function renderQuickRecentSets({ onReloadState } = {}) {
+  const container = document.getElementById('quickRecentSetsList');
+  const summaryEl = document.getElementById('quickTodaySummary');
+  if (!container || !state.currentRoomData) return;
+
+  const myToken = state.currentRoomData.user_profile?.user_token;
+  const allActivities = state.currentRoomData.recent_activities || [];
+  const myActivities = allActivities.filter(act => act.user_token === myToken);
+
+  // Compute Today's totals for the current user
+  let todayWeight = 0;
+  let todayDistance = 0;
+  let todayElevation = 0;
+  let todaySets = 0;
+
+  myActivities.forEach(act => {
+    if (isToday(act.created_at)) {
+      if (act.activity_type === 'weight') {
+        todayWeight += act.total_metric || 0;
+      } else if (act.activity_type === 'distance') {
+        todayDistance += act.distance_val || act.total_metric || 0;
+      } else if (act.activity_type === 'elevation') {
+        todayElevation += act.elevation_val || act.total_metric || 0;
+      } else if (act.weight_per_rep > 0) {
+        todayWeight += act.total_metric || 0;
+      }
+      todaySets += (act.sets || 1);
+    }
+  });
+
+  if (summaryEl) {
+    const parts = [];
+    if (todayWeight > 0) parts.push(`<strong>${formatNumber(todayWeight)} lbs</strong>`);
+    if (todayDistance > 0) parts.push(`<strong>${Number.isInteger(todayDistance) ? todayDistance : (Math.round(todayDistance * 10) / 10)} mi</strong>`);
+    if (todayElevation > 0) parts.push(`<strong>${formatNumber(todayElevation)} ft</strong>`);
+
+    if (parts.length === 0) {
+      summaryEl.innerHTML = 'Today: <strong>0 lbs</strong> · 0 sets';
+    } else {
+      summaryEl.innerHTML = `Today: ${parts.join(' · ')} · ${todaySets} set${todaySets === 1 ? '' : 's'}`;
+    }
+  }
+
+  // Render recent sets (up to 4)
+  if (myActivities.length === 0) {
+    container.innerHTML = '<div class="recent-sets-empty">No sets logged yet</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  myActivities.slice(0, 4).forEach(act => {
+    const item = document.createElement('div');
+    const isNew = state.justLoggedActivityId === act.id;
+    item.className = `recent-set-item${isNew ? ' new-set-flash' : ''}`;
+
+    let metricText = '';
+    if (act.activity_type === 'weight') {
+      metricText = `+${formatNumber(act.total_metric)} lbs`;
+    } else if (act.activity_type === 'distance') {
+      metricText = `+${act.distance_val || act.total_metric} mi`;
+    } else if (act.activity_type === 'elevation') {
+      metricText = `+${formatNumber(act.elevation_val || act.total_metric)} ft`;
+    } else if (act.activity_type === 'ability') {
+      metricText = '⚡ Feat';
+    } else {
+      metricText = `+${formatNumber(act.total_metric)}`;
+    }
+
+    let detailStr = act.activity_type === 'weight'
+      ? `${act.sets}x${act.reps} @ ${act.weight_per_rep}lbs`
+      : act.activity_type === 'ability'
+      ? 'Feat'
+      : (act.sets > 1 || act.reps > 1 ? `${act.sets}x${act.reps}` : '');
+
+    const prBadge = act.is_pr
+      ? '<span class="pr-badge" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">👑 PR</span>'
+      : '';
+    const combBadge = act.is_combined
+      ? '<span class="combined-badge" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">📦 Comb</span>'
+      : '';
+    const privateBadge = act.is_private
+      ? '<span class="private-badge" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 4px;">🔒 Priv</span>'
+      : '';
+
+    const timeAgo = formatTimeAgo(act.created_at);
+
+    item.innerHTML = `
+      <div class="recent-set-left">
+        <div class="recent-set-name-row">
+          <span class="recent-set-name">${FlyToast.escape(act.exercise_name)}</span>
+          ${detailStr ? `<span class="recent-set-details">(${detailStr})</span>` : ''}
+          ${prBadge}${combBadge}${privateBadge}
+        </div>
+        <div class="recent-set-time">${act.notes ? `"${FlyToast.escape(act.notes)}" • ` : ''}${timeAgo}</div>
+      </div>
+      <div class="recent-set-right">
+        <span class="recent-set-metric">${metricText}</span>
+        <button class="recent-set-action-btn edit-btn" title="Edit set">✎</button>
+        <button class="recent-set-action-btn del-btn" title="Delete set">✕</button>
+      </div>
+    `;
+
+    const editBtn = item.querySelector('.edit-btn');
+    if (editBtn) {
+      editBtn.addEventListener('click', () => {
+        if (window.openActivityEditModal) {
+          window.openActivityEditModal(act);
+        }
+      });
+    }
+
+    const delBtn = item.querySelector('.del-btn');
+    if (delBtn) {
+      delBtn.addEventListener('click', () => deleteActivity(act.id, { onReloadState }));
+    }
+
+    container.appendChild(item);
   });
 }
