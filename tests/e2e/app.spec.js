@@ -660,6 +660,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.fill('#stepperReps', '12');
     await page.fill('#stepperWeight', '150');
     await page.click('#logSetBtn');
+    await expect(page.locator('#logSetBtn')).toHaveClass(/btn-log-success/);
 
     // Close logger modal
     await page.click('#closeActivityLoggerModalBtn');
@@ -667,7 +668,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     // Navigate to activity feed
     await page.click('#navActivityBtn');
-    const privateBadge = page.locator('#activityFeed .private-badge').first();
+    const privateBadge = page.locator('#activityFeedList .private-badge').first();
     await expect(privateBadge).toBeVisible();
     await expect(privateBadge).toContainText('Private');
   });
