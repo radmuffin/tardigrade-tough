@@ -75,3 +75,6 @@ Always apply these guidelines when designing interfaces, writing code, refactori
    - Once local affected checks pass cleanly, commit and push immediately to `origin/main` without pausing for extra confirmation.
    - GitHub Actions CI (`.github/workflows/ci.yml`) runs all formatting, linters, backend integration tests, and Playwright E2E tests, and then autonomously deploys to Fly.io.
    - Do NOT run manual local `fly deploy` for commits pushed to `main` to ensure CI executes before deployment and eliminate redundant double deploys.
+4. **Mandatory UI Changes & Active CI Surveillance**:
+   - Whenever touching UI layout, CSS styles, or DOM hierarchy (`static/index.html`, `static/css/*`, `static/js/*`), audit fixed and floating element pointer clearance (`#floatingLogBtn` vs footers and buttons) and audit `tests/e2e/app.spec.js`.
+   - Agents **MUST actively monitor the GitHub Actions CI run** after pushing UI changes (`gh run list --limit 1` / `gh run view <id>`) until completion (`conclusion: success`). Never declare completion until CI passes green. In the event of a CI failure, diagnose immediately (`gh run view <id> --log-failed`) and push an autonomous fix.

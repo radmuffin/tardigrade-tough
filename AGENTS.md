@@ -143,6 +143,12 @@ To maximize agent throughput, prevent CPU/memory starvation, and eliminate test 
 >    Do not pause or wait for extra confirmation to push when completing requested fixes or features.
 >    GitHub Actions CI (`.github/workflows/ci.yml`) will run all linting, backend tests, and Playwright E2E tests, and then handle the automated deployment to Fly.io.
 >    **Do NOT run manual `fly deploy` locally** to prevent redundant deploys and ensure CI runs before any deployment.
+>
+> 5. **Mandatory UI Change & CI Surveillance Protocol**:
+>    Whenever modifying UI layout, CSS styles, or DOM hierarchy (`static/index.html`, `static/css/*`, `static/js/*`):
+>    - **Pointer Events & Clearance Audit**: Fixed or floating elements (such as `#floatingLogBtn`, modal overlays, header chips) must NEVER overlap, occlude, or intercept pointer events on underlying interactive elements (footer links, buttons, form controls). Always enforce adequate clearance padding (e.g. `calc(96px + env(safe-area-inset-bottom, 16px))` for footers clearing floating controls).
+>    - **E2E Spec Audit**: Before pushing, cross-reference modified element IDs, selectors, and visibility against `tests/e2e/app.spec.js` to ensure existing user journeys and click paths remain unblocked.
+>    - **Active Post-Push CI Monitoring**: Agents **MUST actively monitor the GitHub Actions CI run** (`gh run list --limit 1` / `gh run view <id>`) after pushing UI changes until completion (`conclusion: success`). Never conclude an interaction or declare victory until CI passes cleanly green. If CI fails, immediately diagnose using `gh run view <id> --log-failed`, resolve the regression, and push a fix autonomously.
 
 ---
 
