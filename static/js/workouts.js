@@ -904,7 +904,13 @@ export function renderQuickRecentSets({ onReloadState } = {}) {
 
   // Render recent sets (up to 4)
   if (myActivities.length === 0) {
-    container.innerHTML = '<div class="recent-sets-empty">No sets logged yet</div>';
+    container.innerHTML = '<div class="recent-sets-empty clickable" style="cursor: pointer;" title="Tap to log a set">No sets logged yet • <span style="text-decoration: underline; color: var(--accent-green);">+ Log set</span></div>';
+    const emptyEl = container.querySelector('.recent-sets-empty');
+    if (emptyEl) {
+      emptyEl.addEventListener('click', () => {
+        if (window.openActivityLoggerModal) window.openActivityLoggerModal();
+      });
+    }
     return;
   }
 
