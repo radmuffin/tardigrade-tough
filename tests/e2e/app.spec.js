@@ -210,6 +210,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#submitWorkoutBtn')).toBeVisible();
     await expect(page.locator('#addWorkoutRowBtn')).toHaveText('+ Add Exercise');
     await expect(page.locator('#workoutEntriesContainer .workout-entry-row')).toHaveCount(1);
+    await expect(page.locator('#workoutEntriesContainer .workout-entry-row select.row-ex')).toBeVisible();
 
     // 3. Switch to Fast-Add
     await page.click('#modeFastAddBtn');

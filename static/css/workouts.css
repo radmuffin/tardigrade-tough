@@ -291,6 +291,32 @@
   margin-bottom: 8px;
 }
 
+.workout-entry-row .row-ex {
+  flex: 2;
+  min-width: 0;
+  padding: 8px 6px;
+  font-size: 0.85rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+}
+
+.workout-entry-row .row-sets,
+.workout-entry-row .row-reps {
+  width: 54px;
+  min-width: 0;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.workout-entry-row .row-wt {
+  width: 64px;
+  min-width: 0;
+  padding: 8px 4px;
+  text-align: center;
+}
+
 .quick-add-chip {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);

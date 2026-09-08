@@ -695,13 +695,77 @@ export function setupWorkoutMode({ onReloadState } = {}) {
     row.style.gap = '6px';
     row.style.alignItems = 'center';
 
+    const customExercises = getCustomExercises();
+    const customOpts = customExercises
+      .map(name => `<option value="${FlyToast.escape(name)}" ${ex === name ? 'selected' : ''}>✨ ${FlyToast.escape(name)}</option>`)
+      .join('');
+
+    const standardExercises = [
+      { name: 'Back Squat', emoji: '🏋️', aliases: ['Back Squat', 'Squat'] },
+      { name: 'Deadlift', emoji: '⛓️', aliases: ['Deadlift'] },
+      { name: 'Bench Press', emoji: '🛡️', aliases: ['Bench Press', 'Bench'] },
+      { name: 'Leg Press', emoji: '🦵', aliases: ['Leg Press'] },
+      { name: 'Overhead Press', emoji: '🚀', aliases: ['Overhead Press'] },
+      { name: 'Barbell Row', emoji: '🚣', aliases: ['Barbell Row', 'Row'] },
+      { name: 'Dumbbell Lunge', emoji: '👟', aliases: ['Dumbbell Lunge', 'Lunge'] },
+      { name: 'Bicep Curl', emoji: '💪', aliases: ['Bicep Curl', 'Curl'] },
+    ];
+
+    let matched = false;
+    const standardOpts = standardExercises.map(item => {
+      const isSel = item.aliases.includes(ex) || item.name === ex;
+      if (isSel) matched = true;
+      return `<option value="${item.name}" ${isSel ? 'selected' : ''}>${item.emoji} ${item.name}</option>`;
+    }).join('');
+
+    let extraOpt = '';
+    if (ex && !matched && !customExercises.includes(ex)) {
+      extraOpt = `<option value="${FlyToast.escape(ex)}" selected>✨ ${FlyToast.escape(ex)}</option>`;
+    }
+
     row.innerHTML = `
-      <input type="text" class="form-input row-ex" placeholder="Exercise (e.g. Squat)" value="${ex}" style="flex: 2; padding: 8px;">
-      <input type="number" class="form-input row-sets" placeholder="Sets" value="${sets}" style="width: 60px; padding: 8px;">
-      <input type="number" class="form-input row-reps" placeholder="Reps" value="${reps}" style="width: 60px; padding: 8px;">
-      <input type="number" step="any" class="form-input row-wt" placeholder="Lbs" value="${wt}" style="width: 75px; padding: 8px;">
-      <button class="delete-btn row-del" style="font-size: 1.1rem; padding: 4px 8px;">✕</button>
+      <select class="form-select row-ex" style="flex: 2; min-width: 0; padding: 8px 6px; font-size: 0.85rem;" aria-label="Exercise">
+        <option value="" disabled ${!ex ? 'selected' : ''}>Select Exercise</option>
+        ${standardOpts}
+        ${customOpts}
+        ${extraOpt}
+        <option value="__add_custom__">✨ + Custom...</option>
+      </select>
+      <input type="number" class="form-input row-sets" placeholder="Sets" value="${sets}" min="1" style="width: 54px; min-width: 0; padding: 8px 4px; text-align: center;" aria-label="Sets">
+      <input type="number" class="form-input row-reps" placeholder="Reps" value="${reps}" min="1" style="width: 54px; min-width: 0; padding: 8px 4px; text-align: center;" aria-label="Reps">
+      <input type="number" step="any" class="form-input row-wt" placeholder="Lbs" value="${wt}" min="0" style="width: 64px; min-width: 0; padding: 8px 4px; text-align: center;" aria-label="Weight in pounds">
+      <button class="delete-btn row-del" style="font-size: 1.1rem; padding: 4px 8px; flex: 0 0 auto;" aria-label="Remove exercise row">✕</button>
     `;
+
+    const exSelect = row.querySelector('.row-ex');
+    if (exSelect) {
+      exSelect.dataset.prevValue = exSelect.value;
+      exSelect.addEventListener('change', () => {
+        if (exSelect.value === '__add_custom__') {
+          const customName = window.prompt('Enter custom exercise name:');
+          if (customName && customName.trim()) {
+            const trimmed = customName.trim();
+            saveCustomExercise(trimmed);
+            const newOpt = document.createElement('option');
+            newOpt.value = trimmed;
+            newOpt.textContent = `✨ ${trimmed}`;
+            const addCustomOpt = exSelect.querySelector('option[value="__add_custom__"]');
+            if (addCustomOpt) {
+              exSelect.insertBefore(newOpt, addCustomOpt);
+            } else {
+              exSelect.appendChild(newOpt);
+            }
+            exSelect.value = trimmed;
+            exSelect.dataset.prevValue = trimmed;
+            FlyToast.success(`Added "${trimmed}" to exercises!`);
+          } else {
+            exSelect.value = exSelect.dataset.prevValue || '';
+          }
+        } else {
+          exSelect.dataset.prevValue = exSelect.value;
+        }
+      });
+    }
 
     row.querySelector('.row-del').addEventListener('click', () => row.remove());
     container.appendChild(row);
@@ -712,6 +776,17 @@ export function setupWorkoutMode({ onReloadState } = {}) {
   document.querySelectorAll('.quick-add-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const exName = chip.dataset.ex;
+      const rows = container.querySelectorAll('.workout-entry-row');
+      if (rows.length === 1) {
+        const firstRow = rows[0];
+        const firstEx = firstRow.querySelector('.row-ex').value;
+        const firstSets = firstRow.querySelector('.row-sets').value;
+        const firstReps = firstRow.querySelector('.row-reps').value;
+        const firstWt = firstRow.querySelector('.row-wt').value;
+        if (!firstEx && !firstSets && !firstReps && !firstWt) {
+          firstRow.remove();
+        }
+      }
       addRow(exName);
     });
   });
@@ -725,7 +800,8 @@ export function setupWorkoutMode({ onReloadState } = {}) {
     const activities = [];
 
     rows.forEach(r => {
-      const ex = r.querySelector('.row-ex').value.trim();
+      const rawEx = r.querySelector('.row-ex').value.trim();
+      const ex = rawEx === '__add_custom__' ? '' : rawEx;
       const sets = parseInt(r.querySelector('.row-sets').value, 10);
       const reps = parseInt(r.querySelector('.row-reps').value, 10);
       const wt = parseFloat(r.querySelector('.row-wt').value);
