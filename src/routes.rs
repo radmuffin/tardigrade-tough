@@ -18,8 +18,9 @@ use axum::{
     Json, Router,
 };
 use fly_common::prelude::{ApiResponse, DbPool, UserToken as FlyUserToken};
-use fly_common::qr::generate_qr_svg;
 use fly_common::ws::{BroadcastHub, WsMessage};
+use qrcode::render::svg;
+use qrcode::QrCode;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -1295,14 +1296,24 @@ async fn dispatch_github_issue_if_configured(item: &GoalWishlistItem) {
 }
 
 async fn qr_handler(Query(query): Query<QrQuery>) -> Response {
-    let qr_res = generate_qr_svg(&query.url, 256, 4);
+    let code = match QrCode::new(query.url.as_bytes()) {
+        Ok(c) => c,
+        Err(_) => return (StatusCode::BAD_REQUEST, "Invalid QR URL").into_response(),
+    };
+    let svg = code
+        .render()
+        .min_dimensions(300, 300)
+        .dark_color(svg::Color("#000000"))
+        .light_color(svg::Color("#ffffff"))
+        .build();
+
     let mut headers = HeaderMap::new();
     headers.insert(header::CONTENT_TYPE, "image/svg+xml".parse().unwrap());
     headers.insert(
         header::CACHE_CONTROL,
         "public, max-age=86400".parse().unwrap(),
     );
-    (headers, qr_res.svg).into_response()
+    (headers, svg).into_response()
 }
 
 async fn ws_handler(

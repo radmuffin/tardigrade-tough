@@ -1,19 +1,48 @@
+import { state } from '../state.js';
+
 export function setupActivityLoggerModal() {
   const modal = document.getElementById('activityLoggerModal');
   const openBtn = document.getElementById('floatingLogBtn');
-  const heroBtn = document.getElementById('heroOpenLoggerBtn');
   const closeBtn = document.getElementById('closeActivityLoggerModalBtn');
 
   function openLogger(mode) {
     if (!modal) return;
-    if (mode && window.setLoggingMode) {
-      window.setLoggingMode(mode);
+    const activeGoals = state.currentRoomData?.active_goals || [];
+    const currentGoal = activeGoals[state.selectedGoalIndex] || { category: 'weight' };
+
+    let targetMode = mode;
+    if (!targetMode) {
+      if (currentGoal.category === 'elevation' || currentGoal.category === 'distance') {
+        targetMode = 'fastadd';
+      } else if (currentGoal.category === 'ability') {
+        targetMode = 'ability';
+      } else {
+        targetMode = 'stepper';
+      }
     }
+
+    if (window.setLoggingMode) {
+      window.setLoggingMode(targetMode);
+    }
+
+    if (targetMode === 'fastadd') {
+      const catSelect = document.getElementById('fastAddCategory');
+      if (catSelect && (currentGoal.category === 'elevation' || currentGoal.category === 'distance')) {
+        catSelect.value = currentGoal.category;
+        catSelect.dispatchEvent(new Event('change'));
+      }
+      const fastAddInput = document.getElementById('fastAddInput');
+      if (fastAddInput) {
+        setTimeout(() => fastAddInput.focus(), 60);
+      }
+    } else if (targetMode === 'stepper') {
+      const exSelect = document.getElementById('stepperExercise');
+      if (exSelect) {
+        setTimeout(() => exSelect.focus(), 60);
+      }
+    }
+
     modal.classList.remove('hidden');
-    const exSelect = document.getElementById('stepperExercise');
-    if (exSelect) {
-      setTimeout(() => exSelect.focus(), 60);
-    }
   }
 
   function closeLogger() {
@@ -25,7 +54,6 @@ export function setupActivityLoggerModal() {
   window.closeActivityLoggerModal = closeLogger;
 
   if (openBtn) openBtn.addEventListener('click', () => openLogger());
-  if (heroBtn) heroBtn.addEventListener('click', () => openLogger());
   if (closeBtn) closeBtn.addEventListener('click', closeLogger);
 
   if (modal) {

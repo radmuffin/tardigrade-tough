@@ -681,8 +681,8 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('#closeActivityLoggerModalBtn');
     await expect(modal).not.toBeVisible();
 
-    // Open via hero button on Quests view
-    await page.click('#heroOpenLoggerBtn');
+    // Open via floating button
+    await floatingBtn.click();
     await expect(modal).toBeVisible();
 
     // Close via Escape key

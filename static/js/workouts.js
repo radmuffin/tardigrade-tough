@@ -77,139 +77,61 @@ export function updateStepperForGoal(goal) {
 
   const curEx = exSelect ? exSelect.value : '';
 
-  if (!goal || goal.category === 'weight') {
-    if (exLabel) exLabel.textContent = 'Exercise';
-    if (metricLabel) metricLabel.textContent = `Weight (${goal?.unit || 'lbs'})`;
-    if (countLabel) countLabel.textContent = 'Reps';
-    if (routeLabel) routeLabel.textContent = '';
-    if (exSelect) {
-      exSelect.innerHTML = `
-        <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
-        <option value="Back Squat">🏋️ Back Squat</option>
-        <option value="Deadlift">⛓️ Deadlift</option>
-        <option value="Bench Press">🛡️ Bench Press</option>
-        <option value="Leg Press">🦵 Leg Press</option>
-        <option value="Overhead Press">🚀 Overhead Press</option>
-        <option value="Barbell Row">🚣 Barbell Row</option>
-        <option value="Dumbbell Lunge">👟 Dumbbell Lunge</option>
-        <option value="Bicep Curl">💪 Bicep Curl</option>
-        ${customOpts}
-        <option value="__add_custom__">+ Custom...</option>
-      `;
-      if (curEx && curEx !== '__add_custom__' && Array.from(exSelect.options).some(o => o.value === curEx)) {
-        exSelect.value = curEx;
-      }
-    }
-    if (metricPresets) {
-      metricPresets.className = 'quick-presets preset-grid-plates';
-      metricPresets.innerHTML = `
-        <button class="preset-chip preset-minus" data-delta="-45">-45</button>
-        <button class="preset-chip preset-minus" data-delta="-25">-25</button>
-        <button class="preset-chip preset-minus" data-delta="-5">-5</button>
-        <button class="preset-chip preset-minus" data-delta="-0.5">-0.5</button>
-        <button class="preset-chip preset-plus" data-delta="+0.5">+0.5</button>
-        <button class="preset-chip preset-plus" data-delta="+5">+5</button>
-        <button class="preset-chip preset-plus" data-delta="+25">+25</button>
-        <button class="preset-chip preset-plus" data-delta="+45">+45</button>
-      `;
-      attachMetricPresetListeners();
-    }
-  } else if (goal.category === 'elevation') {
-    if (exLabel) exLabel.textContent = 'Exercise';
-    if (metricLabel) metricLabel.textContent = `Elevation (${goal.unit || 'ft'})`;
-    if (countLabel) countLabel.textContent = 'Sets';
-    if (routeLabel) routeLabel.textContent = '';
-    if (exSelect) {
-      exSelect.innerHTML = `
-        <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
-        <option value="Stair Climber">🧗 Stair Climber</option>
-        <option value="Incline Treadmill">🏔️ Incline Treadmill</option>
-        <option value="Mountain Hike">🥾 Mountain Hike</option>
-        <option value="Box Step-ups">📦 Box Step-ups</option>
-        <option value="Hill Sprints">🏃 Hill Sprints</option>
-        ${customOpts}
-        <option value="__add_custom__">+ Custom...</option>
-      `;
-      if (curEx && curEx !== '__add_custom__' && Array.from(exSelect.options).some(o => o.value === curEx)) {
-        exSelect.value = curEx;
-      }
-    }
-    if (metricPresets) {
-      metricPresets.className = 'quick-presets preset-grid-plates';
-      metricPresets.innerHTML = `
-        <button class="preset-chip preset-minus" data-delta="-100">-100</button>
-        <button class="preset-chip preset-minus" data-delta="-25">-25</button>
-        <button class="preset-chip preset-minus" data-delta="-10">-10</button>
-        <button class="preset-chip preset-plus" data-delta="+10">+10</button>
-        <button class="preset-chip preset-plus" data-delta="+25">+25</button>
-        <button class="preset-chip preset-plus" data-delta="+100">+100</button>
-      `;
-      attachMetricPresetListeners();
-    }
-  } else if (goal.category === 'distance') {
-    if (exLabel) exLabel.textContent = 'Exercise';
-    if (metricLabel) metricLabel.textContent = `Distance (${goal.unit || 'mi'})`;
-    if (countLabel) countLabel.textContent = 'Sets';
-    if (routeLabel) routeLabel.textContent = '';
-    if (exSelect) {
-      exSelect.innerHTML = `
-        <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
-        <option value="Outdoor Run">🏃 Outdoor Run</option>
-        <option value="Trail Walk">🚶 Trail Walk</option>
-        <option value="Road Cycling">🚴 Road Cycling</option>
-        <option value="Rowing Machine">🚣 Rowing Machine</option>
-        <option value="Treadmill Run">⚡ Treadmill Run</option>
-        ${customOpts}
-        <option value="__add_custom__">+ Custom...</option>
-      `;
-      if (curEx && curEx !== '__add_custom__' && Array.from(exSelect.options).some(o => o.value === curEx)) {
-        exSelect.value = curEx;
-      }
-    }
-    if (metricPresets) {
-      metricPresets.className = 'quick-presets preset-grid-plates';
-      metricPresets.innerHTML = `
-        <button class="preset-chip preset-minus" data-delta="-2">-2</button>
-        <button class="preset-chip preset-minus" data-delta="-1">-1</button>
-        <button class="preset-chip preset-minus" data-delta="-0.5">-0.5</button>
-        <button class="preset-chip preset-plus" data-delta="+0.5">+0.5</button>
-        <button class="preset-chip preset-plus" data-delta="+1">+1</button>
-        <button class="preset-chip preset-plus" data-delta="+2">+2</button>
-      `;
-      attachMetricPresetListeners();
-    }
-  } else {
-    // Custom Quest Category
-    if (exLabel) exLabel.textContent = 'Exercise';
-    if (metricLabel) metricLabel.textContent = goal.unit || 'Amount';
-    if (countLabel) countLabel.textContent = 'Sets';
-    if (routeLabel) routeLabel.textContent = '';
-    if (exSelect) {
-      exSelect.innerHTML = `
-        <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
-        <option value="${FlyToast.escape(goal.title)}">${FlyToast.escape(goal.title)}</option>
-        <option value="Custom Movement">Custom Movement</option>
-        <option value="Rep Count">Rep Count</option>
-        ${customOpts}
-        <option value="__add_custom__">+ Custom...</option>
-      `;
-      if (curEx && curEx !== '__add_custom__' && Array.from(exSelect.options).some(o => o.value === curEx)) {
-        exSelect.value = curEx;
-      }
-    }
-    if (metricPresets) {
-      metricPresets.className = 'quick-presets preset-grid-plates';
-      metricPresets.innerHTML = `
-        <button class="preset-chip preset-minus" data-delta="-50">-50</button>
-        <button class="preset-chip preset-minus" data-delta="-25">-25</button>
-        <button class="preset-chip preset-minus" data-delta="-10">-10</button>
-        <button class="preset-chip preset-plus" data-delta="+10">+10</button>
-        <button class="preset-chip preset-plus" data-delta="+25">+25</button>
-        <button class="preset-chip preset-plus" data-delta="+50">+50</button>
-      `;
-      attachMetricPresetListeners();
+  if (!goal) return;
+
+  // Elevation and distance ONLY go through quickadd (Fast-Add)
+  if (goal.category === 'elevation' || goal.category === 'distance') {
+    const catSelect = document.getElementById('fastAddCategory');
+    if (catSelect) {
+      catSelect.value = goal.category;
+      catSelect.dispatchEvent(new Event('change'));
     }
   }
+
+  // Rapid Stepper is strictly for weight lifting (Weight lbs & Reps)
+  const curEx = exSelect ? exSelect.value : '';
+  const customExercises = getCustomExercises();
+  const customOpts = customExercises
+    .map(name => `<option value="${FlyToast.escape(name)}">✨ ${FlyToast.escape(name)}</option>`)
+    .join('');
+
+  if (exLabel) exLabel.textContent = 'Exercise';
+  if (metricLabel) metricLabel.textContent = 'Weight (lbs)';
+  if (countLabel) countLabel.textContent = 'Reps';
+  if (routeLabel) routeLabel.textContent = '';
+  if (exSelect) {
+    exSelect.innerHTML = `
+      <option value="" disabled ${!curEx ? 'selected' : ''}>Select Exercise</option>
+      <option value="Back Squat">🏋️ Back Squat</option>
+      <option value="Deadlift">⛓️ Deadlift</option>
+      <option value="Bench Press">🛡️ Bench Press</option>
+      <option value="Leg Press">🦵 Leg Press</option>
+      <option value="Overhead Press">🚀 Overhead Press</option>
+      <option value="Barbell Row">🚣 Barbell Row</option>
+      <option value="Dumbbell Lunge">👟 Dumbbell Lunge</option>
+      <option value="Bicep Curl">💪 Bicep Curl</option>
+      ${customOpts}
+      <option value="__add_custom__">+ Custom...</option>
+    `;
+    if (curEx && curEx !== '__add_custom__' && Array.from(exSelect.options).some(o => o.value === curEx)) {
+      exSelect.value = curEx;
+    }
+  }
+  if (metricPresets) {
+    metricPresets.className = 'quick-presets preset-grid-plates';
+    metricPresets.innerHTML = `
+      <button class="preset-chip preset-minus" data-delta="-45">-45</button>
+      <button class="preset-chip preset-minus" data-delta="-25">-25</button>
+      <button class="preset-chip preset-minus" data-delta="-5">-5</button>
+      <button class="preset-chip preset-minus" data-delta="-0.5">-0.5</button>
+      <button class="preset-chip preset-plus" data-delta="+0.5">+0.5</button>
+      <button class="preset-chip preset-plus" data-delta="+5">+5</button>
+      <button class="preset-chip preset-plus" data-delta="+25">+25</button>
+      <button class="preset-chip preset-plus" data-delta="+45">+45</button>
+    `;
+    attachMetricPresetListeners();
+  }
+
   updateImpact();
 }
 
@@ -221,18 +143,10 @@ export function updateImpact() {
   const impactVal = document.getElementById('computedImpactVal');
   if (!wtInput || !repsInput || !impactVal) return;
 
-  const activeGoals = state.currentRoomData?.active_goals || [];
-  const currentGoal = activeGoals[state.selectedGoalIndex] || { category: 'weight', unit: 'lbs' };
   const wt = parseFloat(wtInput.value) || 0;
   const reps = parseInt(repsInput.value, 10) || 0;
   const total = wt * reps;
-
-  if (currentGoal.category === 'distance') {
-    const formatted = (Math.round(total * 100) / 100).toLocaleString('en-US');
-    impactVal.textContent = `${formatted} ${currentGoal.unit || 'mi'}`;
-  } else {
-    impactVal.textContent = `${formatNumber(total)} ${currentGoal.unit || 'lbs'}`;
-  }
+  impactVal.textContent = `${formatNumber(total)} lbs`;
 }
 
 function attachMetricPresetListeners() {
@@ -498,44 +412,36 @@ export function setupSteppers({ onReloadState } = {}) {
         return;
       }
 
-      if (currentGoal.category === 'weight') {
-        if (!rawWt || isNaN(parseFloat(rawWt))) {
-          FlyToast.error('Please enter weight');
-          if (wtInput) wtInput.focus();
-          return;
-        }
-      } else if (currentGoal.category === 'distance') {
-        if (!rawWt || metricVal <= 0) {
-          FlyToast.error('Please enter distance');
-          if (wtInput) wtInput.focus();
-          return;
-        }
-      } else if (currentGoal.category === 'elevation') {
-        if (!rawWt || metricVal <= 0) {
-          FlyToast.error('Please enter elevation');
-          if (wtInput) wtInput.focus();
-          return;
-        }
+      if (!rawWt || isNaN(parseFloat(rawWt)) || metricVal < 0) {
+        FlyToast.error('Please enter weight');
+        if (wtInput) wtInput.focus();
+        return;
       }
 
-      const totalMetric = currentGoal.category === 'weight' ? metricVal * reps : metricVal * reps;
+      const totalMetric = metricVal * reps;
       const isPrivate = document.getElementById('stepperPrivate')?.checked || false;
 
       if (!logSetBtn.dataset.origHtml) logSetBtn.dataset.origHtml = logSetBtn.innerHTML;
-      const unit = currentGoal.category === 'distance' ? 'mi' : currentGoal.category === 'elevation' ? 'ft' : 'lbs';
-      const successMsg = `<span>✓</span> Logged +${formatNumber(totalMetric)} ${unit}!`;
+      const successMsg = `<span>✓</span> Logged +${formatNumber(totalMetric)} lbs!`;
+
+      // Auto-resolve goal_id for weight category if currentGoal is not weight
+      let weightGoalId = currentGoal.category === 'weight' ? currentGoal.id : null;
+      if (!weightGoalId) {
+        const weightGoal = activeGoals.find(g => g.category === 'weight');
+        if (weightGoal) weightGoalId = weightGoal.id;
+      }
 
       await executeLogActivity({
         room_slug: state.roomSlug,
-        activity_type: currentGoal.category,
+        activity_type: 'weight',
         exercise_name: exercise,
         sets: 1,
         reps,
-        weight_per_rep: currentGoal.category === 'weight' ? metricVal : 0,
-        distance_val: currentGoal.category === 'distance' ? totalMetric : 0,
-        elevation_val: currentGoal.category === 'elevation' ? totalMetric : 0,
+        weight_per_rep: metricVal,
+        distance_val: 0,
+        elevation_val: 0,
         total_metric: totalMetric,
-        goal_id: currentGoal.id,
+        goal_id: weightGoalId,
         is_private: isPrivate,
       }, {
         onReloadState,
