@@ -440,30 +440,30 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('#profileDot')).toHaveText('TT');
   });
 
-  test('navigates seamlessly using connective action cards across screens', async ({ page }) => {
+  test('navigates seamlessly across screens using top navigation indicators', async ({ page }) => {
     // 1. From Quests, navigate to Leaderboard
     await expect(page.locator('#viewQuests')).toBeVisible();
-    await page.locator('#viewQuests .connective-btn[data-target="leaderboard"]').click();
+    await page.click('#navLeaderboardBtn');
     await expect(page.locator('#viewLeaderboard')).toBeVisible();
     await expect(page.locator('#viewQuests')).not.toBeVisible();
 
     // 2. From Leaderboard, navigate to Live Activity
-    await page.locator('#viewLeaderboard .connective-btn[data-target="activity"]').click();
+    await page.click('#navActivityBtn');
     await expect(page.locator('#viewActivity')).toBeVisible();
     await expect(page.locator('#viewLeaderboard')).not.toBeVisible();
 
     // 3. From Activity, navigate back to Quests
-    await page.locator('#viewActivity .connective-btn[data-target="quests"]').click();
+    await page.click('#navQuestsBtn');
     await expect(page.locator('#viewQuests')).toBeVisible();
     await expect(page.locator('#viewActivity')).not.toBeVisible();
 
     // 4. From Quests, navigate to Trophy Room
-    await page.locator('#viewQuests .connective-pill-card[data-target="trophy"]').click();
+    await page.click('#navTrophyBtn');
     await expect(page.locator('#viewTrophy')).toBeVisible();
     await expect(page.locator('#viewQuests')).not.toBeVisible();
 
     // 5. From Trophy Room, navigate back to Quests
-    await page.locator('#viewTrophy .connective-btn[data-target="quests"]').click();
+    await page.click('#navQuestsBtn');
     await expect(page.locator('#viewQuests')).toBeVisible();
   });
 

@@ -42,7 +42,7 @@ All activity logs, goals, and leaderboards are partitioned by `room_slug`:
 - Modules use native browser ES6 imports (`import { ... } from '/_fly/fly-ui.js'`).
 - Always test responsive mobile viewports (390x844 Pixel/iPhone).
 - Do not introduce Node/npm dependencies into client-side JS.
-- Inter-screen navigation uses `.connective-btn` with `data-target="<quests|leaderboard|activity|trophy>"` to allow smooth context-switching across views.
+- Screen navigation is powered by the top indicator bar (`#navQuestsBtn`, `#navLeaderboardBtn`, `#navActivityBtn`, `#navTrophyBtn`) and smooth touch swipe gestures, while contextual deep links use `[data-target]` (e.g. quest wishlist button).
 - Squad renaming sends `POST /api/room/:slug/name` and emits a WebSocket broadcast `room_renamed` with `{ room: Room }` to sync all connected crew members in real-time.
 
 ---
