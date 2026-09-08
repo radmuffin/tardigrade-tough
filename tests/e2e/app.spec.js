@@ -756,6 +756,14 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('.preset-chip[data-delta="-0.5"]');
     await expect(weightInput).toHaveValue('5.5');
 
+    // Click +1 one-pound chip
+    await page.click('.preset-chip[data-delta="+1"]');
+    await expect(weightInput).toHaveValue('6.5');
+
+    // Click -1 one-pound chip
+    await page.click('.preset-chip[data-delta="-1"]');
+    await expect(weightInput).toHaveValue('5.5');
+
     // Set reps to 2
     await repsInput.fill('2');
     await expect(impactVal).toContainText('11 lbs');

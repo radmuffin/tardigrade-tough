@@ -117,11 +117,13 @@ export function updateStepperForGoal(goal) {
       <button class="preset-chip preset-minus" data-delta="-45">-45</button>
       <button class="preset-chip preset-minus" data-delta="-25">-25</button>
       <button class="preset-chip preset-minus" data-delta="-5">-5</button>
+      <button class="preset-chip preset-minus" data-delta="-1">-1</button>
       <button class="preset-chip preset-minus" data-delta="-0.5">-0.5</button>
-      <button class="preset-chip preset-plus" data-delta="+0.5">+0.5</button>
-      <button class="preset-chip preset-plus" data-delta="+5">+5</button>
-      <button class="preset-chip preset-plus" data-delta="+25">+25</button>
       <button class="preset-chip preset-plus" data-delta="+45">+45</button>
+      <button class="preset-chip preset-plus" data-delta="+25">+25</button>
+      <button class="preset-chip preset-plus" data-delta="+5">+5</button>
+      <button class="preset-chip preset-plus" data-delta="+1">+1</button>
+      <button class="preset-chip preset-plus" data-delta="+0.5">+0.5</button>
     `;
     attachMetricPresetListeners();
   }

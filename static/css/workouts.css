@@ -101,9 +101,14 @@
 
 .preset-grid-plates {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
   margin-top: 6px;
+}
+
+.preset-grid-plates .preset-chip {
+  padding: 5px 1px;
+  font-size: 0.72rem;
 }
 
 .preset-grid-reps {
