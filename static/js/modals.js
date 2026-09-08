@@ -7,8 +7,9 @@ import { setupAboutModal } from './modals/about-modal.js';
 import { setupCustomQuestModal } from './modals/custom-quest.js';
 import { setupWishlistModal } from './modals/wishlist.js';
 import { setupHubModal } from './modals/hub.js';
+import { setupActivityLoggerModal } from './modals/activity-logger.js';
 
-export { setupSheetImporter, setupActivityEditModal, openActivityEditModal };
+export { setupSheetImporter, setupActivityEditModal, openActivityEditModal, setupActivityLoggerModal };
 
 export function setupModals({ onReloadState, onSwitchView } = {}) {
   const { openShareModal, closeShareModal } = setupShareModal();
@@ -16,6 +17,7 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   const { openCreateQuestModal, closeCreateQuestModal } = setupCustomQuestModal({ onReloadState, onSwitchView });
   const { openWishlistModal, closeWishlistModal } = setupWishlistModal({ onReloadState });
   const { openHub, closeHub, selectHubTab, populateSquadHubFields } = setupHubModal({ onReloadState });
+  const { openLogger, closeLogger } = setupActivityLoggerModal();
 
   // Expose global modal openers
   window.openShareModal = openShareModal;

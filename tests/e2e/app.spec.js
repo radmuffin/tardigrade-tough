@@ -98,6 +98,9 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   });
 
   test('updates impact value when adjusting stepper weight and reps', async ({ page }) => {
+    await page.click('#floatingLogBtn');
+    await expect(page.locator('#activityLoggerModal')).toBeVisible();
+
     const weightInput = page.locator('#stepperWeight');
     const repsInput = page.locator('#stepperReps');
     const impactVal = page.locator('#computedImpactVal');
@@ -189,6 +192,9 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   });
 
   test('switches between logging modes (Rapid Stepper, Full Workout, Fast-Add)', async ({ page }) => {
+    await page.click('#floatingLogBtn');
+    await expect(page.locator('#activityLoggerModal')).toBeVisible();
+
     // 1. Rapid Stepper is active by default
     await expect(page.locator('#panelStepper')).toBeVisible();
     await expect(page.locator('#panelWorkout')).not.toBeVisible();
@@ -632,6 +638,10 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.goto('/');
     await page.waitForSelector('body[data-state="ready"]');
 
+    // Open activity logger modal via floating button
+    await page.click('#floatingLogBtn');
+    await expect(page.locator('#activityLoggerModal')).toBeVisible();
+
     // Toggle incognito private workout button inside submit-btn-group
     const privacyBtn = page.locator('label[for="stepperPrivate"]');
     await expect(privacyBtn).toBeVisible();
@@ -644,11 +654,40 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.fill('#stepperWeight', '150');
     await page.click('#logSetBtn');
 
+    // Close logger modal
+    await page.click('#closeActivityLoggerModalBtn');
+    await expect(page.locator('#activityLoggerModal')).not.toBeVisible();
+
     // Navigate to activity feed
     await page.click('#navActivityBtn');
     const privateBadge = page.locator('.private-badge').first();
     await expect(privateBadge).toBeVisible();
     await expect(privateBadge).toContainText('Private');
+  });
+
+  test('opens and closes activity logger modal via floating button, hero button, and Escape key', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('body[data-state="ready"]');
+
+    const floatingBtn = page.locator('#floatingLogBtn');
+    await expect(floatingBtn).toBeVisible();
+
+    // Click floating log button
+    await floatingBtn.click();
+    const modal = page.locator('#activityLoggerModal');
+    await expect(modal).toBeVisible();
+
+    // Close via close button
+    await page.click('#closeActivityLoggerModalBtn');
+    await expect(modal).not.toBeVisible();
+
+    // Open via hero button on Quests view
+    await page.click('#heroOpenLoggerBtn');
+    await expect(modal).toBeVisible();
+
+    // Close via Escape key
+    await page.keyboard.press('Escape');
+    await expect(modal).not.toBeVisible();
   });
 
   test('configures squad departure policy and toggles keep member contributions', async ({ page }) => {

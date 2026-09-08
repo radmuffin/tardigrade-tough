@@ -480,3 +480,58 @@
   padding: 10px 0;
 }
 
+/* Floating Bottom-Center Quick-Log Trigger Button */
+.floating-log-btn {
+  position: fixed;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 85;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--accent-green, #10b981) 0%, #059669 100%);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius-full, 9999px);
+  padding: 12px 24px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 18px rgba(16, 185, 129, 0.42), 0 2px 6px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.floating-log-btn:hover {
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.55), 0 3px 8px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+}
+
+.floating-log-btn:active {
+  transform: translateX(-50%) scale(0.96);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
+}
+
+.floating-log-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  display: inline-block;
+}
+
+.floating-log-label {
+  line-height: 1;
+}
+
+/* Ensure app footer clears the floating button */
+.app-footer {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 16px));
+}
+
+

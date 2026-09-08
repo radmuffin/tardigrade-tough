@@ -164,209 +164,12 @@
         </div>
       </section>
 
-      <!-- Swipeable / Tabbed Logging Dock -->
-      <section class="logging-card">
-        <div class="log-mode-tabs">
-          <button id="modeAbilityBtn" class="log-mode-btn" data-mode="ability" style="display: none;">⚡ Feat</button>
-          <button id="modeStepperBtn" class="log-mode-btn active" data-mode="stepper">Stepper</button>
-          <button id="modeWorkoutBtn" class="log-mode-btn" data-mode="workout">Full Workout</button>
-          <button id="modeFastAddBtn" class="log-mode-btn" data-mode="fastadd">Fast-Add</button>
-        </div>
-
-        <!-- Mode 1: Rapid Stepper (Front & Center) -->
-        <div id="panelStepper" class="log-panel">
-          <div class="form-group">
-            <label id="stepperExerciseLabel" class="form-label">Exercise</label>
-            <select id="stepperExercise" class="form-select">
-              <option value="" disabled selected>Select Exercise</option>
-              <option value="Back Squat">🏋️ Back Squat</option>
-              <option value="Deadlift">⛓️ Deadlift</option>
-              <option value="Bench Press">🛡️ Bench Press</option>
-              <option value="Leg Press">🦵 Leg Press</option>
-              <option value="Overhead Press">🚀 Overhead Press</option>
-              <option value="Barbell Row">🚣 Barbell Row</option>
-              <option value="Dumbbell Lunge">👟 Dumbbell Lunge</option>
-              <option value="Bicep Curl">💪 Bicep Curl</option>
-              <option value="__add_custom__">✨ + Add Custom Exercise...</option>
-            </select>
-            <div id="customExerciseRow" style="display: none; gap: 6px; margin-top: 8px; align-items: center;">
-              <input id="customExerciseInput" type="text" class="form-input" placeholder="e.g. Bulgarian Split Squat" maxlength="60" style="flex: 1;">
-              <button id="addCustomExerciseBtn" type="button" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px; height: 38px;">
-                + Add
-              </button>
-              <button id="cancelCustomExerciseBtn" type="button" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0 10px; height: 38px; flex: 0 0 auto;" title="Cancel">
-                ✕
-              </button>
-            </div>
-          </div>
-
-          <div class="stepper-row">
-            <div class="stepper-box">
-              <label id="stepperMetricLabel" class="form-label">Weight (lbs)</label>
-              <div class="stepper-controls">
-                <button id="wtMinusBtn" class="stepper-btn" type="button" aria-label="Decrease weight by 10">-10</button>
-                <input id="stepperWeight" type="number" class="stepper-input" placeholder="0" min="0" step="any" aria-label="Weight amount">
-                <button id="wtPlusBtn" class="stepper-btn" type="button" aria-label="Increase weight by 10">+10</button>
-              </div>
-              <div id="stepperMetricPresets" class="quick-presets preset-grid-plates">
-                <button class="preset-chip preset-minus" data-delta="-45" type="button" aria-label="Decrease 45 pounds">-45</button>
-                <button class="preset-chip preset-minus" data-delta="-25" type="button" aria-label="Decrease 25 pounds">-25</button>
-                <button class="preset-chip preset-minus" data-delta="-5" type="button" aria-label="Decrease 5 pounds">-5</button>
-                <button class="preset-chip preset-plus" data-delta="+5" type="button" aria-label="Increase 5 pounds">+5</button>
-                <button class="preset-chip preset-plus" data-delta="+25" type="button" aria-label="Increase 25 pounds">+25</button>
-                <button class="preset-chip preset-plus" data-delta="+45" type="button" aria-label="Increase 45 pounds">+45</button>
-              </div>
-            </div>
-
-            <div class="stepper-box">
-              <label id="stepperCountLabel" class="form-label">Reps</label>
-              <div class="stepper-controls">
-                <button id="repsMinusBtn" class="stepper-btn" type="button" aria-label="Decrease reps by 1">-1</button>
-                <input id="stepperReps" type="number" class="stepper-input" placeholder="0" min="1" aria-label="Reps count">
-                <button id="repsPlusBtn" class="stepper-btn" type="button" aria-label="Increase reps by 1">+1</button>
-              </div>
-              <div id="stepperCountPresets" class="quick-presets preset-grid-reps">
-                <button class="preset-chip-rep" data-val="3">3</button>
-                <button class="preset-chip-rep" data-val="5">5</button>
-                <button class="preset-chip-rep" data-val="8">8</button>
-                <button class="preset-chip-rep" data-val="10">10</button>
-                <button class="preset-chip-rep" data-val="12">12</button>
-                <button class="preset-chip-rep" data-val="15">15</button>
-              </div>
-            </div>
-          </div>
-
-          <div id="computedImpactBar" class="computed-impact-bar">
-            <span>Total: <strong id="computedImpactVal">0 lbs</strong></span>
-            <span id="computedImpactRoute" style="display: none;"></span>
-          </div>
-
-          <div class="action-buttons-row">
-            <button id="repeatSetBtn" class="btn btn-secondary" title="Quickly repeat your last logged set">
-              +1 Same Set
-            </button>
-            <div class="submit-btn-group">
-              <button id="logSetBtn" class="btn btn-primary submit-main-btn">
-                Log Set
-              </button>
-              <label class="submit-privacy-toggle" for="stepperPrivate" title="Toggle Private (solo only)">
-                <input type="checkbox" id="stepperPrivate" class="sr-only">
-                <span class="incognito-icon">🕶️</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mode 2: Full Workout Session Batch (Clean Empty Placeholders) -->
-        <div id="panelWorkout" class="log-panel" style="display: none;">
-          <div class="quick-exercise-chips" style="display: flex; gap: 4px; overflow-x: auto; margin-bottom: 10px;">
-            <button class="preset-chip quick-add-chip" data-ex="Squat">+ Squat</button>
-            <button class="preset-chip quick-add-chip" data-ex="Bench Press">+ Bench</button>
-            <button class="preset-chip quick-add-chip" data-ex="Deadlift">+ Deadlift</button>
-            <button class="preset-chip quick-add-chip" data-ex="Leg Press">+ Leg Press</button>
-            <button class="preset-chip quick-add-chip" data-ex="Row">+ Row</button>
-          </div>
-          <div id="workoutEntriesContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
-            <!-- Workout rows dynamically added with clean placeholders -->
-          </div>
-          <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-            <button id="addWorkoutRowBtn" class="btn btn-secondary" style="flex: 1;">+ Add Exercise</button>
-          </div>
-          <div class="action-buttons-row">
-            <div class="submit-btn-group" style="width: 100%;">
-              <button id="submitWorkoutBtn" class="btn btn-primary submit-main-btn">
-                Submit Workout
-              </button>
-              <label class="submit-privacy-toggle" for="workoutBatchPrivate" title="Toggle Private (solo only)">
-                <input type="checkbox" id="workoutBatchPrivate" class="sr-only">
-                <span class="incognito-icon">🕶️</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mode 3: Fast-Add Tonnage / Distance / Elevation -->
-        <div id="panelFastAdd" class="log-panel" style="display: none;">
-          <div class="form-group">
-            <label class="form-label">Category</label>
-            <select id="fastAddCategory" class="form-select">
-              <option value="weight">🏋️ Weight (lbs)</option>
-              <option value="distance">🏃 Distance (mi)</option>
-              <option value="elevation">🧗 Elevation (ft)</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Amount</label>
-            <input id="fastAddInput" type="number" class="form-input" placeholder="e.g. 1850" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-mono);">
-          </div>
-
-          <div id="fastAddPresets" class="quick-presets" style="margin-bottom: 12px;">
-            <button class="preset-chip-fast" data-amt="500">+500</button>
-            <button class="preset-chip-fast" data-amt="1000">+1,000</button>
-            <button class="preset-chip-fast" data-amt="2500">+2,500</button>
-            <button class="preset-chip-fast" data-amt="5000">+5,000</button>
-          </div>
-
-          <div style="margin-bottom: 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px;">
-            <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; color: var(--text-primary); font-weight: 600;">
-              <input type="checkbox" id="fastAddExcludePr" checked>
-              <span>Combined volume (exclude from PR)</span>
-            </label>
-            
-            <details id="fastAddDetails" style="margin-top: 8px; font-size: 0.8rem;">
-              <summary style="cursor: pointer; color: var(--accent-primary); font-weight: 600; user-select: none;">
-                + Add more info (exercise, notes, reps)
-              </summary>
-              <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-                <input id="fastAddExercise" type="text" class="form-input" placeholder="Exercise (default: Fast Add)" maxlength="100" style="font-size: 0.85rem; padding: 6px 10px;">
-                <div style="display: flex; gap: 6px;">
-                  <input id="fastAddSets" type="number" min="1" class="form-input" placeholder="Sets (1)" style="font-size: 0.85rem; padding: 6px 10px; flex: 1;">
-                  <input id="fastAddReps" type="number" min="1" class="form-input" placeholder="Reps (1)" style="font-size: 0.85rem; padding: 6px 10px; flex: 1;">
-                </div>
-                <input id="fastAddNotes" type="text" class="form-input" placeholder="Notes (optional)" maxlength="500" style="font-size: 0.85rem; padding: 6px 10px;">
-              </div>
-            </details>
-          </div>
-
-          <div class="action-buttons-row">
-            <div class="submit-btn-group" style="width: 100%;">
-              <button id="submitFastAddBtn" class="btn btn-primary submit-main-btn">
-                Log
-              </button>
-              <label class="submit-privacy-toggle" for="fastAddPrivate" title="Toggle Private (solo only)">
-                <input type="checkbox" id="fastAddPrivate" class="sr-only">
-                <span class="incognito-icon">🕶️</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mode 4: One-Off Ability Feat Check-Off -->
-        <div id="panelAbilityCheckoff" class="log-panel" style="display: none;">
-          <div class="ability-feat-box" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px 16px; margin-bottom: 8px; text-align: center;">
-            <div style="font-size: 2.2rem; margin-bottom: 6px; line-height: 1;" id="abilityFeatEmoji">⚡</div>
-            <div id="abilityFeatTitle" style="font-weight: 800; font-size: 1.15rem; color: var(--text-primary); margin-bottom: 4px;">Muscle Up</div>
-            <div id="abilityFeatStatus" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 14px;">One-Off Feat</div>
-            
-            <div class="form-group" style="margin-bottom: 12px; text-align: left;">
-              <input id="abilityFeatNoteInput" type="text" class="form-input" placeholder="Notes (optional, e.g. first try, clean form)" maxlength="120">
-            </div>
-
-            <div class="action-buttons-row">
-              <div class="submit-btn-group" style="width: 100%;">
-                <button id="abilityCheckoffBtn" type="button" class="btn btn-primary submit-main-btn" style="font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                  <span>✓</span> Mark Accomplished
-                </button>
-                <label class="submit-privacy-toggle" for="abilityFeatPrivate" title="Toggle Private (solo only)">
-                  <input type="checkbox" id="abilityFeatPrivate" class="sr-only">
-                  <span class="incognito-icon">🕶️</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <!-- Prominent Quick Log Set Trigger Row -->
+      <div class="quests-log-trigger-row" style="margin-bottom: 14px;">
+        <button id="heroOpenLoggerBtn" class="btn btn-primary" type="button" style="width: 100%; padding: 12px; font-size: 0.96rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--radius-md); box-shadow: 0 4px 14px rgba(16, 185, 129, 0.28);">
+          <span>⚡</span> <span>Log Set / Workout</span>
+        </button>
+      </div>
 
       <!-- Recent Sets & Today's Summary Card -->
       <section id="recentSetsCard" class="recent-sets-card">
@@ -603,6 +406,221 @@
         <button id="footerShareBtn" class="footer-text-link" type="button">Share</button>
       </div>
     </footer>
+  </div>
+
+  <!-- Activity Logger Modal (Popup) -->
+  <div id="activityLoggerModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="activityLoggerModalTitle">
+    <div class="modal-box activity-logger-modal-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 id="activityLoggerModalTitle" class="modal-title" style="margin: 0; display: flex; align-items: center; gap: 6px;">
+          <span>⚡</span> <span>Log Activity</span>
+        </h3>
+        <button id="closeActivityLoggerModalBtn" class="modal-close-icon-btn" type="button" aria-label="Close logger modal">✕</button>
+      </div>
+
+      <!-- Swipeable / Tabbed Logging Dock inside Modal -->
+      <div class="log-mode-tabs">
+        <button id="modeAbilityBtn" class="log-mode-btn" data-mode="ability" style="display: none;">⚡ Feat</button>
+        <button id="modeStepperBtn" class="log-mode-btn active" data-mode="stepper">Stepper</button>
+        <button id="modeWorkoutBtn" class="log-mode-btn" data-mode="workout">Full Workout</button>
+        <button id="modeFastAddBtn" class="log-mode-btn" data-mode="fastadd">Fast-Add</button>
+      </div>
+
+      <!-- Mode 1: Rapid Stepper (Front & Center) -->
+      <div id="panelStepper" class="log-panel">
+        <div class="form-group">
+          <label id="stepperExerciseLabel" class="form-label">Exercise</label>
+          <select id="stepperExercise" class="form-select">
+            <option value="" disabled selected>Select Exercise</option>
+            <option value="Back Squat">🏋️ Back Squat</option>
+            <option value="Deadlift">⛓️ Deadlift</option>
+            <option value="Bench Press">🛡️ Bench Press</option>
+            <option value="Leg Press">🦵 Leg Press</option>
+            <option value="Overhead Press">🚀 Overhead Press</option>
+            <option value="Barbell Row">🚣 Barbell Row</option>
+            <option value="Dumbbell Lunge">👟 Dumbbell Lunge</option>
+            <option value="Bicep Curl">💪 Bicep Curl</option>
+            <option value="__add_custom__">✨ + Add Custom Exercise...</option>
+          </select>
+          <!-- Custom Exercise Input (Hidden by default) -->
+          <div id="customExerciseRow" style="display: none; margin-top: 6px; gap: 6px; align-items: center;">
+            <input id="customExerciseInput" type="text" class="form-input" placeholder="e.g. Bulgarian Split Squat" maxlength="60" style="flex: 1;">
+            <button id="addCustomExerciseBtn" type="button" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px; height: 38px;">
+              + Add
+            </button>
+            <button id="cancelCustomExerciseBtn" type="button" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0 10px; height: 38px; flex: 0 0 auto;" title="Cancel">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <div class="stepper-row">
+          <div class="stepper-box">
+            <label id="stepperMetricLabel" class="form-label">Weight (lbs)</label>
+            <div class="stepper-controls">
+              <button id="wtMinusBtn" class="stepper-btn" type="button" aria-label="Decrease weight by 10">-10</button>
+              <input id="stepperWeight" type="number" class="stepper-input" placeholder="0" min="0" step="any" aria-label="Weight amount">
+              <button id="wtPlusBtn" class="stepper-btn" type="button" aria-label="Increase weight by 10">+10</button>
+            </div>
+            <div id="stepperMetricPresets" class="quick-presets preset-grid-plates">
+              <button class="preset-chip preset-minus" data-delta="-45" type="button" aria-label="Decrease 45 pounds">-45</button>
+              <button class="preset-chip preset-minus" data-delta="-25" type="button" aria-label="Decrease 25 pounds">-25</button>
+              <button class="preset-chip preset-minus" data-delta="-5" type="button" aria-label="Decrease 5 pounds">-5</button>
+              <button class="preset-chip preset-plus" data-delta="+5" type="button" aria-label="Increase 5 pounds">+5</button>
+              <button class="preset-chip preset-plus" data-delta="+25" type="button" aria-label="Increase 25 pounds">+25</button>
+              <button class="preset-chip preset-plus" data-delta="+45" type="button" aria-label="Increase 45 pounds">+45</button>
+            </div>
+          </div>
+
+          <div class="stepper-box">
+            <label id="stepperCountLabel" class="form-label">Reps</label>
+            <div class="stepper-controls">
+              <button id="repsMinusBtn" class="stepper-btn" type="button" aria-label="Decrease reps by 1">-1</button>
+              <input id="stepperReps" type="number" class="stepper-input" placeholder="0" min="1" aria-label="Reps count">
+              <button id="repsPlusBtn" class="stepper-btn" type="button" aria-label="Increase reps by 1">+1</button>
+            </div>
+            <div id="stepperCountPresets" class="quick-presets preset-grid-reps">
+              <button class="preset-chip-rep" data-val="3">3</button>
+              <button class="preset-chip-rep" data-val="5">5</button>
+              <button class="preset-chip-rep" data-val="8">8</button>
+              <button class="preset-chip-rep" data-val="10">10</button>
+              <button class="preset-chip-rep" data-val="12">12</button>
+              <button class="preset-chip-rep" data-val="15">15</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="computedImpactBar" class="computed-impact-bar">
+          <span>Total: <strong id="computedImpactVal">0 lbs</strong></span>
+          <span id="computedImpactRoute" style="display: none;"></span>
+        </div>
+
+        <div class="action-buttons-row">
+          <button id="repeatSetBtn" class="btn btn-secondary" title="Quickly repeat your last logged set">
+            +1 Same Set
+          </button>
+          <div class="submit-btn-group">
+            <button id="logSetBtn" class="btn btn-primary submit-main-btn">
+              Log Set
+            </button>
+            <label class="submit-privacy-toggle" for="stepperPrivate" title="Toggle Private (solo only)">
+              <input type="checkbox" id="stepperPrivate" class="sr-only">
+              <span class="incognito-icon">🕶️</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode 2: Full Workout Session Batch (Clean Empty Placeholders) -->
+      <div id="panelWorkout" class="log-panel" style="display: none;">
+        <div class="quick-exercise-chips" style="display: flex; gap: 4px; overflow-x: auto; margin-bottom: 10px;">
+          <button class="preset-chip quick-add-chip" data-ex="Squat">+ Squat</button>
+          <button class="preset-chip quick-add-chip" data-ex="Bench Press">+ Bench</button>
+          <button class="preset-chip quick-add-chip" data-ex="Deadlift">+ Deadlift</button>
+          <button class="preset-chip quick-add-chip" data-ex="Leg Press">+ Leg Press</button>
+          <button class="preset-chip quick-add-chip" data-ex="Row">+ Row</button>
+        </div>
+        <div id="workoutEntriesContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;">
+          <!-- Workout rows dynamically added with clean placeholders -->
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <button id="addWorkoutRowBtn" class="btn btn-secondary" style="flex: 1;">+ Add Exercise</button>
+        </div>
+        <div class="action-buttons-row">
+          <div class="submit-btn-group" style="width: 100%;">
+            <button id="submitWorkoutBtn" class="btn btn-primary submit-main-btn">
+              Submit Workout
+            </button>
+            <label class="submit-privacy-toggle" for="workoutBatchPrivate" title="Toggle Private (solo only)">
+              <input type="checkbox" id="workoutBatchPrivate" class="sr-only">
+              <span class="incognito-icon">🕶️</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode 3: Fast-Add Tonnage / Distance / Elevation -->
+      <div id="panelFastAdd" class="log-panel" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select id="fastAddCategory" class="form-select">
+            <option value="weight">🏋️ Weight (lbs)</option>
+            <option value="distance">🏃 Distance (mi)</option>
+            <option value="elevation">🧗 Elevation (ft)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Amount</label>
+          <input id="fastAddInput" type="number" class="form-input" placeholder="e.g. 1850" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-mono);">
+        </div>
+
+        <div id="fastAddPresets" class="quick-presets" style="margin-bottom: 12px;">
+          <button class="preset-chip-fast" data-amt="500">+500</button>
+          <button class="preset-chip-fast" data-amt="1000">+1,000</button>
+          <button class="preset-chip-fast" data-amt="2500">+2,500</button>
+          <button class="preset-chip-fast" data-amt="5000">+5,000</button>
+        </div>
+
+        <div style="margin-bottom: 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px;">
+          <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; color: var(--text-primary); font-weight: 600;">
+            <input type="checkbox" id="fastAddExcludePr" checked>
+            <span>Combined volume (exclude from PR)</span>
+          </label>
+          
+          <details id="fastAddDetails" style="margin-top: 8px; font-size: 0.8rem;">
+            <summary style="cursor: pointer; color: var(--accent-primary); font-weight: 600; user-select: none;">
+              + Add more info (exercise, notes, reps)
+            </summary>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+              <input id="fastAddExercise" type="text" class="form-input" placeholder="Exercise (default: Fast Add)" maxlength="100" style="font-size: 0.85rem; padding: 6px 10px;">
+              <div style="display: flex; gap: 6px;">
+                <input id="fastAddSets" type="number" min="1" class="form-input" placeholder="Sets (1)" style="font-size: 0.85rem; padding: 6px 10px; flex: 1;">
+                <input id="fastAddReps" type="number" min="1" class="form-input" placeholder="Reps (1)" style="font-size: 0.85rem; padding: 6px 10px; flex: 1;">
+              </div>
+              <input id="fastAddNotes" type="text" class="form-input" placeholder="Notes (optional)" maxlength="500" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+          </details>
+        </div>
+
+        <div class="action-buttons-row">
+          <div class="submit-btn-group" style="width: 100%;">
+            <button id="submitFastAddBtn" class="btn btn-primary submit-main-btn">
+              Log
+            </button>
+            <label class="submit-privacy-toggle" for="fastAddPrivate" title="Toggle Private (solo only)">
+              <input type="checkbox" id="fastAddPrivate" class="sr-only">
+              <span class="incognito-icon">🕶️</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode 4: One-Off Ability Feat Check-Off -->
+      <div id="panelAbilityCheckoff" class="log-panel" style="display: none;">
+        <div class="ability-feat-box" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 18px 16px; margin-bottom: 8px; text-align: center;">
+          <div style="font-size: 2.2rem; margin-bottom: 6px; line-height: 1;" id="abilityFeatEmoji">⚡</div>
+          <div id="abilityFeatTitle" style="font-weight: 800; font-size: 1.15rem; color: var(--text-primary); margin-bottom: 4px;">Muscle Up</div>
+          <div id="abilityFeatStatus" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 14px;">One-Off Feat</div>
+          
+          <div class="form-group" style="margin-bottom: 12px; text-align: left;">
+            <input id="abilityFeatNoteInput" type="text" class="form-input" placeholder="Notes (optional, e.g. first try, clean form)" maxlength="120">
+          </div>
+
+          <div class="action-buttons-row">
+            <div class="submit-btn-group" style="width: 100%;">
+              <button id="abilityCheckoffBtn" type="button" class="btn btn-primary submit-main-btn" style="font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span>✓</span> Mark Accomplished
+              </button>
+              <label class="submit-privacy-toggle" for="abilityFeatPrivate" title="Toggle Private (solo only)">
+                <input type="checkbox" id="abilityFeatPrivate" class="sr-only">
+                <span class="incognito-icon">🕶️</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Sheet Import Modal -->
@@ -1307,6 +1325,12 @@
       </div>
     </div>
   </div>
+
+  <!-- Floating Bottom-Center Quick-Log Trigger Button -->
+  <button id="floatingLogBtn" class="floating-log-btn" type="button" aria-label="Quick Log Activity">
+    <span class="floating-log-icon">⚡</span>
+    <span class="floating-log-label">Log Activity</span>
+  </button>
 
   <script type="module" src="/app.js?v=4.4"></script>
 </body>
