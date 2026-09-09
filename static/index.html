@@ -179,6 +179,21 @@
           <button class="cheer-btn" data-emoji="🐻" title="Water Bear">🐻</button>
         </div>
       </section>
+
+      <!-- Quirky Milestones & Accomplished Feats -->
+      <section id="achievementsSection" class="achievements-section" style="margin-top: 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+          <span style="font-size: 0.88rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+            <span>🎲</span> Accomplishments
+          </span>
+          <button id="shuffleAchievementsBtn" class="btn btn-secondary" type="button" style="font-size: 0.75rem; padding: 3px 9px; display: inline-flex; align-items: center; gap: 4px;" title="Shuffle accomplishments">
+            <span>🎲</span> Shuffle
+          </button>
+        </div>
+        <div id="achievementsGrid" class="achievements-grid">
+          <!-- Dynamically populated 4 rotating achievement cards -->
+        </div>
+      </section>
     </main>
 
     <!-- ===================================================================== -->
@@ -318,21 +333,13 @@
         <span class="score-main" style="color: var(--accent-amber);">Active</span>
       </div>
 
-      <!-- Conquered Goals & Accomplished Feats -->
+      <!-- Conquered Goals & Trophies -->
       <section id="conqueredTrophiesSection" class="conquered-section" style="margin-top: 18px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-          <div class="section-title" style="margin-bottom: 0;">
-            <span>Conquered Feats & Trophies</span>
-          </div>
-          <button id="shuffleAchievementsBtn" class="btn btn-secondary" type="button" style="font-size: 0.75rem; padding: 3px 9px; display: inline-flex; align-items: center; gap: 4px;" title="Shuffle feats">
-            <span>🎲</span> Shuffle
-          </button>
+        <div class="section-title" style="margin-bottom: 8px;">
+          <span>Conquered Feats & Trophies</span>
         </div>
         <div id="conqueredTrophiesList" style="display: flex; flex-direction: column; gap: 8px;">
           <!-- Dynamically populated from currentRoomData.completed_goals -->
-        </div>
-        <div id="achievementsGrid" class="achievements-grid" style="margin-top: 8px;">
-          <!-- Dynamically populated 4 rotating achievement cards -->
         </div>
       </section>
 

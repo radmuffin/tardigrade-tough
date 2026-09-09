@@ -19,7 +19,7 @@ import {
   renderQuickRecentSets,
 } from './js/workouts.js';
 import { setupActivityFilters, renderFeed, setupCheers } from './js/activity-feed.js';
-import { renderTrophyRoom, renderWishlists, setupTrophyListeners } from './js/trophy.js';
+import { renderTrophyRoom, renderWishlists, setupTrophyListeners, renderQuirkyAchievements } from './js/trophy.js';
 import { setupModals, setupSheetImporter, setupActivityEditModal } from './js/modals.js';
 import { initWebSocket } from './js/realtime.js';
 import { setupPwa, updateOfflineStatus } from './js/pwa.js';
@@ -38,7 +38,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   state.offlineSync = new OfflineSyncManager(state.client, updateOfflineStatus);
 
   setupViewNavigation({
-    onRenderQuests: () => renderGoalShowcase({ onUpdateStepper: updateStepperForGoal }),
+    onRenderQuests: () => {
+      renderGoalShowcase({ onUpdateStepper: updateStepperForGoal });
+      renderQuirkyAchievements();
+    },
     onRenderTrophy: renderTrophyRoom,
   });
   setupGoalSegmentedControl(
@@ -162,6 +165,9 @@ export function renderAll() {
 
   // Quick Recent Sets & Today's Total on Quests View
   renderQuickRecentSets({ onReloadState: loadRoomState });
+
+  // Quirky Accomplishments & Feats on Quests View
+  renderQuirkyAchievements();
 
   // Leaderboard
   renderLeaderboard();

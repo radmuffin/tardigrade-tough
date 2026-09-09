@@ -552,13 +552,12 @@ test.describe('Tardigrade Tough Web App E2E', () => {
   });
 
   test('renders quirky feat milestones and allows shuffling achievements', async ({ page }) => {
-    await page.click('#navTrophyBtn');
-    await expect(page.locator('#viewTrophy')).toBeVisible();
+    await page.click('#navQuestsBtn');
+    await expect(page.locator('#viewQuests')).toBeVisible();
 
-    // Verify Conquered Feats & Trophies section is visible and title is static
-    const section = page.locator('#conqueredTrophiesSection');
+    // Verify Accomplishments section is visible on Quests view
+    const section = page.locator('#achievementsSection');
     await expect(section).toBeVisible();
-    await expect(section.locator('.section-title')).toHaveText('Conquered Feats & Trophies');
 
     // Verify 4 cards are rendered
     const cards = page.locator('#achievementsGrid .achievement-card');
