@@ -352,17 +352,6 @@
       </section>
     </main>
 
-    <!-- Persistent Pinned Global Footer with Understated Status & Underlined Links -->
-    <footer class="app-footer">
-      <div class="footer-status-row">
-        <span id="footerStatusDot" class="status-dot-small">●</span>
-        <span id="footerStatusText">Online</span>
-        <span class="footer-sep">•</span>
-        <button id="footerAboutBtn" class="footer-text-link" type="button">About</button>
-        <span class="footer-sep">•</span>
-        <button id="footerShareBtn" class="footer-text-link" type="button">Share</button>
-      </div>
-    </footer>
   </div>
 
   <!-- Activity Logger Modal (Popup) -->
@@ -1294,11 +1283,23 @@
     </div>
   </div>
 
-  <!-- Floating Bottom-Center Quick-Log Trigger Button -->
-  <button id="floatingLogBtn" class="floating-log-btn" type="button" aria-label="Quick Log Activity">
-    <span class="floating-log-icon">⚡</span>
-    <span class="floating-log-label">Log Activity</span>
-  </button>
+  <!-- Persistent Bottom Dock: Log Activity Action & Understated Footer -->
+  <div class="app-bottom-dock" id="appBottomDock">
+    <button id="floatingLogBtn" class="floating-log-btn" type="button" aria-label="Quick Log Activity">
+      <span class="floating-log-icon">⚡</span>
+      <span class="floating-log-label">Log Activity</span>
+    </button>
+    <footer class="app-footer">
+      <div class="footer-status-row">
+        <span id="footerStatusDot" class="status-dot-small">●</span>
+        <span id="footerStatusText">Online</span>
+        <span class="footer-sep">•</span>
+        <button id="footerAboutBtn" class="footer-text-link" type="button">About</button>
+        <span class="footer-sep">•</span>
+        <button id="footerShareBtn" class="footer-text-link" type="button">Share</button>
+      </div>
+    </footer>
+  </div>
 
   <script type="module" src="/app.js?v=4.4"></script>
 </body>
