@@ -788,5 +788,64 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('#closeActivityLoggerModalBtn');
     await expect(page.locator('#activityLoggerModal')).not.toBeVisible();
   });
+
+  test('switches to swim laps mode and logs 25m pool laps', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('body[data-state="ready"]');
+
+    // Open logger modal
+    await page.click('#floatingLogBtn');
+    await expect(page.locator('#activityLoggerModal')).toBeVisible();
+
+    // Click Swim Laps tab
+    const swimTab = page.locator('#modeSwimBtn');
+    await expect(swimTab).toBeVisible();
+    await swimTab.click();
+
+    // Confirm panelSwim is visible and stepper is hidden
+    await expect(page.locator('#panelSwim')).toBeVisible();
+    await expect(page.locator('#panelStepper')).not.toBeVisible();
+
+    // Verify 25m pool default
+    await expect(page.locator('#swimPoolLengthBadge')).toContainText('25m');
+    const lapsInput = page.locator('#swimLapsInput');
+    await expect(lapsInput).toHaveValue('20');
+    await expect(page.locator('#swimTotalMeters')).toContainText('500 m');
+
+    // Test stepper: click +10 laps
+    await page.click('#swimLapsPlus10');
+    await expect(lapsInput).toHaveValue('30');
+    await expect(page.locator('#swimTotalMeters')).toContainText('750 m');
+
+    // Test quick preset chip (+20)
+    await page.click('#swimLapPresets button[data-laps="20"]');
+    await expect(lapsInput).toHaveValue('50');
+    await expect(page.locator('#swimTotalMeters')).toContainText('1,250 m');
+
+    // Switch pool to 50m Olympic
+    await page.click('.swim-pool-btn[data-length="50"]');
+    await expect(page.locator('#swimPoolLengthBadge')).toContainText('50m');
+    await expect(page.locator('#swimTotalMeters')).toContainText('2,500 m');
+
+    // Switch back to 25m pool
+    await page.click('.swim-pool-btn[data-length="25"][data-unit="m"]');
+    await expect(page.locator('#swimPoolLengthBadge')).toContainText('25m');
+    await expect(page.locator('#swimTotalMeters')).toContainText('1,250 m');
+
+    // Log the swim session
+    const submitBtn = page.locator('#submitSwimBtn');
+    await expect(submitBtn).toContainText('Log 50 Laps');
+    await submitBtn.click();
+    await expect(submitBtn).toHaveClass(/btn-log-success/);
+
+    // Close modal
+    await page.click('#closeActivityLoggerModalBtn');
+    await expect(page.locator('#activityLoggerModal')).not.toBeVisible();
+
+    // Verify entry in Activity Feed
+    await page.click('#navActivityBtn');
+    await expect(page.locator('#activityFeedList')).toContainText('Swim');
+  });
 });
+
 

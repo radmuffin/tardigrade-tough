@@ -12,13 +12,21 @@ export function setupActivityLoggerModal() {
 
     let targetMode = mode;
     if (!targetMode) {
-      if (currentGoal.category === 'elevation' || currentGoal.category === 'distance') {
+      const isSwimGoal = (currentGoal.title && /swim|lap|pool|water/i.test(currentGoal.title)) ||
+                         (currentGoal.description && /swim|lap|pool/i.test(currentGoal.description));
+      if (isSwimGoal) {
+        targetMode = 'swim';
+      } else if (currentGoal.category === 'elevation' || currentGoal.category === 'distance') {
         targetMode = 'fastadd';
       } else if (currentGoal.category === 'ability') {
         targetMode = 'ability';
       } else {
         targetMode = 'stepper';
       }
+    }
+
+    if (window.populateSwimGoals) {
+      window.populateSwimGoals();
     }
 
     if (window.setLoggingMode) {
@@ -39,6 +47,11 @@ export function setupActivityLoggerModal() {
       const exSelect = document.getElementById('stepperExercise');
       if (exSelect) {
         setTimeout(() => exSelect.focus(), 60);
+      }
+    } else if (targetMode === 'swim') {
+      const lapsInput = document.getElementById('swimLapsInput');
+      if (lapsInput) {
+        setTimeout(() => lapsInput.focus(), 60);
       }
     }
 

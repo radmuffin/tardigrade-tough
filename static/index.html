@@ -377,6 +377,7 @@
         <button id="modeStepperBtn" class="log-mode-btn active" data-mode="stepper">Stepper</button>
         <button id="modeWorkoutBtn" class="log-mode-btn" data-mode="workout">Full Workout</button>
         <button id="modeFastAddBtn" class="log-mode-btn" data-mode="fastadd">Fast-Add</button>
+        <button id="modeSwimBtn" class="log-mode-btn" data-mode="swim">🏊 Swim Laps</button>
       </div>
 
       <!-- Mode 1: Rapid Stepper (Front & Center) -->
@@ -581,6 +582,100 @@
                 <span class="incognito-icon">🕶️</span>
               </label>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode 5: Swimming Laps (25m Default) -->
+      <div id="panelSwim" class="log-panel" style="display: none;">
+        <!-- Contributing Goal Selection -->
+        <div class="form-group">
+          <label class="form-label" for="swimGoalSelect">Contributing Goal</label>
+          <select id="swimGoalSelect" class="form-select">
+            <!-- Populated dynamically with active goals (distance & custom quests) -->
+          </select>
+        </div>
+
+        <!-- Pool Length Selector (25m Standard default) -->
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">Pool Length</label>
+            <span id="swimPoolLengthBadge" class="swim-badge-pill">25m Pool</span>
+          </div>
+          <div class="swim-pool-picker">
+            <button type="button" class="swim-pool-btn active" data-length="25" data-unit="m">25m (Standard)</button>
+            <button type="button" class="swim-pool-btn" data-length="50" data-unit="m">50m (Olympic)</button>
+            <button type="button" class="swim-pool-btn" data-length="25" data-unit="yd">25 yd</button>
+          </div>
+        </div>
+
+        <!-- Lap Counter Stepper -->
+        <div class="form-group">
+          <label class="form-label" for="swimLapsInput">Laps Swum (lengths)</label>
+          <div class="swim-counter-row">
+            <button type="button" class="swim-step-btn" id="swimLapsMinus10" title="-10 laps">-10</button>
+            <button type="button" class="swim-step-btn" id="swimLapsMinus1" title="-1 lap">-1</button>
+            <input id="swimLapsInput" type="number" min="1" max="10000" step="1" class="form-input swim-laps-input" placeholder="20" value="20">
+            <button type="button" class="swim-step-btn" id="swimLapsPlus1" title="+1 lap">+1</button>
+            <button type="button" class="swim-step-btn" id="swimLapsPlus10" title="+10 laps">+10</button>
+          </div>
+        </div>
+
+        <!-- Quick Lap Presets -->
+        <div id="swimLapPresets" class="quick-presets swim-presets" style="margin-bottom: 12px;">
+          <button type="button" class="preset-chip-fast" data-laps="10">+10 (250m)</button>
+          <button type="button" class="preset-chip-fast" data-laps="20">+20 (500m)</button>
+          <button type="button" class="preset-chip-fast" data-laps="40">+40 (1,000m)</button>
+          <button type="button" class="preset-chip-fast" data-laps="64">+64 (~1 mi)</button>
+        </div>
+
+        <!-- Live Conversion & Distance Impact Card -->
+        <div class="swim-impact-card" id="swimImpactCard">
+          <div class="swim-impact-header">
+            <span class="swim-impact-icon">🌊</span>
+            <div class="swim-impact-metrics">
+              <span id="swimTotalMeters" class="swim-metric-primary">500 m</span>
+              <span id="swimConvertedUnits" class="swim-metric-secondary">0.50 km • 0.31 mi</span>
+            </div>
+          </div>
+          <div class="swim-goal-contribution" id="swimGoalContribution">
+            <span>Goal Impact:</span>
+            <strong id="swimGoalDeltaBadge">+0.31 mi</strong>
+          </div>
+        </div>
+
+        <!-- Optional Stroke & Details Accordion -->
+        <div style="margin-bottom: 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 12px;">
+          <details id="swimDetails" style="font-size: 0.8rem;">
+            <summary style="cursor: pointer; color: var(--accent-primary); font-weight: 600; user-select: none;">
+              + Stroke, notes & options
+            </summary>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+              <div class="swim-stroke-picker">
+                <button type="button" class="preset-chip swim-stroke-chip active" data-stroke="Freestyle">Freestyle</button>
+                <button type="button" class="preset-chip swim-stroke-chip" data-stroke="Breaststroke">Breaststroke</button>
+                <button type="button" class="preset-chip swim-stroke-chip" data-stroke="Backstroke">Backstroke</button>
+                <button type="button" class="preset-chip swim-stroke-chip" data-stroke="Mixed Laps">Mixed</button>
+              </div>
+              <input id="swimExerciseName" type="text" class="form-input" placeholder="Exercise Name (default: Swim - 25m Laps)" maxlength="100" style="font-size: 0.85rem; padding: 6px 10px;">
+              <input id="swimNotes" type="text" class="form-input" placeholder="Notes (e.g. morning session, intervals)" maxlength="500" style="font-size: 0.85rem; padding: 6px 10px;">
+              <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; cursor: pointer; color: var(--text-primary); font-weight: 600;">
+                <input type="checkbox" id="swimExcludePr">
+                <span>Combined volume (exclude from PR)</span>
+              </label>
+            </div>
+          </details>
+        </div>
+
+        <div class="action-buttons-row">
+          <div class="submit-btn-group" style="width: 100%;">
+            <button id="submitSwimBtn" class="btn btn-primary submit-main-btn">
+              🏊 Log 20 Laps (500m)
+            </button>
+            <label class="submit-privacy-toggle" for="swimPrivate" title="Toggle Private (solo only)">
+              <input type="checkbox" id="swimPrivate" class="sr-only">
+              <span class="incognito-icon">🕶️</span>
+            </label>
           </div>
         </div>
       </div>

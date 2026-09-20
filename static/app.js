@@ -16,6 +16,7 @@ import {
   updateStepperForGoal,
   setupFastAdd,
   setupWorkoutMode,
+  setupSwimLapLogger,
   renderQuickRecentSets,
 } from './js/workouts.js';
 import { setupActivityFilters, renderFeed, setupCheers } from './js/activity-feed.js';
@@ -53,6 +54,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupSteppers({ onReloadState: loadRoomState });
   setupFastAdd({ onReloadState: loadRoomState });
   setupWorkoutMode({ onReloadState: loadRoomState });
+  setupSwimLapLogger({ onReloadState: loadRoomState });
   setupCheers();
   setupTrophyListeners();
   setupModals({ onReloadState: loadRoomState });

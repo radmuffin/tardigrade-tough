@@ -562,4 +562,176 @@
   line-height: 1;
 }
 
+/* Swim Lap Logging Mode Styles */
+.swim-badge-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0284c7;
+  background: rgba(14, 165, 233, 0.12);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+}
+
+.swim-pool-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.swim-pool-btn {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.swim-pool-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.swim-pool-btn.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.28);
+}
+
+.swim-counter-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.swim-step-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-weight: 800;
+  font-size: 0.85rem;
+  height: 42px;
+  min-width: 42px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.swim-step-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent-primary);
+}
+
+.swim-step-btn:active {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
+.swim-laps-input {
+  flex: 1;
+  max-width: 120px;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  height: 42px;
+  padding: 0 8px;
+}
+
+.swim-impact-card {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.swim-impact-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.swim-impact-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.swim-impact-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.swim-metric-primary {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  line-height: 1.2;
+}
+
+.swim-metric-secondary {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.swim-goal-contribution {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding-top: 8px;
+  border-top: 1px dashed rgba(14, 165, 233, 0.28);
+}
+
+#swimGoalDeltaBadge {
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: #0284c7;
+  background: rgba(14, 165, 233, 0.14);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.88rem;
+}
+
+.swim-stroke-picker {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.swim-stroke-chip {
+  cursor: pointer;
+  user-select: none;
+}
+
+.swim-stroke-chip.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+}
+
+
 

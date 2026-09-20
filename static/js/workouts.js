@@ -166,14 +166,16 @@ export function setupLoggingTabs() {
   const tabStepper = document.getElementById('modeStepperBtn');
   const tabWorkout = document.getElementById('modeWorkoutBtn');
   const tabFastAdd = document.getElementById('modeFastAddBtn');
+  const tabSwim = document.getElementById('modeSwimBtn');
 
   const panelAbility = document.getElementById('panelAbilityCheckoff');
   const panelStepper = document.getElementById('panelStepper');
   const panelWorkout = document.getElementById('panelWorkout');
   const panelFastAdd = document.getElementById('panelFastAdd');
+  const panelSwim = document.getElementById('panelSwim');
 
-  const allTabs = [tabAbility, tabStepper, tabWorkout, tabFastAdd].filter(Boolean);
-  const allPanels = [panelAbility, panelStepper, panelWorkout, panelFastAdd].filter(Boolean);
+  const allTabs = [tabAbility, tabStepper, tabWorkout, tabFastAdd, tabSwim].filter(Boolean);
+  const allPanels = [panelAbility, panelStepper, panelWorkout, panelFastAdd, panelSwim].filter(Boolean);
 
   function setMode(mode) {
     allTabs.forEach(t => t.classList.remove('active'));
@@ -193,6 +195,10 @@ export function setupLoggingTabs() {
     } else if (mode === 'fastadd') {
       if (tabFastAdd) tabFastAdd.classList.add('active');
       if (panelFastAdd) panelFastAdd.style.display = 'block';
+    } else if (mode === 'swim') {
+      if (tabSwim) tabSwim.classList.add('active');
+      if (panelSwim) panelSwim.style.display = 'block';
+      if (window.updateSwimCalculations) window.updateSwimCalculations();
     }
   }
 
@@ -202,10 +208,11 @@ export function setupLoggingTabs() {
   if (tabStepper) tabStepper.addEventListener('click', () => setMode('stepper'));
   if (tabWorkout) tabWorkout.addEventListener('click', () => setMode('workout'));
   if (tabFastAdd) tabFastAdd.addEventListener('click', () => setMode('fastadd'));
+  if (tabSwim) tabSwim.addEventListener('click', () => setMode('swim'));
 }
 
 export function setupPrivacyToggles() {
-  ['stepperPrivate', 'workoutBatchPrivate', 'fastAddPrivate', 'abilityFeatPrivate'].forEach(id => {
+  ['stepperPrivate', 'workoutBatchPrivate', 'fastAddPrivate', 'abilityFeatPrivate', 'swimPrivate'].forEach(id => {
     const chk = document.getElementById(id);
     if (!chk) return;
     const updateActive = () => {
@@ -982,5 +989,292 @@ export function renderQuickRecentSets({ onReloadState } = {}) {
     }
 
     container.appendChild(item);
+  });
+}
+
+export function setupSwimLapLogger({ onReloadState } = {}) {
+  const goalSelect = document.getElementById('swimGoalSelect');
+  const poolBadge = document.getElementById('swimPoolLengthBadge');
+  const poolBtns = document.querySelectorAll('.swim-pool-btn');
+  const lapsInput = document.getElementById('swimLapsInput');
+  const minus10Btn = document.getElementById('swimLapsMinus10');
+  const minus1Btn = document.getElementById('swimLapsMinus1');
+  const plus1Btn = document.getElementById('swimLapsPlus1');
+  const plus10Btn = document.getElementById('swimLapsPlus10');
+  const presetsContainer = document.getElementById('swimLapPresets');
+  const totalMetersEl = document.getElementById('swimTotalMeters');
+  const convertedUnitsEl = document.getElementById('swimConvertedUnits');
+  const deltaBadgeEl = document.getElementById('swimGoalDeltaBadge');
+  const strokeChips = document.querySelectorAll('.swim-stroke-chip');
+  const exerciseNameInput = document.getElementById('swimExerciseName');
+  const notesInput = document.getElementById('swimNotes');
+  const excludePrCheckbox = document.getElementById('swimExcludePr');
+  const privateCheckbox = document.getElementById('swimPrivate');
+  const submitBtn = document.getElementById('submitSwimBtn');
+
+  if (!submitBtn || !lapsInput) return;
+
+  let currentPoolLength = 25;
+  let currentPoolUnit = 'm';
+  let currentStroke = 'Freestyle';
+
+  function populateGoals() {
+    if (!goalSelect) return;
+    const activeGoals = state.currentRoomData?.active_goals || [];
+    const prevVal = goalSelect.value;
+    goalSelect.innerHTML = '';
+
+    if (activeGoals.length === 0) {
+      goalSelect.innerHTML = '<option value="">Auto-Route (Active Distance Goal)</option>';
+      return;
+    }
+
+    // Sort active goals so distance / swim goals appear at the top
+    const sortedGoals = [...activeGoals].sort((a, b) => {
+      const aDist = a.category === 'distance' || /swim|lap|water/i.test(a.title || '');
+      const bDist = b.category === 'distance' || /swim|lap|water/i.test(b.title || '');
+      if (aDist && !bDist) return -1;
+      if (!aDist && bDist) return 1;
+      return 0;
+    });
+
+    sortedGoals.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      const emoji = /swim|lap|water/i.test(g.title) ? '🏊 ' : (g.category === 'distance' ? '🏃 ' : '🎯 ');
+      opt.textContent = `${emoji}${g.title} (${formatNumber(g.current_value)} / ${formatNumber(g.target_value)} ${g.unit || ''})`;
+      goalSelect.appendChild(opt);
+    });
+
+    if (prevVal && sortedGoals.some(g => String(g.id) === String(prevVal))) {
+      goalSelect.value = prevVal;
+    } else {
+      // Default to the currently viewed goal or first distance goal
+      const curGoal = activeGoals[state.selectedGoalIndex];
+      if (curGoal && (curGoal.category === 'distance' || /swim|lap/i.test(curGoal.title))) {
+        goalSelect.value = curGoal.id;
+      } else {
+        const firstDist = sortedGoals.find(g => g.category === 'distance' || /swim|lap/i.test(g.title));
+        if (firstDist) goalSelect.value = firstDist.id;
+      }
+    }
+  }
+
+  window.populateSwimGoals = populateGoals;
+
+  function updatePresets() {
+    if (!presetsContainer) return;
+    if (currentPoolUnit === 'yd') {
+      presetsContainer.innerHTML = `
+        <button type="button" class="preset-chip-fast" data-laps="10">+10 (250yd)</button>
+        <button type="button" class="preset-chip-fast" data-laps="20">+20 (500yd)</button>
+        <button type="button" class="preset-chip-fast" data-laps="40">+40 (1,000yd)</button>
+        <button type="button" class="preset-chip-fast" data-laps="70">+70 (~1 mi)</button>
+      `;
+    } else if (currentPoolLength === 50) {
+      presetsContainer.innerHTML = `
+        <button type="button" class="preset-chip-fast" data-laps="10">+10 (500m)</button>
+        <button type="button" class="preset-chip-fast" data-laps="20">+20 (1,000m)</button>
+        <button type="button" class="preset-chip-fast" data-laps="40">+40 (2,000m)</button>
+        <button type="button" class="preset-chip-fast" data-laps="32">+32 (~1 mi)</button>
+      `;
+    } else {
+      presetsContainer.innerHTML = `
+        <button type="button" class="preset-chip-fast" data-laps="10">+10 (250m)</button>
+        <button type="button" class="preset-chip-fast" data-laps="20">+20 (500m)</button>
+        <button type="button" class="preset-chip-fast" data-laps="40">+40 (1,000m)</button>
+        <button type="button" class="preset-chip-fast" data-laps="64">+64 (~1 mi)</button>
+      `;
+    }
+
+    presetsContainer.querySelectorAll('.preset-chip-fast').forEach(b => {
+      b.addEventListener('click', () => {
+        const cur = parseInt(lapsInput.value, 10) || 0;
+        const add = parseInt(b.dataset.laps, 10) || 10;
+        lapsInput.value = String(cur + add);
+        updateCalculations();
+      });
+    });
+  }
+
+  function updateCalculations() {
+    const laps = Math.max(1, parseInt(lapsInput.value, 10) || 1);
+    const poolMeters = currentPoolUnit === 'yd' ? currentPoolLength * 0.9144 : currentPoolLength;
+    const totalMeters = laps * poolMeters;
+    const totalKm = totalMeters / 1000.0;
+    const totalMiles = totalMeters / 1609.344;
+    const totalYards = totalMeters * 1.09361;
+
+    if (totalMetersEl) {
+      if (currentPoolUnit === 'yd') {
+        totalMetersEl.textContent = `${formatNumber(Math.round(laps * currentPoolLength))} yd (${formatNumber(Math.round(totalMeters))}m)`;
+      } else {
+        totalMetersEl.textContent = `${formatNumber(Math.round(totalMeters))} m`;
+      }
+    }
+
+    if (convertedUnitsEl) {
+      convertedUnitsEl.textContent = `${totalKm.toFixed(2)} km • ${totalMiles.toFixed(2)} mi`;
+    }
+
+    // Find target goal unit
+    const activeGoals = state.currentRoomData?.active_goals || [];
+    const selectedGoal = activeGoals.find(g => String(g.id) === String(goalSelect?.value)) ||
+                         activeGoals.find(g => g.category === 'distance') ||
+                         activeGoals[0] ||
+                         { unit: 'mi' };
+    const goalUnit = (selectedGoal.unit || 'mi').toLowerCase();
+
+    let goalDelta = 0;
+    let deltaStr = '';
+    let metricVal = 0;
+
+    if (goalUnit === 'm' || goalUnit === 'meter' || goalUnit === 'meters') {
+      goalDelta = Math.round(totalMeters);
+      deltaStr = `${formatNumber(goalDelta)} m`;
+      metricVal = goalDelta;
+    } else if (goalUnit === 'km') {
+      goalDelta = +totalKm.toFixed(3);
+      deltaStr = `${totalKm.toFixed(2)} km`;
+      metricVal = goalDelta;
+    } else if (goalUnit === 'yd' || goalUnit === 'yards') {
+      goalDelta = Math.round(totalYards);
+      deltaStr = `${formatNumber(goalDelta)} yd`;
+      metricVal = goalDelta;
+    } else {
+      // Default: miles ('mi')
+      goalDelta = +totalMiles.toFixed(4);
+      deltaStr = `${totalMiles >= 0.1 ? totalMiles.toFixed(2) : totalMiles.toFixed(3)} mi`;
+      metricVal = +totalMiles.toFixed(3);
+    }
+
+    if (deltaBadgeEl) {
+      deltaBadgeEl.textContent = `+${deltaStr}`;
+    }
+
+    if (submitBtn) {
+      const distShort = currentPoolUnit === 'yd' ? `${Math.round(laps * currentPoolLength)}yd` : `${Math.round(totalMeters)}m`;
+      submitBtn.innerHTML = `🏊 Log ${laps} Laps (${distShort} • +${deltaStr})`;
+    }
+
+    return { laps, totalMeters, totalKm, totalMiles, metricVal, deltaStr, goalId: selectedGoal?.id };
+  }
+
+  window.updateSwimCalculations = () => {
+    populateGoals();
+    updateCalculations();
+  };
+
+  // Pool length buttons
+  poolBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      poolBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPoolLength = parseFloat(btn.dataset.length) || 25;
+      currentPoolUnit = btn.dataset.unit || 'm';
+
+      if (poolBadge) {
+        if (currentPoolUnit === 'yd') {
+          poolBadge.textContent = '25 yd (Short Course)';
+        } else if (currentPoolLength === 50) {
+          poolBadge.textContent = '50m (Olympic Long Course)';
+        } else {
+          poolBadge.textContent = '25m (Standard Short Course)';
+        }
+      }
+
+      updatePresets();
+      updateCalculations();
+    });
+  });
+
+  // Steppers
+  if (minus10Btn) {
+    minus10Btn.addEventListener('click', () => {
+      const cur = parseInt(lapsInput.value, 10) || 1;
+      lapsInput.value = String(Math.max(1, cur - 10));
+      updateCalculations();
+    });
+  }
+  if (minus1Btn) {
+    minus1Btn.addEventListener('click', () => {
+      const cur = parseInt(lapsInput.value, 10) || 1;
+      lapsInput.value = String(Math.max(1, cur - 1));
+      updateCalculations();
+    });
+  }
+  if (plus1Btn) {
+    plus1Btn.addEventListener('click', () => {
+      const cur = parseInt(lapsInput.value, 10) || 0;
+      lapsInput.value = String(cur + 1);
+      updateCalculations();
+    });
+  }
+  if (plus10Btn) {
+    plus10Btn.addEventListener('click', () => {
+      const cur = parseInt(lapsInput.value, 10) || 0;
+      lapsInput.value = String(cur + 10);
+      updateCalculations();
+    });
+  }
+
+  lapsInput.addEventListener('input', updateCalculations);
+  if (goalSelect) {
+    goalSelect.addEventListener('change', updateCalculations);
+  }
+
+  // Stroke chips
+  strokeChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      strokeChips.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentStroke = chip.dataset.stroke || 'Freestyle';
+      if (exerciseNameInput) {
+        exerciseNameInput.placeholder = `Swim - ${currentPoolLength}${currentPoolUnit} (${currentStroke})`;
+      }
+    });
+  });
+
+  updatePresets();
+  populateGoals();
+  updateCalculations();
+
+  // Submit
+  submitBtn.addEventListener('click', async () => {
+    const calc = updateCalculations();
+    if (!calc || calc.laps <= 0) {
+      FlyToast.error('Please enter at least 1 lap');
+      return;
+    }
+
+    const exName = (exerciseNameInput?.value.trim()) || `Swim - ${currentPoolLength}${currentPoolUnit} (${currentStroke})`;
+    const isCombined = excludePrCheckbox ? excludePrCheckbox.checked : false;
+    const isPrivate = privateCheckbox ? privateCheckbox.checked : false;
+    const notes = notesInput?.value.trim() || '';
+
+    const payload = {
+      room_slug: state.roomSlug,
+      goal_id: calc.goalId || null,
+      activity_type: 'distance',
+      exercise_name: exName,
+      sets: 1,
+      reps: calc.laps,
+      distance_val: isCombined ? 0 : calc.metricVal,
+      total_metric: calc.metricVal,
+      notes: notes ? `${notes} (${calc.laps}x${currentPoolLength}${currentPoolUnit} laps)` : `${calc.laps}x${currentPoolLength}${currentPoolUnit} laps`,
+      is_combined: isCombined,
+      is_pr: isCombined ? false : null,
+      is_private: isPrivate,
+    };
+
+    if (!submitBtn.dataset.origHtml) submitBtn.dataset.origHtml = submitBtn.innerHTML;
+    await executeLogActivity(payload, {
+      onReloadState,
+      triggerButton: submitBtn,
+      buttonSuccessText: `<span>✓</span> Logged ${calc.laps} Laps (+${calc.deltaStr})!`,
+    });
+
+    if (exerciseNameInput) exerciseNameInput.value = '';
+    if (notesInput) notesInput.value = '';
   });
 }
