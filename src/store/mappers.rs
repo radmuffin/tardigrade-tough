@@ -25,6 +25,7 @@ pub fn map_goal(row: &Row) -> Result<Goal> {
         status: row.get(8)?,
         description: row.get(9)?,
         created_at: row.get(10)?,
+        composite_progress: None,
     })
 }
 

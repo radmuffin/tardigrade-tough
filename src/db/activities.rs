@@ -257,34 +257,6 @@ pub fn log_single_activity(
             .ok();
     }
 
-    // Update the goal progress
-    if let Some(gid) = goal_id {
-        tx.execute(
-            "UPDATE goals SET current_value = current_value + ? WHERE id = ?",
-            params![total_metric, gid],
-        )?;
-
-        // Check if goal completed
-        let is_completed = {
-            let mut check_stmt =
-                tx.prepare("SELECT current_value, target_value FROM goals WHERE id = ?")?;
-            if let Ok((cur, tgt)) = check_stmt.query_row(params![gid], |r| {
-                Ok((r.get::<_, f64>(0)?, r.get::<_, f64>(1)?))
-            }) {
-                cur >= tgt && tgt > 0.0
-            } else {
-                false
-            }
-        };
-
-        if is_completed {
-            tx.execute(
-                "UPDATE goals SET status = 'completed' WHERE id = ?",
-                params![gid],
-            )?;
-        }
-    }
-
     let now = Utc::now().to_rfc3339();
     let activity_time = req.created_at.as_deref().unwrap_or(&now);
     let nickname = req.user_nickname.as_deref().unwrap_or(&user.nickname);
@@ -419,6 +391,7 @@ pub fn log_single_activity(
     )?;
 
     let id = tx.last_insert_rowid();
+    let _ = recalculate_room_goals(&tx, &target_room);
     tx.commit()?;
 
     Ok(Activity {

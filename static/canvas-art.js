@@ -11,6 +11,7 @@ export class PixelDiorama {
     this.currentTheme = 'pando';
     this.progress = 0; // 0.0 to 1.0
     this.targetProgress = 0;
+    this.subProgress = null;
     this.particles = [];
     this.floatTexts = [];
     this.animationFrameId = null;
@@ -54,14 +55,18 @@ export class PixelDiorama {
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  setTheme(theme, progress = 0) {
+  setTheme(theme, progress = 0, subProgress = null) {
     this.currentTheme = theme || 'pando';
     this.targetProgress = Math.max(0, Math.min(1, progress));
     this.progress = this.targetProgress;
+    this.subProgress = subProgress || null;
   }
 
-  setProgress(progress, triggerBurst = false, deltaText = '') {
+  setProgress(progress, triggerBurst = false, deltaText = '', subProgress = null) {
     this.targetProgress = Math.max(0, Math.min(1, progress));
+    if (subProgress) {
+      this.subProgress = subProgress;
+    }
     if (triggerBurst) {
       this.spawnCelebrationBurst(deltaText);
     }
@@ -131,6 +136,9 @@ export class PixelDiorama {
       case 'canopy':
         const emeralds = ['#10b981', '#059669', '#34d399', '#047857', '#6ee7b7'];
         return emeralds[Math.floor(Math.random() * emeralds.length)];
+      case 'ironman':
+        const irons = ['#94a3b8', '#cbd5e1', '#f59e0b', '#ef4444', '#38bdf8', '#fbbf24', '#f1f5f9'];
+        return irons[Math.floor(Math.random() * irons.length)];
       default:
         return '#10b981';
     }
@@ -174,6 +182,9 @@ export class PixelDiorama {
         break;
       case 'canopy':
         this.renderCanopy(ctx, w, h);
+        break;
+      case 'ironman':
+        this.renderIronman(ctx, w, h);
         break;
       default:
         this.renderCustom(ctx, w, h);
@@ -994,6 +1005,576 @@ export class PixelDiorama {
   }
 
   /* ========================================================================= */
+  /* 🛡️ LAZY IRONMAN (COMPOSITE TRIATHLON DIORAMA)                            */
+  /* ========================================================================= */
+  renderIronman(ctx, w, h) {
+    const isLight = this.isLightMode();
+
+    // 1. Sky & Atmosphere
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.42);
+    if (isLight) {
+      // Coastal sunrise daylight (Radiant Cerulean to Morning Gold)
+      skyGrad.addColorStop(0, '#0284c7');
+      skyGrad.addColorStop(0.45, '#38bdf8');
+      skyGrad.addColorStop(0.8, '#fde68a');
+      skyGrad.addColorStop(1, '#fef08a');
+    } else {
+      // Iron forge ember twilight (Midnight Obsidian to Forge Orange)
+      skyGrad.addColorStop(0, '#09090b');
+      skyGrad.addColorStop(0.4, '#1e1b4b');
+      skyGrad.addColorStop(0.78, '#7c2d12');
+      skyGrad.addColorStop(1, '#c2410c');
+    }
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, w, h * 0.42);
+
+    // Sun / Forge Horizon
+    if (isLight) {
+      // Rising morning sun
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.4)';
+      ctx.beginPath();
+      ctx.arc(w * 0.8, h * 0.16, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(w * 0.8, h * 0.16, 12, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Twilight stars
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      for (let i = 0; i < 10; i++) {
+        const sx = (i * 37 + 11) % w;
+        const sy = (i * 19 + 5) % Math.floor(h * 0.22);
+        ctx.fillRect(sx, sy, 1, 1);
+      }
+      // Floating forge embers
+      if (Math.random() < 0.2) {
+        this.particles.push({
+          x: w * 0.8 + (Math.random() * 40 - 20),
+          y: h * 0.75,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: -Math.random() * 2.0 - 1.2,
+          size: 2,
+          color: Math.random() > 0.5 ? '#f97316' : '#fbbf24',
+          alpha: 0.85,
+          life: 0.85,
+        });
+      }
+    }
+
+    // Distant Coastal Headland & Mountains
+    ctx.fillStyle = isLight ? '#64748b' : '#1e1b4b';
+    this.drawPixelMountain(ctx, -15, h * 0.38, w * 0.45, h * 0.22);
+    ctx.fillStyle = isLight ? '#94a3b8' : '#27272a';
+    this.drawPixelMountain(ctx, w * 0.25, h * 0.38, w * 0.55, h * 0.18);
+
+    // 2. TIER 1: Ocean Bay (Swim Course, h * 0.36 to h * 0.56)
+    const bayY = h * 0.36;
+    const bayH = h * 0.20;
+    const seaGrad = ctx.createLinearGradient(0, bayY, 0, bayY + bayH);
+    if (isLight) {
+      seaGrad.addColorStop(0, '#0369a1');
+      seaGrad.addColorStop(1, '#06b6d4');
+    } else {
+      seaGrad.addColorStop(0, '#082f49');
+      seaGrad.addColorStop(1, '#0f766e');
+    }
+    ctx.fillStyle = seaGrad;
+    ctx.fillRect(0, bayY, w, bayH);
+
+    // Water Surface Waves
+    ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.4)' : 'rgba(94, 234, 212, 0.25)';
+    for (let i = 0; i < 6; i++) {
+      const wx = ((i * 68 + this.time * 15) % (w + 40)) - 20;
+      const wy = bayY + 6 + (i * 5) % (bayH - 12);
+      ctx.fillRect(wx, wy, 24, 2);
+    }
+
+    // Swim Buoys (Bobbing markers)
+    [w * 0.22, w * 0.52, w * 0.82].forEach((bx, idx) => {
+      const bob = Math.sin(this.time * 3 + idx) * 2;
+      const buoyColor = idx % 2 === 0 ? '#ea580c' : '#facc15';
+      ctx.fillStyle = buoyColor;
+      ctx.beginPath();
+      ctx.moveTo(bx, bayY + 12 + bob);
+      ctx.lineTo(bx - 5, bayY + 20 + bob);
+      ctx.lineTo(bx + 5, bayY + 20 + bob);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(bx - 1, bayY + 14 + bob, 2, 2);
+    });
+
+    // Armored Turtle (Swim Discipline)
+    const sp = this.subProgress;
+    const sPct = sp ? Math.min(1, Math.max(0, (sp.swim_current || 0) / (sp.swim_target || 2.4))) : this.progress;
+    const turtleX = w * 0.10 + (w * 0.74) * sPct;
+    const turtleY = bayY + bayH * 0.55 + Math.sin(this.time * 3.2) * 3;
+    this.drawPixelArmoredTurtle(ctx, turtleX, turtleY, 0.85, this.time * 4);
+
+    // 3. TIER 2: Coastal Highway (Bike Course, h * 0.56 to h * 0.74)
+    const roadY = h * 0.56;
+    const roadH = h * 0.18;
+    ctx.fillStyle = isLight ? '#475569' : '#1e293b';
+    ctx.fillRect(0, roadY, w, roadH);
+
+    // Road Guardrail (Top border)
+    ctx.fillStyle = isLight ? '#94a3b8' : '#334155';
+    ctx.fillRect(0, roadY, w, 3);
+    for (let gx = 10; gx < w; gx += 30) {
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(gx, roadY - 4, 3, 4);
+    }
+
+    // Dashed Road Stripe
+    ctx.fillStyle = '#f8fafc';
+    for (let rx = 0; rx < w; rx += 28) {
+      ctx.fillRect(rx, roadY + roadH * 0.5 - 1, 14, 2);
+    }
+
+    // Armored Jackrabbit (Bike Discipline)
+    const bPct = sp ? Math.min(1, Math.max(0, (sp.bike_current || 0) / (sp.bike_target || 112.0))) : this.progress;
+    const cyclistX = w * 0.08 + (w * 0.76) * bPct;
+    const cyclistY = roadY + roadH * 0.55;
+    this.drawPixelArmoredCyclist(ctx, cyclistX, cyclistY, 0.85, this.time * 12);
+
+    // 4. TIER 3: Marathon Track & Iron Finish Arch (Run Course, h * 0.74 to h)
+    const trackY = h * 0.74;
+    const trackH = h - trackY;
+    ctx.fillStyle = isLight ? '#991b1b' : '#3f0c0c';
+    ctx.fillRect(0, trackY, w, trackH);
+
+    // Track Lane Lines
+    ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.2)';
+    ctx.fillRect(0, trackY + trackH * 0.35, w, 2);
+    ctx.fillRect(0, trackY + trackH * 0.70, w, 2);
+
+    // Iron Finish Archway at the right
+    const rPct = sp ? Math.min(1, Math.max(0, (sp.run_current || 0) / (sp.run_target || 26.2))) : this.progress;
+    const isComplete = this.progress >= 1.0 || (sPct >= 1.0 && bPct >= 1.0 && rPct >= 1.0);
+    this.drawPixelIronFinishArch(ctx, w * 0.82, trackY + trackH * 0.65, 0.9, isComplete);
+
+    // Iron-Clad Tardigrade (Marathon Run Discipline)
+    const tardStartX = w * 0.08;
+    const tardTargetX = w * 0.78;
+    const tardX = isComplete ? tardTargetX : (tardStartX + (tardTargetX - tardStartX) * rPct);
+    const tardY = trackY + trackH * 0.50;
+    this.drawPixelIroncladTardigrade(ctx, tardX, tardY, 0.38, this.time * 8, isComplete);
+  }
+
+  drawPixelArmoredTurtle(ctx, x, y, scale = 1.0, swimPhase = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const flipperAngle = Math.sin(swimPhase) * 0.45;
+
+    // Trailing water bubbles
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillRect(-38, 2 + Math.sin(swimPhase * 1.5) * 3, 3, 3);
+    ctx.fillRect(-46, -4 + Math.cos(swimPhase * 1.5) * 4, 2, 2);
+    ctx.fillRect(-54, 1, 3, 3);
+
+    // Back flippers
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(-28, -8 + flipperAngle * 4, 10, 5);
+    ctx.fillRect(-28, 6 - flipperAngle * 4, 10, 5);
+
+    // Front large swimming flipper (paddling stroke)
+    ctx.save();
+    ctx.translate(8, 0);
+    ctx.rotate(flipperAngle);
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(-4, -18, 14, 8);
+    ctx.fillRect(2, -24, 12, 8);
+    // Iron flipper armor guard
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-2, -16, 10, 5);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(0, -15, 2, 2);
+    ctx.restore();
+
+    // Armored Carapace (Iron Shell)
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 26, 17, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 24, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Shell plate highlights & steel sheen
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-14, -10, 28, 8);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-10, -8, 20, 4);
+
+    // Riveted carapace plates (Geometric iron segments)
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-16, -1, 32, 2);
+    ctx.fillRect(-8, -12, 2, 24);
+    ctx.fillRect(8, -12, 2, 24);
+
+    // Brass/steel rivets on shell
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(-12, -7, 2, 2);
+    ctx.fillRect(0, -7, 2, 2);
+    ctx.fillRect(12, -7, 2, 2);
+    ctx.fillRect(-12, 5, 2, 2);
+    ctx.fillRect(0, 5, 2, 2);
+    ctx.fillRect(12, 5, 2, 2);
+
+    // Front Lower Flipper
+    ctx.save();
+    ctx.translate(8, 6);
+    ctx.rotate(-flipperAngle * 0.7);
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(-2, 4, 12, 6);
+    ctx.fillRect(2, 8, 10, 6);
+    ctx.restore();
+
+    // Sea Turtle Head
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(22, -6, 14, 12);
+    ctx.fillRect(34, -4, 5, 8);
+
+    // Brass Swim Goggles
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(26, -7, 8, 8);
+    ctx.fillRect(20, -4, 6, 2);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(28, -6, 5, 5);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(29, -5, 2, 2);
+
+    ctx.restore();
+  }
+
+  drawPixelArmoredCyclist(ctx, x, y, scale = 0.95, pedalPhase = 0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const wheelR = 12;
+    const rearWheelX = -26;
+    const frontWheelX = 26;
+    const wheelY = 10;
+
+    // 1. Wheels (Rear & Front)
+    [rearWheelX, frontWheelX].forEach(wx => {
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(wx, wheelY, wheelR, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(wx, wheelY, wheelR - 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.arc(wx, wheelY, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Spokes (Spinning with pedalPhase)
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1;
+      for (let a = 0; a < 4; a++) {
+        const ang = pedalPhase + (a * Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(wx, wheelY);
+        ctx.lineTo(wx + Math.cos(ang) * (wheelR - 3), wheelY + Math.sin(ang) * (wheelR - 3));
+        ctx.stroke();
+      }
+    });
+
+    // 2. Bike Frame (Aero Iron Diamond Geometry)
+    const bottomBracketX = -2;
+    const bottomBracketY = 8;
+    const seatTubeTopX = -10;
+    const seatTubeTopY = -6;
+    const headTubeTopX = 18;
+    const headTubeTopY = -8;
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 3;
+    // Chainstay
+    ctx.beginPath();
+    ctx.moveTo(rearWheelX, wheelY);
+    ctx.lineTo(bottomBracketX, bottomBracketY);
+    // Seatstay
+    ctx.lineTo(seatTubeTopX, seatTubeTopY);
+    ctx.lineTo(rearWheelX, wheelY);
+    // Down tube
+    ctx.moveTo(bottomBracketX, bottomBracketY);
+    ctx.lineTo(headTubeTopX, headTubeTopY);
+    // Top tube
+    ctx.moveTo(seatTubeTopX, seatTubeTopY);
+    ctx.lineTo(headTubeTopX, headTubeTopY);
+    // Fork
+    ctx.moveTo(headTubeTopX, headTubeTopY);
+    ctx.lineTo(frontWheelX, wheelY);
+    ctx.stroke();
+
+    // Saddle
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(seatTubeTopX - 8, seatTubeTopY - 4, 14, 4);
+
+    // Aero Drop Handlebars
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(headTubeTopX, headTubeTopY);
+    ctx.lineTo(headTubeTopX + 8, headTubeTopY - 4);
+    ctx.lineTo(headTubeTopX + 12, headTubeTopY + 2);
+    ctx.stroke();
+
+    // 3. Jackrabbit Cyclist in Aero Tuck
+    const crankR = 6;
+    const pedal1X = bottomBracketX + Math.cos(pedalPhase) * crankR;
+    const pedal1Y = bottomBracketY + Math.sin(pedalPhase) * crankR;
+    const pedal2X = bottomBracketX - Math.cos(pedalPhase) * crankR;
+    const pedal2Y = bottomBracketY - Math.sin(pedalPhase) * crankR;
+
+    // Legs pedaling (Back leg)
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(seatTubeTopX + 2, seatTubeTopY - 2);
+    ctx.lineTo(pedal2X - 2, pedal2Y - 8);
+    ctx.lineTo(pedal2X, pedal2Y);
+    ctx.stroke();
+
+    // Rabbit Torso (Warm tawny fur + iron chestplate)
+    ctx.fillStyle = '#d97706';
+    ctx.fillRect(-12, -18, 22, 12);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-8, -17, 16, 8);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(-6, -16, 12, 2);
+
+    // Front Leg & Iron Knee Guard
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 4;
+    const kneeX = (seatTubeTopX + pedal1X) * 0.5 + 4;
+    const kneeY = (seatTubeTopY + pedal1Y) * 0.5 - 6;
+    ctx.beginPath();
+    ctx.moveTo(seatTubeTopX + 2, seatTubeTopY - 2);
+    ctx.lineTo(kneeX, kneeY);
+    ctx.lineTo(pedal1X, pedal1Y);
+    ctx.stroke();
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(kneeX - 3, kneeY - 3, 6, 6);
+
+    // Arms reaching to aero bars
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(6, -14);
+    ctx.lineTo(headTubeTopX + 6, headTubeTopY - 3);
+    ctx.stroke();
+
+    // Jackrabbit Head
+    ctx.fillStyle = '#d97706';
+    ctx.fillRect(8, -26, 12, 12);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(18, -22, 4, 6);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(16, -24, 2, 2);
+
+    // Long aerodynamic rabbit ears streaming back
+    ctx.fillStyle = '#b45309';
+    ctx.fillRect(-6, -28, 16, 4);
+    ctx.fillRect(-12, -26, 8, 3);
+    ctx.fillStyle = '#fca5a5';
+    ctx.fillRect(-4, -27, 12, 2);
+
+    // Iron Aero Teardrop Helmet
+    ctx.fillStyle = '#64748b';
+    ctx.beginPath();
+    ctx.moveTo(6, -27);
+    ctx.lineTo(22, -27);
+    ctx.lineTo(24, -20);
+    ctx.lineTo(4, -20);
+    ctx.lineTo(-6, -24);
+    ctx.closePath();
+    ctx.fill();
+
+    // Helmet metallic visor & highlight
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(4, -26, 16, 2);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(18, -24, 5, 4);
+
+    ctx.restore();
+  }
+
+  drawPixelIroncladTardigrade(ctx, x, y, scale = 0.45, runPhase = 0, isComplete = false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const bob = isComplete ? Math.sin(this.time * 6) * 3 : Math.abs(Math.sin(runPhase)) * 4;
+
+    // Body segments (Heavy Iron Knight Armor)
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-42, -22 - bob, 84, 44);
+
+    // Segmented polished plate iron (4 segments)
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-40, -20 - bob, 80, 40);
+
+    // Steel highlight ridges
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-40, -20 - bob, 80, 6);
+
+    // Segment seams and rivets
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-20, -20 - bob, 4, 40);
+    ctx.fillRect(0, -20 - bob, 4, 40);
+    ctx.fillRect(20, -20 - bob, 4, 40);
+
+    // Golden / silver rivets along segment borders
+    ctx.fillStyle = '#f8fafc';
+    [-20, 0, 20].forEach(sx => {
+      ctx.fillRect(sx - 1, -16 - bob, 2, 2);
+      ctx.fillRect(sx - 1, -6 - bob, 2, 2);
+      ctx.fillRect(sx - 1, 4 - bob, 2, 2);
+      ctx.fillRect(sx - 1, 14 - bob, 2, 2);
+    });
+
+    // Rounded posterior armor plate
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-48, -12 - bob, 10, 24);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-46, -10 - bob, 4, 20);
+
+    // Knight Helmet & Visor (Head)
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(38, -16 - bob, 18, 30);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(40, -14 - bob, 14, 26);
+
+    // Horizontal Visor Slit
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(44, -8 - bob, 10, 5);
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(47, -7 - bob, 4, 3);
+
+    // Helmet Crest / Red Plume waving
+    const plumeWiggle = Math.sin(this.time * 8) * 3;
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(40, -26 - bob, 6, 12);
+    ctx.fillRect(36 + plumeWiggle, -32 - bob, 10, 8);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(38 + plumeWiggle, -28 - bob, 5, 4);
+
+    // 4 Pairs of Armored Stubby Legs in running motion
+    const legPositions = [-30, -10, 10, 30];
+    legPositions.forEach((lx, idx) => {
+      const legStride = isComplete ? 0 : Math.sin(runPhase + idx * 1.4) * 8;
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(lx - 5, 18 - bob + legStride, 11, 12);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(lx - 4, 19 - bob + legStride, 8, 8);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(lx - 7, 28 - bob + legStride, 14, 5);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(lx - 8, 31 - bob + legStride, 3, 3);
+      ctx.fillRect(lx - 2, 31 - bob + legStride, 3, 3);
+      ctx.fillRect(lx + 4, 31 - bob + legStride, 3, 3);
+    });
+
+    // If complete, draw victory fist & sparkles
+    if (isComplete) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(48, -36 - bob, 12, 10);
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(52, -26 - bob, 4, 8);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(62, -40 - bob, 3, 3);
+      ctx.fillRect(42, -42 - bob, 3, 3);
+    }
+
+    ctx.restore();
+  }
+
+  drawPixelIronFinishArch(ctx, x, y, scale = 1.0, isComplete = false) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+
+    const archH = 55;
+    const archW = 44;
+
+    // Left & Right Riveted Wrought-Iron Pillars
+    [-archW * 0.5, archW * 0.5].forEach(px => {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(px - 4, -archH, 8, archH);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(px - 3, -archH, 6, archH);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(px - 1, -archH, 2, archH);
+
+      // Iron rivet bands
+      ctx.fillStyle = '#cbd5e1';
+      for (let by = -archH + 10; by < 0; by += 12) {
+        ctx.fillRect(px - 5, by, 10, 2);
+      }
+
+      // Forge Brazier on pillar top
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(px - 7, -archH - 6, 14, 6);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(px - 5, -archH - 8, 10, 2);
+
+      // Dancing Fire in Brazier
+      const flameH = (isComplete ? 16 : 9) + Math.sin(this.time * 10 + px) * 3;
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(px - 4, -archH - 8 - flameH, 8, flameH);
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(px - 3, -archH - 8 - flameH * 0.8, 6, flameH * 0.8);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(px - 2, -archH - 8 - flameH * 0.5, 4, flameH * 0.5);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - 1, -archH - 8 - flameH * 0.25, 2, flameH * 0.25);
+    });
+
+    // Iron Crossbeam & Banner
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-archW * 0.5, -archH + 4, archW, 14);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-archW * 0.5 + 2, -archH + 6, archW - 4, 10);
+
+    // Decorative Iron Anvil crest at center
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(-5, -archH + 1, 10, 3);
+    ctx.fillRect(-3, -archH + 4, 6, 2);
+    ctx.fillRect(-6, -archH + 6, 12, 2);
+
+    // Checkered Banner Pattern
+    const checkSize = 4;
+    for (let cx = -archW * 0.5 + 4; cx < archW * 0.5 - 4; cx += checkSize) {
+      const isAlt = Math.floor((cx + archW) / checkSize) % 2 === 0;
+      ctx.fillStyle = isAlt ? '#ffffff' : '#000000';
+      ctx.fillRect(cx, -archH + 8, checkSize, checkSize);
+    }
+
+    // Checkered Finish Line Tape Across Ground
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(-archW * 0.5, -2, archW, 3);
+    for (let fx = -archW * 0.5; fx < archW * 0.5; fx += 6) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(fx, -2, 3, 3);
+    }
+
+    ctx.restore();
+  }
+
+  /* ========================================================================= */
   /* 🐻 AUTHENTIC PIXEL TARDIGRADE (WATER BEAR)                               */
   /* ========================================================================= */
   renderCustom(ctx, w, h) {
@@ -1087,8 +1668,32 @@ export class PixelDiorama {
     ctx.fillStyle = isLight ? 'rgba(0, 0, 0, 0.12)' : 'rgba(0, 0, 0, 0.5)';
     ctx.fillRect(0, h - barH, w, barH);
 
-    ctx.fillStyle = '#10b981';
-    ctx.fillRect(0, h - barH, w * this.progress, barH);
+    if (this.currentTheme === 'ironman' && this.subProgress) {
+      const sp = this.subProgress;
+      const sPct = Math.min(1, Math.max(0, (sp.swim_current || 0) / (sp.swim_target || 2.4)));
+      const bPct = Math.min(1, Math.max(0, (sp.bike_current || 0) / (sp.bike_target || 112.0)));
+      const rPct = Math.min(1, Math.max(0, (sp.run_current || 0) / (sp.run_target || 26.2)));
+
+      const segW = (w - 4) / 3;
+      // 1. Swim segment (Cyan)
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(0, h - barH, segW * sPct, barH);
+      // Divider 1
+      ctx.fillStyle = isLight ? '#cbd5e1' : '#334155';
+      ctx.fillRect(segW, h - barH, 2, barH);
+      // 2. Bike segment (Amber)
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(segW + 2, h - barH, segW * bPct, barH);
+      // Divider 2
+      ctx.fillStyle = isLight ? '#cbd5e1' : '#334155';
+      ctx.fillRect(segW * 2 + 2, h - barH, 2, barH);
+      // 3. Run segment (Emerald)
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(segW * 2 + 4, h - barH, segW * rPct, barH);
+    } else {
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(0, h - barH, w * this.progress, barH);
+    }
   }
 
   updateParticles() {

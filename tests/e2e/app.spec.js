@@ -58,7 +58,7 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await expect(page.locator('.lb-category-section[data-category="elevation"]')).toBeVisible();
   });
 
-  test('toggles active goal dioramas between Pando, Everest, and Caribou', async ({ page }) => {
+  test('toggles active goal dioramas between Pando, Everest, Caribou, and Ironman', async ({ page }) => {
     await expect(page.locator('#heroGoalTitle')).toContainText('Pando');
 
     // Switch to Everest
@@ -70,6 +70,15 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('#goalTabCaribou');
     await expect(page.locator('#heroGoalTitle')).toContainText('Caribou', { timeout: 10000 });
     await expect(page.locator('#heroGoalTarget')).toContainText('3,000');
+
+    // Switch to Ironman
+    await page.click('#goalTabIronman');
+    await expect(page.locator('#heroGoalTitle')).toContainText('Ironman', { timeout: 10000 });
+    await expect(page.locator('#heroGoalTarget')).toContainText('140.6');
+    await expect(page.locator('#heroGoalCompositeBreakdown')).toBeVisible();
+    await expect(page.locator('#heroSwimSub')).toContainText('2.40 mi');
+    await expect(page.locator('#heroBikeSub')).toContainText('112.0 mi');
+    await expect(page.locator('#heroRunSub')).toContainText('26.2 mi');
   });
 
   test('cycles through active goals with arrow navigators in correct direction', async ({ page }) => {
@@ -83,6 +92,16 @@ test.describe('Tardigrade Tough Web App E2E', () => {
 
     // Click right arrow (next) -> moves right to Caribou
     await page.click('#nextGoalBtn');
+    await expect(page.locator('#heroGoalTitle')).toContainText('Caribou');
+    await expect(page.locator('#goalTabCaribou')).toHaveClass(/active/);
+
+    // Click right arrow (next) -> moves right to Ironman
+    await page.click('#nextGoalBtn');
+    await expect(page.locator('#heroGoalTitle')).toContainText('Ironman');
+    await expect(page.locator('#goalTabIronman')).toHaveClass(/active/);
+
+    // Click left arrow (prev) -> moves left back to Caribou
+    await page.click('#prevGoalBtn');
     await expect(page.locator('#heroGoalTitle')).toContainText('Caribou');
     await expect(page.locator('#goalTabCaribou')).toHaveClass(/active/);
 
@@ -241,6 +260,52 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     // Close logger modal
     await page.click('#closeActivityLoggerModalBtn');
     await expect(page.locator('#activityLoggerModal')).not.toBeVisible();
+  });
+
+  test('logs distance activity with bike subtype advancing both Caribou and Lazy Ironman', async ({ page }) => {
+    const squadSlug = `test-ironman-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    await page.goto(`/r/${squadSlug}`);
+    await page.waitForSelector('body[data-state="ready"]');
+
+    // Select Ironman goal to check initial state
+    await page.click('#goalTabIronman');
+    await expect(page.locator('#heroGoalTitle')).toContainText('Ironman');
+    await expect(page.locator('#heroBikeSub')).toContainText('0.0 / 112.0 mi');
+
+    // Open logger modal
+    await page.click('#floatingLogBtn');
+    await expect(page.locator('#activityLoggerModal')).toBeVisible();
+
+    // Switch to Fast-Add
+    await page.click('#modeFastAddBtn');
+    await expect(page.locator('#panelFastAdd')).toBeVisible();
+
+    // Select distance category
+    await page.selectOption('#fastAddCategory', 'distance');
+    await expect(page.locator('#fastAddDistanceSubtypeRow')).toBeVisible();
+
+    // Select bike subtype
+    await page.click('.subtype-pill-btn[data-subtype="bike"]');
+    await expect(page.locator('.subtype-pill-btn[data-subtype="bike"]')).toHaveClass(/active/);
+
+    // Enter 12 miles
+    await page.fill('#fastAddInput', '12');
+
+    // Submit
+    await page.click('#submitFastAddBtn');
+
+    // Close modal
+    await page.click('#closeActivityLoggerModalBtn');
+    await expect(page.locator('#activityLoggerModal')).not.toBeVisible();
+
+    // Check Ironman goal breakdown
+    await page.click('#goalTabIronman');
+    await expect(page.locator('#heroBikeSub')).toContainText('12.0 / 112.0 mi');
+    await expect(page.locator('#heroGoalCurrent')).toContainText('12 mi');
+
+    // Check Caribou goal has also advanced
+    await page.click('#goalTabCaribou');
+    await expect(page.locator('#heroGoalCurrent')).toContainText('12 mi');
   });
 
   test('supports room-based URL navigation and loads squad data', async ({ page }) => {

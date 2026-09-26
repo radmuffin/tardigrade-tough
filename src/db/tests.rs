@@ -46,9 +46,15 @@ fn test_init_db_and_seed_defaults() {
         get_goals_for_room(&conn, "test-squad").expect("goals query failed");
     assert_eq!(
         active_goals.len(),
-        3,
-        "Should seed 3 active default goals (Pando, Caribou, Everest)"
+        4,
+        "Should seed 4 active default goals (Pando, Caribou, Everest, Lazy Ironman)"
     );
+    let ironman = active_goals
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .expect("ironman goal seeded");
+    assert_eq!(ironman.category, "composite");
+    assert_eq!(ironman.target_value, 140.6);
     assert_eq!(
         completed_goals.len(),
         1,
@@ -367,4 +373,167 @@ fn test_user_profile_avatar_and_color_persistence() {
     assert_eq!(re_fetched.nickname, "Iron Bear");
     assert_eq!(re_fetched.avatar_color, "#ec4899");
     assert_eq!(re_fetched.avatar_emoji, "🐻");
+}
+
+#[test]
+fn test_lazy_ironman_composite_goal_unit() {
+    let mut conn = setup_test_db();
+    let squad = get_or_create_room(&conn, "tri-squad").unwrap();
+    let user = get_or_create_user(&conn, "token-tri", &squad.slug).unwrap();
+
+    let (active_init, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let ironman_init = active_init
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .expect("ironman seeded");
+    assert_eq!(ironman_init.target_value, 140.6);
+    let comp_init = ironman_init.composite_progress.as_ref().unwrap();
+    assert_eq!(comp_init.swim_target, 2.4);
+    assert_eq!(comp_init.bike_target, 112.0);
+    assert_eq!(comp_init.run_target, 26.2);
+    assert_eq!(comp_init.swim_current, 0.0);
+    assert_eq!(comp_init.bike_current, 0.0);
+    assert_eq!(comp_init.run_current, 0.0);
+
+    // 1. Log a 5.0 mi Run
+    let run_req = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Marathon Training Run".to_string()),
+        distance_val: Some(5.0),
+        total_metric: Some(5.0),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &user, &squad.slug, &run_req).unwrap();
+
+    let (active_after_run, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let caribou = active_after_run
+        .iter()
+        .find(|g| g.theme_key == "caribou")
+        .unwrap();
+    assert_eq!(caribou.current_value, 5.0, "Caribou received run distance");
+    let ironman = active_after_run
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(ironman.current_value, 5.0);
+    let comp = ironman.composite_progress.as_ref().unwrap();
+    assert_eq!(comp.run_current, 5.0);
+    assert_eq!(comp.bike_current, 0.0);
+    assert_eq!(comp.swim_current, 0.0);
+
+    // 2. Log a 50.0 mi Bike ride
+    let bike_req = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Road Cycling".to_string()),
+        distance_val: Some(50.0),
+        total_metric: Some(50.0),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &user, &squad.slug, &bike_req).unwrap();
+
+    let (active_after_bike, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let caribou_b = active_after_bike
+        .iter()
+        .find(|g| g.theme_key == "caribou")
+        .unwrap();
+    assert_eq!(
+        caribou_b.current_value, 55.0,
+        "Caribou received bike distance"
+    );
+    let ironman_b = active_after_bike
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(ironman_b.current_value, 55.0);
+    let comp_b = ironman_b.composite_progress.as_ref().unwrap();
+    assert_eq!(comp_b.bike_current, 50.0);
+    assert_eq!(comp_b.run_current, 5.0);
+
+    // 3. Log a 1.0 mi Swim
+    let swim_req = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Pool Swim - Freestyle Laps".to_string()),
+        distance_val: Some(1.0),
+        total_metric: Some(1.0),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &user, &squad.slug, &swim_req).unwrap();
+
+    let (active_after_swim, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let caribou_s = active_after_swim
+        .iter()
+        .find(|g| g.theme_key == "caribou")
+        .unwrap();
+    assert_eq!(
+        caribou_s.current_value, 56.0,
+        "Caribou received swim distance"
+    );
+    let ironman_s = active_after_swim
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(ironman_s.current_value, 56.0);
+    let comp_s = ironman_s.composite_progress.as_ref().unwrap();
+    assert_eq!(comp_s.swim_current, 1.0);
+
+    // 4. Overfill Bike Leg: Log 200 mi more bike ride (total 250 mi bike)
+    let mega_bike = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Century Ride".to_string()),
+        distance_val: Some(200.0),
+        total_metric: Some(200.0),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &user, &squad.slug, &mega_bike).unwrap();
+
+    let (active_over, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let ironman_over = active_over
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    let comp_over = ironman_over.composite_progress.as_ref().unwrap();
+    assert_eq!(comp_over.bike_current, 250.0);
+    // Effective capped contribution = 112.0 (bike cap) + 5.0 (run) + 1.0 (swim) = 118.0
+    assert_eq!(ironman_over.current_value, 118.0);
+    assert_eq!(
+        ironman_over.status, "active",
+        "Goal not completed yet because swim & run remain"
+    );
+
+    // 5. Complete Swim (1.4 mi) and Run (21.2 mi)
+    let finish_swim = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Open Water Swim".to_string()),
+        distance_val: Some(1.4),
+        total_metric: Some(1.4),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &user, &squad.slug, &finish_swim).unwrap();
+
+    let finish_run = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Long Marathon Run".to_string()),
+        distance_val: Some(21.2),
+        total_metric: Some(21.2),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &user, &squad.slug, &finish_run).unwrap();
+
+    let (active_final, completed_final) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    assert!(
+        !active_final.iter().any(|g| g.theme_key == "ironman"),
+        "Ironman should no longer be active"
+    );
+    let conquered_ironman = completed_final
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .expect("conquered ironman in completed list");
+    assert_eq!(conquered_ironman.status, "completed");
+    assert_eq!(conquered_ironman.current_value, 140.6);
 }

@@ -15,7 +15,7 @@ export function renderTrophyRoom() {
 
     if (titleEl) {
       const isAbility = trophy.category === 'ability';
-      titleEl.textContent = `${isAbility ? '⚡ ' : (trophy.theme_key === 'whale' ? '🐋 ' : '🏆 ')}${trophy.title}`;
+      titleEl.textContent = `${isAbility ? '⚡ ' : (trophy.theme_key === 'whale' ? '🐋 ' : (trophy.theme_key === 'ironman' ? '🛡️ ' : '🏆 '))}${trophy.title}`;
     }
     if (descEl) {
       descEl.textContent = trophy.description;
@@ -27,7 +27,7 @@ export function renderTrophyRoom() {
         : `<span>${formatNumber(trophy.current_value)} ${trophy.unit}</span><span>Target: ${formatNumber(trophy.target_value)} ${trophy.unit}</span>`;
     }
     if (state.trophyDiorama) {
-      state.trophyDiorama.setTheme(trophy.theme_key, 1.0);
+      state.trophyDiorama.setTheme(trophy.theme_key, 1.0, trophy.composite_progress);
     }
   }
 
@@ -40,7 +40,7 @@ export function renderTrophyRoom() {
       listContainer.style.display = 'flex';
       listContainer.innerHTML = completed.map(g => {
         const isAbility = g.category === 'ability';
-        const emoji = isAbility ? '⚡' : (g.theme_key === 'whale' ? '🐋' : '🏆');
+        const emoji = isAbility ? '⚡' : (g.theme_key === 'whale' ? '🐋' : (g.theme_key === 'ironman' ? '🛡️' : '🏆'));
         const metricStr = isAbility
           ? 'One-off Feat'
           : `${formatNumber(g.target_value)} ${g.unit}`;

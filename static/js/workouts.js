@@ -75,13 +75,11 @@ export function updateStepperForGoal(goal) {
     }
   }
 
-  if (!goal) return;
-
-  // Elevation and distance ONLY go through quickadd (Fast-Add)
-  if (goal.category === 'elevation' || goal.category === 'distance') {
+  // Elevation, distance, and composite goals route through quickadd (Fast-Add)
+  if (goal.category === 'elevation' || goal.category === 'distance' || goal.category === 'composite') {
     const catSelect = document.getElementById('fastAddCategory');
     if (catSelect) {
-      catSelect.value = goal.category;
+      catSelect.value = goal.category === 'composite' ? 'distance' : goal.category;
       catSelect.dispatchEvent(new Event('change'));
     }
   }
@@ -587,11 +585,30 @@ export function setupFastAdd({ onReloadState } = {}) {
   const amtInput = document.getElementById('fastAddInput');
   const presetsContainer = document.getElementById('fastAddPresets');
   const submitBtn = document.getElementById('submitFastAddBtn');
+  const subtypeRow = document.getElementById('fastAddDistanceSubtypeRow');
+  const subtypeBtns = subtypeRow ? subtypeRow.querySelectorAll('.subtype-pill-btn') : [];
 
   if (!catSelect || !amtInput || !presetsContainer || !submitBtn) return;
 
+  let currentDistanceSubtype = 'run'; // 'run' | 'bike' | 'swim'
+
+  if (subtypeBtns.length > 0) {
+    subtypeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        subtypeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentDistanceSubtype = btn.dataset.subtype || 'run';
+        updatePresets();
+      });
+    });
+  }
+
   function updatePresets() {
     const cat = catSelect.value;
+    if (subtypeRow) {
+      subtypeRow.style.display = cat === 'distance' ? 'block' : 'none';
+    }
+
     if (cat === 'weight') {
       presetsContainer.innerHTML = `
         <button class="preset-chip-fast" data-amt="500">+500</button>
@@ -600,12 +617,29 @@ export function setupFastAdd({ onReloadState } = {}) {
         <button class="preset-chip-fast" data-amt="5000">+5,000</button>
       `;
     } else if (cat === 'distance') {
-      presetsContainer.innerHTML = `
-        <button class="preset-chip-fast" data-amt="1">+1 mi</button>
-        <button class="preset-chip-fast" data-amt="3">+3 mi</button>
-        <button class="preset-chip-fast" data-amt="5">+5 mi</button>
-        <button class="preset-chip-fast" data-amt="10">+10 mi</button>
-      `;
+      if (currentDistanceSubtype === 'bike') {
+        presetsContainer.innerHTML = `
+          <button class="preset-chip-fast" data-amt="5">+5 mi</button>
+          <button class="preset-chip-fast" data-amt="10">+10 mi</button>
+          <button class="preset-chip-fast" data-amt="20">+20 mi</button>
+          <button class="preset-chip-fast" data-amt="50">+50 mi</button>
+        `;
+      } else if (currentDistanceSubtype === 'swim') {
+        presetsContainer.innerHTML = `
+          <button class="preset-chip-fast" data-amt="0.5">+0.5 mi</button>
+          <button class="preset-chip-fast" data-amt="1">+1.0 mi</button>
+          <button class="preset-chip-fast" data-amt="1.5">+1.5 mi</button>
+          <button class="preset-chip-fast" data-amt="2.4">+2.4 mi</button>
+        `;
+      } else {
+        // Run
+        presetsContainer.innerHTML = `
+          <button class="preset-chip-fast" data-amt="1">+1 mi</button>
+          <button class="preset-chip-fast" data-amt="3">+3 mi</button>
+          <button class="preset-chip-fast" data-amt="5">+5 mi</button>
+          <button class="preset-chip-fast" data-amt="10">+10 mi</button>
+        `;
+      }
     } else {
       presetsContainer.innerHTML = `
         <button class="preset-chip-fast" data-amt="250">+250 ft</button>
@@ -641,10 +675,23 @@ export function setupFastAdd({ onReloadState } = {}) {
     const repsInput = document.getElementById('fastAddReps');
     const notesInput = document.getElementById('fastAddNotes');
 
-    const exName = (exerciseInput?.value.trim()) || 'Fast Add';
+    let exName = exerciseInput?.value.trim() || '';
+    if (!exName) {
+      if (cat === 'distance') {
+        exName = currentDistanceSubtype === 'bike' ? 'Bike' : (currentDistanceSubtype === 'swim' ? 'Swim' : 'Run');
+      } else {
+        exName = 'Fast Add';
+      }
+    }
+
     const sets = parseInt(setsInput?.value, 10) || 1;
     const reps = parseInt(repsInput?.value, 10) || 1;
-    const notes = notesInput?.value.trim() || '';
+    let notes = notesInput?.value.trim() || '';
+
+    // If logging distance with custom exercise name, annotate subtype in notes if not explicit
+    if (cat === 'distance' && !/run|bike|cycle|cycling|swim|lap/i.test(exName)) {
+      notes = notes ? `${notes} [${currentDistanceSubtype}]` : `[${currentDistanceSubtype}]`;
+    }
 
     let weightPerRep = 0;
     if (cat === 'weight') {
@@ -1029,10 +1076,10 @@ export function setupSwimLapLogger({ onReloadState } = {}) {
       return;
     }
 
-    // Sort active goals so distance / swim goals appear at the top
+    // Sort active goals so distance / swim / composite goals appear at the top
     const sortedGoals = [...activeGoals].sort((a, b) => {
-      const aDist = a.category === 'distance' || /swim|lap|water/i.test(a.title || '');
-      const bDist = b.category === 'distance' || /swim|lap|water/i.test(b.title || '');
+      const aDist = a.category === 'distance' || a.category === 'composite' || /swim|lap|water|ironman/i.test(a.title || '');
+      const bDist = b.category === 'distance' || b.category === 'composite' || /swim|lap|water|ironman/i.test(b.title || '');
       if (aDist && !bDist) return -1;
       if (!aDist && bDist) return 1;
       return 0;
@@ -1041,7 +1088,7 @@ export function setupSwimLapLogger({ onReloadState } = {}) {
     sortedGoals.forEach(g => {
       const opt = document.createElement('option');
       opt.value = g.id;
-      const emoji = /swim|lap|water/i.test(g.title) ? '🏊 ' : (g.category === 'distance' ? '🏃 ' : '🎯 ');
+      const emoji = /swim|lap|water/i.test(g.title) ? '🏊 ' : (g.theme_key === 'ironman' ? '🛡️ ' : (g.category === 'distance' ? '🏃 ' : '🎯 '));
       opt.textContent = `${emoji}${g.title} (${formatNumber(g.current_value)} / ${formatNumber(g.target_value)} ${g.unit || ''})`;
       goalSelect.appendChild(opt);
     });
@@ -1049,12 +1096,12 @@ export function setupSwimLapLogger({ onReloadState } = {}) {
     if (prevVal && sortedGoals.some(g => String(g.id) === String(prevVal))) {
       goalSelect.value = prevVal;
     } else {
-      // Default to the currently viewed goal or first distance goal
+      // Default to the currently viewed goal or first distance/composite goal
       const curGoal = activeGoals[state.selectedGoalIndex];
-      if (curGoal && (curGoal.category === 'distance' || /swim|lap/i.test(curGoal.title))) {
+      if (curGoal && (curGoal.category === 'distance' || curGoal.category === 'composite' || /swim|lap|ironman/i.test(curGoal.title))) {
         goalSelect.value = curGoal.id;
       } else {
-        const firstDist = sortedGoals.find(g => g.category === 'distance' || /swim|lap/i.test(g.title));
+        const firstDist = sortedGoals.find(g => g.category === 'distance' || g.category === 'composite' || /swim|lap|ironman/i.test(g.title));
         if (firstDist) goalSelect.value = firstDist.id;
       }
     }

@@ -223,3 +223,73 @@
   transform: scale(1.25);
   background: var(--accent-green);
 }
+
+/* Composite Triathlon Breakdown Card */
+.composite-breakdown-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  margin-bottom: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.composite-leg-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.composite-leg-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.composite-leg-pct {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+}
+
+.composite-leg-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-surface);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.composite-leg-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.composite-leg-bar-fill.swim-bar {
+  background: #38bdf8;
+}
+
+.composite-leg-bar-fill.bike-bar {
+  background: #f59e0b;
+}
+
+.composite-leg-bar-fill.run-bar {
+  background: #10b981;
+}
+
+.composite-leg-sub {
+  font-family: var(--font-mono);
+  font-size: 0.70rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+

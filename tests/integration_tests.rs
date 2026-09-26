@@ -28,7 +28,7 @@ fn test_db_initialization_and_default_seeds() {
     assert_eq!(room.slug, "pando-squad");
 
     let (active, completed) = get_goals_for_room(&conn, "pando-squad").expect("goals");
-    assert_eq!(active.len(), 3);
+    assert_eq!(active.len(), 4);
     assert_eq!(completed.len(), 1);
 
     assert_eq!(active[0].theme_key, "pando");
@@ -42,6 +42,10 @@ fn test_db_initialization_and_default_seeds() {
     assert_eq!(active[2].theme_key, "everest");
     assert_eq!(active[2].category, "elevation");
     assert_eq!(active[2].target_value, 29_031.0);
+
+    assert_eq!(active[3].theme_key, "ironman");
+    assert_eq!(active[3].category, "composite");
+    assert_eq!(active[3].target_value, 140.6);
 
     assert_eq!(completed[0].theme_key, "whale");
     assert_eq!(completed[0].status, "completed");
@@ -2855,4 +2859,141 @@ async fn test_self_healing_admin_succession_for_abandoned_squads() {
         .unwrap();
     assert!(!rookie.is_admin);
     assert_eq!(rookie.role, "member");
+}
+
+#[tokio::test]
+async fn test_api_lazy_ironman_composite_goal_full_journey() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState::new(db, hub);
+    let app = create_routes(state);
+    let server = TestServer::new(app).unwrap();
+
+    // 1. Initialize user and room
+    let res = server
+        .get("/room/ironman-squad")
+        .add_header("X-Device-Token", "ironman-user-token")
+        .await;
+    res.assert_status_ok();
+    let init_json: serde_json::Value = res.json();
+    let active_goals = init_json["data"]["active_goals"].as_array().unwrap();
+    let ironman = active_goals
+        .iter()
+        .find(|g| g["theme_key"] == "ironman")
+        .expect("Ironman seeded in room");
+    assert_eq!(ironman["category"], "composite");
+    assert_eq!(ironman["target_value"], 140.6);
+    let comp = &ironman["composite_progress"];
+    assert_eq!(comp["swim_target"], 2.4);
+    assert_eq!(comp["bike_target"], 112.0);
+    assert_eq!(comp["run_target"], 26.2);
+    assert_eq!(comp["swim_current"], 0.0);
+    assert_eq!(comp["bike_current"], 0.0);
+    assert_eq!(comp["run_current"], 0.0);
+
+    // 2. Log 10.0 mi Run -> Advances Caribou (distance) and Ironman (run leg)
+    let run_res = server
+        .post("/activities")
+        .add_header("X-Device-Token", "ironman-user-token")
+        .json(&serde_json::json!({
+            "room_slug": "ironman-squad",
+            "activity_type": "distance",
+            "exercise_name": "Trail Run",
+            "distance_val": 10.0,
+            "total_metric": 10.0,
+            "notes": "Morning jog"
+        }))
+        .await;
+    assert_eq!(run_res.status_code(), 201);
+    let run_act: serde_json::Value = run_res.json();
+    let run_act_id = run_act["data"]["id"].as_i64().unwrap();
+
+    // Query room state
+    let state_res = server
+        .get("/room/ironman-squad")
+        .add_header("X-Device-Token", "ironman-user-token")
+        .await;
+    state_res.assert_status_ok();
+    let state_json: serde_json::Value = state_res.json();
+    let state_active = state_json["data"]["active_goals"].as_array().unwrap();
+    let caribou = state_active
+        .iter()
+        .find(|g| g["theme_key"] == "caribou")
+        .unwrap();
+    assert_eq!(caribou["current_value"], 10.0);
+    let ironman_s1 = state_active
+        .iter()
+        .find(|g| g["theme_key"] == "ironman")
+        .unwrap();
+    assert_eq!(ironman_s1["current_value"], 10.0);
+    assert_eq!(ironman_s1["composite_progress"]["run_current"], 10.0);
+    assert_eq!(ironman_s1["composite_progress"]["bike_current"], 0.0);
+    assert_eq!(ironman_s1["composite_progress"]["swim_current"], 0.0);
+
+    // 3. Log 100.0 mi Bike -> Advances Caribou and Ironman bike leg
+    let bike_res = server
+        .post("/activities")
+        .add_header("X-Device-Token", "ironman-user-token")
+        .json(&serde_json::json!({
+            "room_slug": "ironman-squad",
+            "activity_type": "distance",
+            "exercise_name": "Cycling Tour",
+            "distance_val": 100.0,
+            "total_metric": 100.0
+        }))
+        .await;
+    assert_eq!(bike_res.status_code(), 201);
+
+    let state_res2 = server
+        .get("/room/ironman-squad")
+        .add_header("X-Device-Token", "ironman-user-token")
+        .await;
+    state_res2.assert_status_ok();
+    let state_json2: serde_json::Value = state_res2.json();
+    let state_active2 = state_json2["data"]["active_goals"].as_array().unwrap();
+    let caribou2 = state_active2
+        .iter()
+        .find(|g| g["theme_key"] == "caribou")
+        .unwrap();
+    assert_eq!(caribou2["current_value"], 110.0); // 10 run + 100 bike
+    let ironman_s2 = state_active2
+        .iter()
+        .find(|g| g["theme_key"] == "ironman")
+        .unwrap();
+    assert_eq!(ironman_s2["current_value"], 110.0);
+    assert_eq!(ironman_s2["composite_progress"]["bike_current"], 100.0);
+    assert_eq!(ironman_s2["composite_progress"]["run_current"], 10.0);
+
+    // 4. Delete the run activity -> rollback Caribou and Ironman
+    let del_res = server
+        .delete(&format!("/activities/{}", run_act_id))
+        .add_header("X-Device-Token", "ironman-user-token")
+        .await;
+    del_res.assert_status_ok();
+
+    let state_res3 = server
+        .get("/room/ironman-squad")
+        .add_header("X-Device-Token", "ironman-user-token")
+        .await;
+    state_res3.assert_status_ok();
+    let state_json3: serde_json::Value = state_res3.json();
+    let state_active3 = state_json3["data"]["active_goals"].as_array().unwrap();
+    let caribou3 = state_active3
+        .iter()
+        .find(|g| g["theme_key"] == "caribou")
+        .unwrap();
+    assert_eq!(
+        caribou3["current_value"], 100.0,
+        "Caribou rolled back by 10 mi"
+    );
+    let ironman_s3 = state_active3
+        .iter()
+        .find(|g| g["theme_key"] == "ironman")
+        .unwrap();
+    assert_eq!(
+        ironman_s3["composite_progress"]["run_current"], 0.0,
+        "Ironman run rolled back"
+    );
+    assert_eq!(ironman_s3["current_value"], 100.0);
 }

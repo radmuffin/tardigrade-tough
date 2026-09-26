@@ -4,7 +4,7 @@ import { state, formatNumber } from './state.js';
 export const VIEW_ORDER = ['quests', 'activity', 'leaderboard', 'trophy'];
 export let currentView = 'quests';
 
-export const CANONICAL_THEME_ORDER = ['pando', 'everest', 'caribou'];
+export const CANONICAL_THEME_ORDER = ['pando', 'everest', 'caribou', 'ironman'];
 
 export function setupViewNavigation({ onSwitchView, onRenderQuests, onRenderTrophy } = {}) {
   const navBtns = {
@@ -174,6 +174,7 @@ export function setupGoalSegmentedControl(onGoalSelect, onGoalCycle) {
   const pandoBtn = document.getElementById('goalTabPando');
   const everestBtn = document.getElementById('goalTabEverest');
   const caribouBtn = document.getElementById('goalTabCaribou');
+  const ironmanBtn = document.getElementById('goalTabIronman');
   const prevBtn = document.getElementById('prevGoalBtn');
   const nextBtn = document.getElementById('nextGoalBtn');
 
@@ -190,6 +191,7 @@ export function setupGoalSegmentedControl(onGoalSelect, onGoalCycle) {
   if (pandoBtn) pandoBtn.addEventListener('click', () => selectGoalByTheme('pando'));
   if (everestBtn) everestBtn.addEventListener('click', () => selectGoalByTheme('everest'));
   if (caribouBtn) caribouBtn.addEventListener('click', () => selectGoalByTheme('caribou'));
+  if (ironmanBtn) ironmanBtn.addEventListener('click', () => selectGoalByTheme('ironman'));
 
   if (prevBtn) {
     prevBtn.addEventListener('click', (e) => {
@@ -266,6 +268,7 @@ export function renderGoalShowcase({ onUpdateStepper } = {}) {
       if (g.theme_key === 'pando') btnId = 'goalTabPando';
       else if (g.theme_key === 'everest') btnId = 'goalTabEverest';
       else if (g.theme_key === 'caribou') btnId = 'goalTabCaribou';
+      else if (g.theme_key === 'ironman') btnId = 'goalTabIronman';
       else btnId = `goalTab_${g.id}`;
 
       let btn = document.getElementById(btnId);
@@ -276,7 +279,7 @@ export function renderGoalShowcase({ onUpdateStepper } = {}) {
         btn.setAttribute('role', 'tab');
         btn.dataset.theme = g.theme_key;
         btn.dataset.goalId = g.id;
-        const emoji = g.theme_key === 'volcano' ? '🌋' : g.theme_key === 'canopy' ? '🌴' : g.theme_key === 'whale' ? '🐋' : (g.category === 'weight' ? '🌲' : g.category === 'distance' ? '🦌' : g.category === 'elevation' ? '🐐' : g.category === 'ability' ? '⚡' : '🎯');
+        const emoji = g.theme_key === 'volcano' ? '🌋' : g.theme_key === 'canopy' ? '🌴' : g.theme_key === 'whale' ? '🐋' : g.theme_key === 'ironman' ? '🛡️' : (g.category === 'weight' ? '🌲' : g.category === 'distance' ? '🦌' : g.category === 'elevation' ? '🐐' : g.category === 'ability' ? '⚡' : '🎯');
         const shortName = g.title.split(' ')[0];
         btn.innerHTML = `<span class="segment-emoji">${emoji}</span> <span class="segment-title">${FlyToast.escape(shortName)}</span>`;
         btn.addEventListener('click', () => {
@@ -318,15 +321,55 @@ export function renderGoalShowcase({ onUpdateStepper } = {}) {
   const descEl = document.getElementById('heroGoalDesc');
   if (descEl) descEl.textContent = currentGoal.description;
 
+  // Composite 3-Discipline Breakdown (Lazy Ironman / composite quests)
+  const compBreakdownEl = document.getElementById('heroGoalCompositeBreakdown');
+  if (compBreakdownEl) {
+    if (currentGoal.composite_progress || currentGoal.category === 'composite' || currentGoal.theme_key === 'ironman') {
+      compBreakdownEl.style.display = 'flex';
+      const cp = currentGoal.composite_progress || {
+        swim_current: 0, swim_target: 2.4,
+        bike_current: 0, bike_target: 112.0,
+        run_current: 0, run_target: 26.2,
+      };
+      const swimPct = Math.min(100, Math.max(0, (cp.swim_current / cp.swim_target) * 100));
+      const bikePct = Math.min(100, Math.max(0, (cp.bike_current / cp.bike_target) * 100));
+      const runPct = Math.min(100, Math.max(0, (cp.run_current / cp.run_target) * 100));
+
+      const swimPctEl = document.getElementById('heroSwimPct');
+      const swimBarEl = document.getElementById('heroSwimBar');
+      const swimSubEl = document.getElementById('heroSwimSub');
+      if (swimPctEl) swimPctEl.textContent = `${swimPct.toFixed(1)}%`;
+      if (swimBarEl) swimBarEl.style.width = `${swimPct}%`;
+      if (swimSubEl) swimSubEl.textContent = `${cp.swim_current.toFixed(2)} / ${cp.swim_target.toFixed(2)} mi`;
+
+      const bikePctEl = document.getElementById('heroBikePct');
+      const bikeBarEl = document.getElementById('heroBikeBar');
+      const bikeSubEl = document.getElementById('heroBikeSub');
+      if (bikePctEl) bikePctEl.textContent = `${bikePct.toFixed(1)}%`;
+      if (bikeBarEl) bikeBarEl.style.width = `${bikePct}%`;
+      if (bikeSubEl) bikeSubEl.textContent = `${cp.bike_current.toFixed(1)} / ${cp.bike_target.toFixed(1)} mi`;
+
+      const runPctEl = document.getElementById('heroRunPct');
+      const runBarEl = document.getElementById('heroRunBar');
+      const runSubEl = document.getElementById('heroRunSub');
+      if (runPctEl) runPctEl.textContent = `${runPct.toFixed(1)}%`;
+      if (runBarEl) runBarEl.style.width = `${runPct}%`;
+      if (runSubEl) runSubEl.textContent = `${cp.run_current.toFixed(1)} / ${cp.run_target.toFixed(1)} mi`;
+    } else {
+      compBreakdownEl.style.display = 'none';
+    }
+  }
+
   // Update Diorama
   if (state.diorama) {
-    state.diorama.setTheme(currentGoal.theme_key, pct);
+    state.diorama.setTheme(currentGoal.theme_key, pct, currentGoal.composite_progress);
   }
 
   // Auto-route category in Fast-Add
   const fastAddCat = document.getElementById('fastAddCategory');
-  if (fastAddCat && fastAddCat.value !== currentGoal.category) {
-    fastAddCat.value = currentGoal.category;
+  const targetCategory = currentGoal.category === 'composite' ? 'distance' : currentGoal.category;
+  if (fastAddCat && fastAddCat.value !== targetCategory) {
+    fastAddCat.value = targetCategory;
     fastAddCat.dispatchEvent(new Event('change'));
   }
 

@@ -120,19 +120,31 @@ pub struct UpdateProfileRequest {
     pub current_room_slug: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct CompositeProgress {
+    pub swim_current: f64,
+    pub swim_target: f64,
+    pub bike_current: f64,
+    pub bike_target: f64,
+    pub run_current: f64,
+    pub run_target: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Goal {
     pub id: i64,
     pub room_slug: String,
     pub title: String,
-    pub category: String, // "weight", "distance", "elevation"
+    pub category: String, // "weight", "distance", "elevation", "ability", "composite"
     pub target_value: f64,
     pub current_value: f64,
     pub unit: String,      // "lbs", "kg", "mi", "km", "ft", "m"
-    pub theme_key: String, // "pando", "whale", "caribou", "everest", "custom"
+    pub theme_key: String, // "pando", "whale", "caribou", "everest", "ironman", "custom"
     pub status: String,    // "active", "completed"
     pub description: String,
     pub created_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub composite_progress: Option<CompositeProgress>,
 }
 
 #[derive(Debug, Deserialize)]

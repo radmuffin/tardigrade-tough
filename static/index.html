@@ -119,6 +119,10 @@
             <span class="segment-emoji">🦌</span>
             <span class="segment-title">Caribou</span>
           </button>
+          <button id="goalTabIronman" class="goal-segment-btn" data-theme="ironman" role="tab" aria-selected="false">
+            <span class="segment-emoji">🛡️</span>
+            <span class="segment-title">Ironman</span>
+          </button>
         </div>
         <button id="openNewQuestBtn" class="btn-new-quest" title="Create Quest" type="button">+</button>
       </div>
@@ -139,6 +143,39 @@
           <div class="goal-progress-sub">
             <span id="heroGoalCurrent">0 lbs</span>
             <span id="heroGoalTarget">Goal: 13,200,000 lbs</span>
+          </div>
+          <!-- Composite Goal 3-Discipline Breakdown (Visible for Ironman / Composite Quests) -->
+          <div id="heroGoalCompositeBreakdown" class="composite-breakdown-card" style="display: none;">
+            <div class="composite-leg-item">
+              <div class="composite-leg-header">
+                <span class="composite-leg-name">🏊 Swim</span>
+                <span id="heroSwimPct" class="composite-leg-pct">0.0%</span>
+              </div>
+              <div class="composite-leg-bar-bg">
+                <div id="heroSwimBar" class="composite-leg-bar-fill swim-bar" style="width: 0%;"></div>
+              </div>
+              <span id="heroSwimSub" class="composite-leg-sub">0.00 / 2.40 mi</span>
+            </div>
+            <div class="composite-leg-item">
+              <div class="composite-leg-header">
+                <span class="composite-leg-name">🚴 Bike</span>
+                <span id="heroBikePct" class="composite-leg-pct">0.0%</span>
+              </div>
+              <div class="composite-leg-bar-bg">
+                <div id="heroBikeBar" class="composite-leg-bar-fill bike-bar" style="width: 0%;"></div>
+              </div>
+              <span id="heroBikeSub" class="composite-leg-sub">0.0 / 112.0 mi</span>
+            </div>
+            <div class="composite-leg-item">
+              <div class="composite-leg-header">
+                <span class="composite-leg-name">🏃 Run</span>
+                <span id="heroRunPct" class="composite-leg-pct">0.0%</span>
+              </div>
+              <div class="composite-leg-bar-bg">
+                <div id="heroRunBar" class="composite-leg-bar-fill run-bar" style="width: 0%;"></div>
+              </div>
+              <span id="heroRunSub" class="composite-leg-sub">0.0 / 26.2 mi</span>
+            </div>
           </div>
           <p id="heroGoalDesc" class="goal-hero-desc">Hoisting the world's heaviest living organism in Utah.</p>
           <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 8px;">
@@ -515,6 +552,15 @@
           </select>
         </div>
 
+        <!-- Distance Discipline Sub-type (Run / Bike / Swim) -->
+        <div id="fastAddDistanceSubtypeRow" class="distance-subtype-row" style="display: none; margin-bottom: 12px;">
+          <div class="subtype-pill-group">
+            <button type="button" class="subtype-pill-btn active" data-subtype="run">🏃 Run</button>
+            <button type="button" class="subtype-pill-btn" data-subtype="bike">🚴 Bike</button>
+            <button type="button" class="subtype-pill-btn" data-subtype="swim">🏊 Swim</button>
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label">Amount</label>
           <input id="fastAddInput" type="number" class="form-input" placeholder="e.g. 1850" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-mono);">
@@ -853,6 +899,7 @@
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="pando">🌲 Pando</button>
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="everest">🐐 Everest</button>
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="caribou">🦌 Caribou</button>
+          <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="ironman">🛡️ Ironman</button>
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="whale">🐋 Ocean</button>
           <button type="button" class="btn btn-secondary quest-theme-btn" data-theme="feat">⚡ Feat</button>
         </div>
