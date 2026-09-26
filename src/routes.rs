@@ -1,10 +1,10 @@
 use crate::db::*;
 use crate::models::{
     Activity, BatchLogActivityRequest, CheckoffGoalRequest, CheckoffGoalResponse, CheerRequest,
-    CreateGoalRequest, CreateGoalWishlistRequest, CreateRoomRequest, Goal, GoalWishlistItem,
-    LogActivityRequest, PersonalRecord, RemoveMemberRequest, RenameRoomRequest, Room,
-    RoomDataResponse, UpdateActivityRequest, UpdateProfileRequest, UpdateRoomSettingsRequest,
-    UserPersonalStats, UserProfile as AppUserProfile,
+    CreateGoalRequest, CreateGoalWishlistRequest, CreateRoomRequest, DeleteRoomResponse, Goal,
+    GoalWishlistItem, LogActivityRequest, PersonalRecord, RemoveMemberRequest, RenameRoomRequest,
+    Room, RoomDataResponse, UpdateActivityRequest, UpdateMemberRoleRequest, UpdateProfileRequest,
+    UpdateRoomSettingsRequest, UserPersonalStats, UserProfile as AppUserProfile,
 };
 use axum::async_trait;
 use axum::{
@@ -138,9 +138,15 @@ pub fn create_routes(state: AppState) -> Router {
         .route("/room", get(get_default_room_data))
         .route("/room/create", post(create_room_handler))
         .route("/room/:slug", get(get_room_data))
+        .route("/room/:slug", delete(delete_room_handler))
+        .route("/room/:slug/delete", post(delete_room_handler))
         .route("/room/:slug/name", post(rename_room_handler))
         .route("/room/:slug/settings", post(update_room_settings_handler))
         .route("/room/:slug/leave", post(leave_room_handler))
+        .route(
+            "/room/:slug/members/:token/role",
+            post(update_member_role_handler),
+        )
         .route(
             "/room/:slug/members/:token/remove",
             post(remove_member_handler),
@@ -519,7 +525,86 @@ async fn remove_member_handler(
             )
         }
         Err(err_msg) => {
-            let status = if err_msg.contains("Only the squad creator") {
+            let status = if err_msg.contains("Only") {
+                StatusCode::FORBIDDEN
+            } else {
+                StatusCode::BAD_REQUEST
+            };
+            (status, Json(ApiResponse::err(err_msg)))
+        }
+    }
+}
+
+async fn update_member_role_handler(
+    user: UserToken,
+    Path((slug, target_token)): Path<(String, String)>,
+    State(state): State<AppState>,
+    Json(payload): Json<UpdateMemberRoleRequest>,
+) -> (StatusCode, Json<ApiResponse<bool>>) {
+    let clean_slug = slug.trim().to_lowercase();
+    let clean_target = target_token.trim().to_string();
+
+    match state
+        .store
+        .update_member_role(&clean_slug, user.as_str(), &clean_target, &payload.role)
+    {
+        Ok(()) => {
+            let members = state
+                .store
+                .get_room_members(&clean_slug)
+                .unwrap_or_default();
+            let _ = state.hub.broadcast(WsMessage {
+                room: clean_slug.clone(),
+                event: "member_role_updated".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "room": clean_slug,
+                    "target_token": clean_target,
+                    "role": payload.role,
+                    "members": members,
+                }),
+            });
+            (StatusCode::OK, Json(ApiResponse::ok(true)))
+        }
+        Err(err_msg) => {
+            let status = if err_msg.contains("Only") {
+                StatusCode::FORBIDDEN
+            } else {
+                StatusCode::BAD_REQUEST
+            };
+            (status, Json(ApiResponse::err(err_msg)))
+        }
+    }
+}
+
+async fn delete_room_handler(
+    user: UserToken,
+    Path(slug): Path<String>,
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<DeleteRoomResponse>>) {
+    let clean_slug = slug.trim().to_lowercase();
+
+    match state.store.delete_room(&clean_slug, user.as_str()) {
+        Ok(solo_slug) => {
+            let _ = state.hub.broadcast(WsMessage {
+                room: clean_slug.clone(),
+                event: "room_deleted".to_string(),
+                sender_token: Some(user.as_str().to_string()),
+                payload: serde_json::json!({
+                    "room": clean_slug,
+                    "solo_slug": solo_slug,
+                }),
+            });
+            (
+                StatusCode::OK,
+                Json(ApiResponse::ok(DeleteRoomResponse {
+                    deleted_slug: clean_slug,
+                    solo_slug,
+                })),
+            )
+        }
+        Err(err_msg) => {
+            let status = if err_msg.contains("Only") {
                 StatusCode::FORBIDDEN
             } else {
                 StatusCode::BAD_REQUEST

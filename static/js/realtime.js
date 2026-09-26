@@ -94,5 +94,24 @@ export function handleWsEvent(msg, { onReloadState } = {}) {
       FlyToast.info('A crew member left the squad.');
       if (onReloadState) onReloadState();
     }
+  } else if (msg.event === 'member_role_updated') {
+    if (onReloadState) onReloadState();
+    if (msg.payload && msg.payload.target_token === state.client.token) {
+      if (msg.payload.role === 'admin') {
+        FlyToast.success('You have been promoted to Admin! 🛡️');
+      } else {
+        FlyToast.info('Your squad role has been updated.');
+      }
+    }
+  } else if (msg.event === 'room_deleted') {
+    if (msg.payload && msg.payload.room === state.roomSlug) {
+      FlyToast.warning('This squad has been deleted.');
+      try {
+        localStorage.removeItem('tardigrade_current_room');
+      } catch (_) {}
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
+    }
   }
 }

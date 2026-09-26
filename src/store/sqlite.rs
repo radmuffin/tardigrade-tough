@@ -100,6 +100,26 @@ impl RoomStore for SqliteStore {
         let conn = self.conn.lock().unwrap();
         crate::db::get_user_squads(&conn, user_token).map_err(Into::into)
     }
+
+    fn update_member_role(
+        &self,
+        room_slug: &str,
+        caller_token: &str,
+        target_token: &str,
+        new_role: &str,
+    ) -> std::result::Result<(), String> {
+        let conn = self.conn.lock().unwrap();
+        crate::db::update_member_role(&conn, room_slug, caller_token, target_token, new_role)
+    }
+
+    fn delete_room(
+        &self,
+        room_slug: &str,
+        admin_token: &str,
+    ) -> std::result::Result<String, String> {
+        let mut conn = self.conn.lock().unwrap();
+        crate::db::delete_room(&mut conn, room_slug, admin_token)
+    }
 }
 
 impl UserStore for SqliteStore {

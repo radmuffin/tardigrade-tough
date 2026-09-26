@@ -52,19 +52,12 @@ pub fn get_departed_contributors(
 pub fn purge_member_contributions(
     conn: &Connection,
     room_slug: &str,
-    creator_token: &str,
+    caller_token: &str,
     target_token: &str,
 ) -> std::result::Result<(), String> {
-    let current_creator: String = conn
-        .query_row(
-            "SELECT COALESCE(creator_token, '') FROM rooms WHERE slug = ?",
-            params![room_slug],
-            |r| r.get(0),
-        )
-        .map_err(|e| e.to_string())?;
-
-    if current_creator != creator_token {
-        return Err("Only the squad creator can purge member contributions".to_string());
+    let is_admin = is_room_admin(conn, room_slug, caller_token).map_err(|e| e.to_string())?;
+    if !is_admin {
+        return Err("Only squad admins can purge member contributions".to_string());
     }
 
     conn.execute(

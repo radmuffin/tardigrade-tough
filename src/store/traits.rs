@@ -61,6 +61,18 @@ pub trait RoomStore: Send + Sync {
     fn sync_user_activities_to_room(&self, user_token: &str, room_slug: &str) -> StoreResult<i64>;
     fn create_room_for_user(&self, user_token: &str, name: Option<&str>) -> StoreResult<Room>;
     fn get_user_squads(&self, user_token: &str) -> StoreResult<Vec<UserSquadSummary>>;
+    fn update_member_role(
+        &self,
+        room_slug: &str,
+        caller_token: &str,
+        target_token: &str,
+        new_role: &str,
+    ) -> std::result::Result<(), String>;
+    fn delete_room(
+        &self,
+        room_slug: &str,
+        admin_token: &str,
+    ) -> std::result::Result<String, String>;
 }
 
 pub trait UserStore: Send + Sync {

@@ -23,8 +23,10 @@ pub struct RoomMember {
     pub avatar_color: String,
     #[serde(default)]
     pub avatar_emoji: String,
-    pub role: String, // "creator" | "member"
+    pub role: String, // "creator" | "admin" | "member"
     pub is_creator: bool,
+    #[serde(default)]
+    pub is_admin: bool,
     pub joined_at: String,
     pub total_metric: f64,
     pub total_sets: i64,
@@ -47,6 +49,8 @@ pub struct UserSquadSummary {
     pub name: String,
     pub role: String,
     pub is_creator: bool,
+    #[serde(default)]
+    pub is_admin: bool,
     pub member_count: i64,
     pub joined_at: String,
 }
@@ -69,6 +73,17 @@ pub struct UpdateRoomSettingsRequest {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct RemoveMemberRequest {
     pub keep_contributions: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct UpdateMemberRoleRequest {
+    pub role: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DeleteRoomResponse {
+    pub deleted_slug: String,
+    pub solo_slug: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

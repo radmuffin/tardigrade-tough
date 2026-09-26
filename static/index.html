@@ -1082,7 +1082,7 @@
           <div class="hub-card" id="squadMembersCard">
             <label class="form-label" style="color: var(--accent-green); display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <span>Members (<strong id="squadMemberCount">0</strong>)</span>
-              <span id="squadRoleBadge" class="squad-role-tag" style="font-size: 0.72rem; color: var(--text-muted);"></span>
+              <span id="squadRoleBadge" class="squad-role-tag"></span>
             </label>
             <div id="squadMembersList" class="squad-members-list">
               <!-- Populated dynamically -->
@@ -1111,6 +1111,10 @@
               </div>
               <div id="departedContributorsList" class="departed-contributors-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
             </div>
+
+            <button id="deleteSquadBtn" class="btn btn-danger-outline delete-squad-btn" style="width: 100%; margin-top: 12px; display: none;" type="button">
+              Delete Squad
+            </button>
           </div>
 
           <!-- Section 2D: Share Your Squad (shown only when in an active squad) -->

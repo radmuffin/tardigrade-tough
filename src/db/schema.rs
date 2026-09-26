@@ -171,15 +171,19 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
         [],
     );
 
-    // If room creator is empty, backfill creator_token from first room member (except solo rooms)
+    // If room creator is empty or creator left the squad, backfill creator_token from first room member (except solo rooms)
     let _ = conn.execute(
         "UPDATE rooms
          SET creator_token = (
              SELECT user_token FROM room_members
              WHERE room_members.room_slug = rooms.slug
-             ORDER BY joined_at ASC LIMIT 1
+             ORDER BY (role IN ('creator', 'admin')) DESC, joined_at ASC LIMIT 1
          )
-         WHERE (creator_token = '' OR creator_token IS NULL) AND slug NOT LIKE 'solo-%'",
+         WHERE slug NOT LIKE 'solo-%'
+           AND (creator_token = '' OR creator_token IS NULL OR creator_token NOT IN (
+               SELECT user_token FROM room_members WHERE room_members.room_slug = rooms.slug
+           ))
+           AND EXISTS (SELECT 1 FROM room_members WHERE room_members.room_slug = rooms.slug)",
         [],
     );
 
@@ -190,6 +194,23 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
          WHERE user_token = (
              SELECT creator_token FROM rooms
              WHERE rooms.slug = room_members.room_slug AND rooms.creator_token != ''
+         )",
+        [],
+    );
+
+    // Ensure at least one member has admin or creator role in every non-solo squad with members
+    let _ = conn.execute(
+        "UPDATE room_members
+         SET role = 'admin'
+         WHERE rowid IN (
+             SELECT rm.rowid FROM room_members rm
+             WHERE rm.room_slug NOT LIKE 'solo-%'
+               AND NOT EXISTS (
+                   SELECT 1 FROM room_members rm2
+                   WHERE rm2.room_slug = rm.room_slug AND (rm2.role = 'creator' OR rm2.role = 'admin')
+               )
+             GROUP BY rm.room_slug
+             HAVING rm.joined_at = MIN(rm.joined_at)
          )",
         [],
     );

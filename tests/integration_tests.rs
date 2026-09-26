@@ -2561,3 +2561,298 @@ fn test_departed_member_keep_or_purge_contributions() {
     let departed_after = get_departed_contributors(&conn, &squad.slug).expect("departed_after");
     assert_eq!(departed_after.len(), 0);
 }
+
+#[tokio::test]
+async fn test_admin_succession_promotes_most_senior_member_on_creator_leave() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState::new(db, hub);
+    let app = create_routes(state);
+    let mut server = TestServer::new(app).unwrap();
+
+    let alice = "alice_token_s1";
+    let bob = "bob_token_s2";
+    let charlie = "charlie_token_s3";
+
+    // 1. Alice creates squad "succ-squad"
+    server
+        .get("/room/succ-squad")
+        .add_header("X-Device-Token", alice)
+        .await
+        .assert_status_ok();
+
+    // 2. Bob joins next
+    server.clear_cookies();
+    server
+        .get("/room/succ-squad")
+        .add_header("X-Device-Token", bob)
+        .await
+        .assert_status_ok();
+
+    // 3. Charlie joins third
+    server.clear_cookies();
+    server
+        .get("/room/succ-squad")
+        .add_header("X-Device-Token", charlie)
+        .await
+        .assert_status_ok();
+
+    // 4. Alice leaves squad
+    server.clear_cookies();
+    let res_leave = server
+        .post("/room/succ-squad/leave")
+        .add_header("X-Device-Token", alice)
+        .await;
+    res_leave.assert_status_ok();
+
+    // 5. Query roster: Bob (senior) must now be Admin / Creator
+    server.clear_cookies();
+    let res_roster = server
+        .get("/room/succ-squad")
+        .add_header("X-Device-Token", bob)
+        .await;
+    res_roster.assert_status_ok();
+    let roster_json: serde_json::Value = res_roster.json();
+    let members = roster_json["data"]["members"].as_array().unwrap();
+
+    assert_eq!(members.len(), 2, "Alice left, only Bob and Charlie remain");
+    let bob_member = members.iter().find(|m| m["user_token"] == bob).unwrap();
+    assert_eq!(
+        bob_member["is_admin"], true,
+        "Senior member Bob must be promoted to admin"
+    );
+
+    // 6. Bob can now update settings
+    server.clear_cookies();
+    let res_settings = server
+        .post("/room/succ-squad/settings")
+        .add_header("X-Device-Token", bob)
+        .json(&serde_json::json!({ "keep_departed_contributions": false }))
+        .await;
+    res_settings.assert_status_ok();
+}
+
+#[tokio::test]
+async fn test_admin_can_promote_and_demotion_rules() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState::new(db, hub);
+    let app = create_routes(state);
+    let mut server = TestServer::new(app).unwrap();
+
+    let alice = "alice_creator";
+    let bob = "bob_member";
+    let charlie = "charlie_member";
+
+    // 1. Setup squad with Alice (creator), Bob, Charlie
+    server
+        .get("/room/role-squad")
+        .add_header("X-Device-Token", alice)
+        .await
+        .assert_status_ok();
+    server.clear_cookies();
+    server
+        .get("/room/role-squad")
+        .add_header("X-Device-Token", bob)
+        .await
+        .assert_status_ok();
+    server.clear_cookies();
+    server
+        .get("/room/role-squad")
+        .add_header("X-Device-Token", charlie)
+        .await
+        .assert_status_ok();
+
+    // 2. Non-admin Charlie tries to promote Bob -> 403 Forbidden
+    server.clear_cookies();
+    let res_unauth = server
+        .post(&format!("/room/role-squad/members/{}/role", bob))
+        .add_header("X-Device-Token", charlie)
+        .json(&serde_json::json!({ "role": "admin" }))
+        .await;
+    assert_eq!(res_unauth.status_code(), axum::http::StatusCode::FORBIDDEN);
+
+    // 3. Creator Alice promotes Bob to Admin -> 200 OK
+    server.clear_cookies();
+    let res_promote_bob = server
+        .post(&format!("/room/role-squad/members/{}/role", bob))
+        .add_header("X-Device-Token", alice)
+        .json(&serde_json::json!({ "role": "admin" }))
+        .await;
+    res_promote_bob.assert_status_ok();
+
+    // 4. Admin Bob promotes Charlie to Admin -> 200 OK
+    server.clear_cookies();
+    let res_promote_charlie = server
+        .post(&format!("/room/role-squad/members/{}/role", charlie))
+        .add_header("X-Device-Token", bob)
+        .json(&serde_json::json!({ "role": "admin" }))
+        .await;
+    res_promote_charlie.assert_status_ok();
+
+    // Verify both Bob and Charlie are admins
+    server.clear_cookies();
+    let res_roster = server
+        .get("/room/role-squad")
+        .add_header("X-Device-Token", alice)
+        .await;
+    let roster_json: serde_json::Value = res_roster.json();
+    let members = roster_json["data"]["members"].as_array().unwrap();
+    let bob_m = members.iter().find(|m| m["user_token"] == bob).unwrap();
+    let charlie_m = members.iter().find(|m| m["user_token"] == charlie).unwrap();
+    assert_eq!(bob_m["is_admin"], true);
+    assert_eq!(charlie_m["is_admin"], true);
+
+    // 5. Admin Bob attempts to demote Admin Charlie -> 403 Forbidden (only Creator can demote admins)
+    server.clear_cookies();
+    let res_bob_demote = server
+        .post(&format!("/room/role-squad/members/{}/role", charlie))
+        .add_header("X-Device-Token", bob)
+        .json(&serde_json::json!({ "role": "member" }))
+        .await;
+    assert_eq!(
+        res_bob_demote.status_code(),
+        axum::http::StatusCode::FORBIDDEN
+    );
+
+    // 6. Creator Alice demotes Admin Charlie -> 200 OK
+    server.clear_cookies();
+    let res_alice_demote = server
+        .post(&format!("/room/role-squad/members/{}/role", charlie))
+        .add_header("X-Device-Token", alice)
+        .json(&serde_json::json!({ "role": "member" }))
+        .await;
+    res_alice_demote.assert_status_ok();
+
+    // 7. Verify Charlie is now regular member
+    server.clear_cookies();
+    let res_final_roster = server
+        .get("/room/role-squad")
+        .add_header("X-Device-Token", alice)
+        .await;
+    let final_members = res_final_roster.json::<serde_json::Value>()["data"]["members"]
+        .as_array()
+        .unwrap()
+        .clone();
+    let charlie_final = final_members
+        .iter()
+        .find(|m| m["user_token"] == charlie)
+        .unwrap();
+    assert_eq!(charlie_final["is_admin"], false);
+    assert_eq!(charlie_final["role"], "member");
+}
+
+#[tokio::test]
+async fn test_admin_can_delete_squad_cascading_cleanup() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState::new(db, hub);
+    let app = create_routes(state);
+    let mut server = TestServer::new(app).unwrap();
+
+    let founder = "founder_tok";
+    let member = "member_tok";
+
+    // 1. Create squad "doomed-squad"
+    server
+        .get("/room/doomed-squad")
+        .add_header("X-Device-Token", founder)
+        .await
+        .assert_status_ok();
+
+    server.clear_cookies();
+    server
+        .get("/room/doomed-squad")
+        .add_header("X-Device-Token", member)
+        .await
+        .assert_status_ok();
+
+    // 2. Log workout in doomed squad
+    server.clear_cookies();
+    server
+        .post("/activities")
+        .add_header("X-Device-Token", member)
+        .json(&serde_json::json!({
+            "activity_type": "weight",
+            "exercise_name": "Bench Press",
+            "sets": 3,
+            "reps": 10,
+            "weight_per_rep": 100.0,
+        }))
+        .await
+        .assert_status_success();
+
+    // 3. Regular member tries to delete squad -> 403 Forbidden
+    server.clear_cookies();
+    let res_unauth_del = server
+        .delete("/room/doomed-squad")
+        .add_header("X-Device-Token", member)
+        .await;
+    assert_eq!(
+        res_unauth_del.status_code(),
+        axum::http::StatusCode::FORBIDDEN
+    );
+
+    // 4. Founder deletes squad -> 200 OK
+    server.clear_cookies();
+    let res_del = server
+        .delete("/room/doomed-squad")
+        .add_header("X-Device-Token", founder)
+        .await;
+    res_del.assert_status_ok();
+    let del_json: serde_json::Value = res_del.json();
+    assert_eq!(del_json["success"], true);
+    assert_eq!(del_json["data"]["deleted_slug"], "doomed-squad");
+
+    // 5. Attempting to delete a solo room -> 400 Bad Request
+    server.clear_cookies();
+    let res_del_solo = server
+        .delete("/room/solo-test")
+        .add_header("X-Device-Token", founder)
+        .await;
+    assert_eq!(
+        res_del_solo.status_code(),
+        axum::http::StatusCode::BAD_REQUEST
+    );
+}
+
+#[tokio::test]
+async fn test_self_healing_admin_succession_for_abandoned_squads() {
+    let conn = setup_test_db();
+
+    // Manually insert an abandoned squad with 2 members, neither of whom is admin/creator
+    conn.execute(
+        "INSERT INTO rooms (slug, name, created_at, creator_token) VALUES ('orphaned-crew', 'Orphaned Crew', '2026-01-01T00:00:00Z', '')",
+        [],
+    ).unwrap();
+    conn.execute(
+        "INSERT INTO room_members (room_slug, user_token, role, joined_at) VALUES ('orphaned-crew', 'veteran_tok', 'member', '2026-01-01T01:00:00Z')",
+        [],
+    ).unwrap();
+    conn.execute(
+        "INSERT INTO room_members (room_slug, user_token, role, joined_at) VALUES ('orphaned-crew', 'rookie_tok', 'member', '2026-01-01T02:00:00Z')",
+        [],
+    ).unwrap();
+
+    // Calling get_room_members should self-heal and promote the veteran
+    let members = get_room_members(&conn, "orphaned-crew").unwrap();
+    let veteran = members
+        .iter()
+        .find(|m| m.user_token == "veteran_tok")
+        .unwrap();
+    assert!(
+        veteran.is_admin,
+        "Senior member should automatically be promoted to admin"
+    );
+    assert_eq!(veteran.role, "admin");
+
+    let rookie = members
+        .iter()
+        .find(|m| m.user_token == "rookie_tok")
+        .unwrap();
+    assert!(!rookie.is_admin);
+    assert_eq!(rookie.role, "member");
+}

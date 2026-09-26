@@ -76,12 +76,14 @@ pub fn map_user_squad_summary(row: &Row) -> Result<UserSquadSummary> {
     let is_creator: bool = row.get(3)?;
     let member_count: i64 = row.get(4)?;
     let joined_at: String = row.get(5)?;
+    let is_admin: bool = row.get(6).unwrap_or(is_creator || role == "admin");
 
     Ok(UserSquadSummary {
         slug,
         name,
         role,
         is_creator,
+        is_admin,
         member_count,
         joined_at,
     })

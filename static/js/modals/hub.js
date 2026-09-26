@@ -404,10 +404,10 @@ export function setupHubModal({ onReloadState } = {}) {
         return `
           <div class="user-squad-item ${isActive ? 'active' : ''}" data-slug="${FlyToast.escape(s.slug)}" role="button" tabindex="0">
             <div class="user-squad-name-row">
-              <span class="user-squad-icon">${s.is_creator ? '👑' : '👥'}</span>
+              <span class="user-squad-icon">${s.is_creator ? '👑' : (s.is_admin ? '🛡️' : '👥')}</span>
               <div style="min-width: 0;">
                 <strong class="user-squad-name">${FlyToast.escape(s.name)}</strong>
-                <div class="user-squad-meta">${s.member_count} member${s.member_count === 1 ? '' : 's'} · ${s.is_creator ? 'Creator' : 'Member'}</div>
+                <div class="user-squad-meta">${s.member_count} member${s.member_count === 1 ? '' : 's'} · ${s.is_creator ? 'Creator' : (s.is_admin ? 'Admin' : 'Member')}</div>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
@@ -464,9 +464,12 @@ export function setupHubModal({ onReloadState } = {}) {
     // Squad Members Roster
     const members = state.currentRoomData?.members || [];
     const creatorToken = state.currentRoomData?.room?.creator_token || '';
+    const myMember = members.find(m => m.user_token === state.client.token);
     const isCreator = (!isSolo && creatorToken && creatorToken === state.client.token)
       || (!isSolo && members.length === 1 && members[0]?.user_token === state.client.token)
-      || (!isSolo && !creatorToken);
+      || (!isSolo && !creatorToken)
+      || (!isSolo && myMember?.is_creator);
+    const isAdmin = !isSolo && (isCreator || myMember?.is_admin || myMember?.role === 'admin' || myMember?.role === 'creator');
 
     if (squadMemberCount) squadMemberCount.textContent = members.length;
     if (squadRoleBadge) {
@@ -476,6 +479,9 @@ export function setupHubModal({ onReloadState } = {}) {
       } else if (isCreator) {
         squadRoleBadge.textContent = '👑 Creator';
         squadRoleBadge.style.color = 'var(--accent-amber)';
+      } else if (isAdmin) {
+        squadRoleBadge.textContent = '🛡️ Admin';
+        squadRoleBadge.style.color = 'var(--accent-purple)';
       } else {
         squadRoleBadge.textContent = 'Member';
         squadRoleBadge.style.color = 'var(--text-muted)';
@@ -492,7 +498,10 @@ export function setupHubModal({ onReloadState } = {}) {
         squadMembersList.innerHTML = members.map(m => {
           const isMe = m.user_token === state.client.token;
           const isThisCreator = m.is_creator || (creatorToken && m.user_token === creatorToken);
-          const canRemove = isCreator && !isMe;
+          const isThisAdmin = isThisCreator || m.is_admin || m.role === 'admin' || m.role === 'creator';
+          const canRemove = !isMe && (isCreator || (isAdmin && !isThisAdmin));
+          const canPromote = !isMe && isAdmin && !isThisAdmin;
+          const canDemote = !isMe && isCreator && isThisAdmin && !isThisCreator;
           const avatarColor = FlyToast.escape(m.avatar_color || '#10b981');
           const nick = FlyToast.escape(m.nickname || 'Athlete');
 
@@ -512,19 +521,79 @@ export function setupHubModal({ onReloadState } = {}) {
                   <div class="member-name-row">
                     <strong class="member-nick">${nick}</strong>
                     ${isMe ? '<span class="member-pill pill-me">You</span>' : ''}
-                    ${isThisCreator ? '<span class="member-pill pill-creator">👑 Creator</span>' : ''}
+                    ${isThisCreator ? '<span class="member-pill pill-creator">👑 Creator</span>' : (isThisAdmin ? '<span class="member-pill pill-admin">🛡️ Admin</span>' : '')}
                   </div>
                   <span class="member-metric-label">${m.total_sets || 0} sets</span>
                 </div>
               </div>
-              ${canRemove ? `
-                <button class="btn-remove-member" data-token="${FlyToast.escape(m.user_token)}" data-nick="${nick}" type="button" title="Remove member from squad">
-                  Remove
-                </button>
-              ` : ''}
+              <div style="display: flex; gap: 6px; align-items: center;">
+                ${canPromote ? `
+                  <button class="btn-role-action btn-promote-member" data-token="${FlyToast.escape(m.user_token)}" data-nick="${nick}" type="button" title="Promote to Admin">
+                    + Admin
+                  </button>
+                ` : ''}
+                ${canDemote ? `
+                  <button class="btn-role-action btn-demote-member" data-token="${FlyToast.escape(m.user_token)}" data-nick="${nick}" type="button" title="Demote to Member">
+                    Remove Admin
+                  </button>
+                ` : ''}
+                ${canRemove ? `
+                  <button class="btn-remove-member" data-token="${FlyToast.escape(m.user_token)}" data-nick="${nick}" type="button" title="Remove member from squad">
+                    Remove
+                  </button>
+                ` : ''}
+              </div>
             </div>
           `;
         }).join('');
+
+        squadMembersList.querySelectorAll('.btn-promote-member').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const targetToken = btn.dataset.token;
+            const targetNick = btn.dataset.nick || 'this member';
+            if (!confirm(`Promote "${targetNick}" to Admin?`)) return;
+            try {
+              const res = await state.client.post(`/room/${state.roomSlug}/members/${targetToken}/role`, {
+                role: 'admin'
+              });
+              if (res && res.success) {
+                FlyToast.success(`Promoted "${targetNick}" to Admin`);
+                if (onReloadState) await onReloadState();
+                populateSquadHubFields();
+              } else {
+                FlyToast.error(res?.error || 'Failed to promote member');
+              }
+            } catch (err) {
+              console.error('Promote member error:', err);
+              FlyToast.error('Failed to promote member');
+            }
+          });
+        });
+
+        squadMembersList.querySelectorAll('.btn-demote-member').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const targetToken = btn.dataset.token;
+            const targetNick = btn.dataset.nick || 'this member';
+            if (!confirm(`Demote "${targetNick}" from Admin to Member?`)) return;
+            try {
+              const res = await state.client.post(`/room/${state.roomSlug}/members/${targetToken}/role`, {
+                role: 'member'
+              });
+              if (res && res.success) {
+                FlyToast.success(`Demoted "${targetNick}" to Member`);
+                if (onReloadState) await onReloadState();
+                populateSquadHubFields();
+              } else {
+                FlyToast.error(res?.error || 'Failed to demote member');
+              }
+            } catch (err) {
+              console.error('Demote member error:', err);
+              FlyToast.error('Failed to demote member');
+            }
+          });
+        });
 
         squadMembersList.querySelectorAll('.btn-remove-member').forEach(btn => {
           btn.addEventListener('click', async (e) => {
@@ -559,8 +628,10 @@ export function setupHubModal({ onReloadState } = {}) {
       const departedContributorsList = document.getElementById('departedContributorsList');
 
       if (squadOwnerSettingsCard) {
-        if (isCreator && !isSolo) {
+        if (isAdmin && !isSolo) {
           squadOwnerSettingsCard.style.display = 'block';
+          const deleteSquadBtn = document.getElementById('deleteSquadBtn');
+          if (deleteSquadBtn) deleteSquadBtn.style.display = 'block';
           if (squadKeepDepartedToggle) {
             squadKeepDepartedToggle.checked = state.currentRoomData?.room?.keep_departed_contributions !== false;
             if (!squadKeepDepartedToggle.dataset.bound) {
@@ -979,6 +1050,28 @@ export function setupHubModal({ onReloadState } = {}) {
       } catch (err) {
         console.error('Leave squad error:', err);
         FlyToast.error('Failed to leave squad');
+      }
+    });
+  }
+
+  // Delete Squad Button
+  const deleteSquadBtn = document.getElementById('deleteSquadBtn');
+  if (deleteSquadBtn) {
+    deleteSquadBtn.addEventListener('click', async () => {
+      const squadName = state.currentRoomData?.room?.name || 'this squad';
+      if (!confirm(`Are you sure you want to permanently delete "${squadName}"?\n\nThis cannot be undone. All squad goals and records will be removed. Your personal workouts will remain in your Solo quest.`)) return;
+      try {
+        const res = await state.client.delete(`/room/${state.roomSlug}`);
+        if (res && res.success) {
+          try { localStorage.removeItem('tardigrade_current_room'); } catch (_) {}
+          FlyToast.success(`Deleted squad "${squadName}".`);
+          window.location.href = '/';
+        } else {
+          FlyToast.error(res?.error || 'Failed to delete squad');
+        }
+      } catch (err) {
+        console.error('Delete squad error:', err);
+        FlyToast.error('Failed to delete squad');
       }
     });
   }
