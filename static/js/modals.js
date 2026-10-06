@@ -8,8 +8,9 @@ import { setupCustomQuestModal } from './modals/custom-quest.js';
 import { setupWishlistModal } from './modals/wishlist.js';
 import { setupHubModal } from './modals/hub.js';
 import { setupActivityLoggerModal } from './modals/activity-logger.js';
+import { setupCustomExerciseModal, openCustomExerciseModal } from './modals/custom-exercise.js';
 
-export { setupSheetImporter, setupActivityEditModal, openActivityEditModal, setupActivityLoggerModal };
+export { setupSheetImporter, setupActivityEditModal, openActivityEditModal, setupActivityLoggerModal, setupCustomExerciseModal, openCustomExerciseModal };
 
 export function setupModals({ onReloadState, onSwitchView } = {}) {
   const { openShareModal, closeShareModal } = setupShareModal();
@@ -18,12 +19,14 @@ export function setupModals({ onReloadState, onSwitchView } = {}) {
   const { openWishlistModal, closeWishlistModal } = setupWishlistModal({ onReloadState });
   const { openHub, closeHub, selectHubTab, populateSquadHubFields } = setupHubModal({ onReloadState });
   const { openLogger, closeLogger } = setupActivityLoggerModal();
+  setupCustomExerciseModal();
 
   // Expose global modal openers
   window.openShareModal = openShareModal;
   window.openAboutModal = openAboutModal;
   window.openCreateQuestModal = openCreateQuestModal;
   window.openWishlistModal = openWishlistModal;
+  window.openCustomExerciseModal = openCustomExerciseModal;
   window.openRoomModal = () => openHub('squad');
 
   // Document-level delegation for modal buttons & footer triggers

@@ -1,34 +1,20 @@
 import { FlyToast } from '/_fly/fly-ui.js';
 import { state, formatNumber, isToday } from './state.js';
 import { formatTimeAgo, deleteActivity } from './activity-feed.js';
+import {
+  getCustomExercises,
+  saveCustomExercise,
+  deleteCustomExercise,
+  getCustomExerciseOptionsHtml,
+  openCustomExerciseModal
+} from './modals/custom-exercise.js';
 
-export function getCustomExercises() {
-  try {
-    const stored = localStorage.getItem('tardigrade_custom_exercises');
-    return stored ? JSON.parse(stored) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-export function saveCustomExercise(name) {
-  if (!name || typeof name !== 'string') return;
-  const clean = name.trim();
-  if (!clean) return;
-  const list = getCustomExercises();
-  if (!list.some(e => e.toLowerCase() === clean.toLowerCase())) {
-    list.push(clean);
-    try {
-      localStorage.setItem('tardigrade_custom_exercises', JSON.stringify(list));
-    } catch (e) {}
-  }
-}
-
-export function getCustomExerciseOptionsHtml() {
-  const customList = getCustomExercises();
-  if (customList.length === 0) return '';
-  return customList.map(ex => `<option value="${FlyToast.escape(ex)}">✨ ${FlyToast.escape(ex)}</option>`).join('');
-}
+export {
+  getCustomExercises,
+  saveCustomExercise,
+  deleteCustomExercise,
+  getCustomExerciseOptionsHtml
+};
 
 export function updateStepperForGoal(goal) {
   const exSelect = document.getElementById('stepperExercise');
@@ -318,90 +304,44 @@ export function setupSteppers({ onReloadState } = {}) {
   if (wtInput) wtInput.addEventListener('input', updateImpact);
   if (repsInput) repsInput.addEventListener('input', updateImpact);
 
-  // Custom Exercise Dropdown & Input Controls
-  const customExRow = document.getElementById('customExerciseRow');
-  const customExInput = document.getElementById('customExerciseInput');
-  const addCustomExBtn = document.getElementById('addCustomExerciseBtn');
-  const cancelCustomExBtn = document.getElementById('cancelCustomExerciseBtn');
+  // Custom Exercise Dropdown & Modal Controls
   const stepperExSelect = document.getElementById('stepperExercise');
-
   let lastSelectedEx = stepperExSelect ? stepperExSelect.value : '';
 
   if (stepperExSelect) {
     stepperExSelect.addEventListener('change', () => {
       if (stepperExSelect.value === '__add_custom__') {
-        showCustomExerciseInput();
+        openCustomExerciseModal({
+          onSave: (saved) => {
+            lastSelectedEx = saved.name;
+            const activeGoals = state.currentRoomData?.active_goals || [];
+            const currentGoal = activeGoals[state.selectedGoalIndex] || { category: 'weight' };
+            updateStepperForGoal(currentGoal);
+            if (stepperExSelect) {
+              stepperExSelect.value = saved.name;
+            }
+          },
+          onCancel: () => {
+            if (stepperExSelect && stepperExSelect.value === '__add_custom__') {
+              stepperExSelect.value = lastSelectedEx || '';
+            }
+          }
+        });
       } else {
         lastSelectedEx = stepperExSelect.value;
       }
     });
   }
 
-  function showCustomExerciseInput() {
-    if (customExRow) {
-      customExRow.style.display = 'flex';
-      if (customExInput) {
-        customExInput.value = '';
-        setTimeout(() => customExInput.focus(), 60);
-      }
+  window.addEventListener('tardigrade-custom-exercises-updated', () => {
+    const activeGoals = state.currentRoomData?.active_goals || [];
+    const currentGoal = activeGoals[state.selectedGoalIndex] || { category: 'weight' };
+    const curVal = stepperExSelect ? stepperExSelect.value : '';
+    updateStepperForGoal(currentGoal);
+    if (stepperExSelect && curVal && Array.from(stepperExSelect.options).some(o => o.value === curVal)) {
+      stepperExSelect.value = curVal;
     }
-  }
-
-  function hideCustomExerciseInput() {
-    if (customExRow) {
-      customExRow.style.display = 'none';
-      if (customExInput) customExInput.value = '';
-    }
-    if (stepperExSelect && stepperExSelect.value === '__add_custom__') {
-      stepperExSelect.value = lastSelectedEx || '';
-    }
-  }
-
-  function handleAddCustomExercise() {
-    const rawName = customExInput ? customExInput.value.trim() : '';
-    if (!rawName) {
-      FlyToast.error('Please enter an exercise name');
-      return;
-    }
-    saveCustomExercise(rawName);
-
-    // Add to dropdown if not present
-    let opt = Array.from(stepperExSelect.options).find(o => o.value.toLowerCase() === rawName.toLowerCase());
-    if (!opt) {
-      opt = document.createElement('option');
-      opt.value = rawName;
-      opt.textContent = `✨ ${rawName}`;
-      const customOpt = stepperExSelect.querySelector('option[value="__add_custom__"]');
-      if (customOpt) {
-        stepperExSelect.insertBefore(opt, customOpt);
-      } else {
-        stepperExSelect.appendChild(opt);
-      }
-    }
-    stepperExSelect.value = opt.value;
-    lastSelectedEx = opt.value;
-    hideCustomExerciseInput();
-    FlyToast.success(`Added "${rawName}" to exercises!`);
-  }
-
-  if (addCustomExBtn) {
-    addCustomExBtn.addEventListener('click', handleAddCustomExercise);
-  }
-
-  if (customExInput) {
-    customExInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleAddCustomExercise();
-      } else if (e.key === 'Escape') {
-        hideCustomExerciseInput();
-      }
-    });
-  }
-
-  if (cancelCustomExBtn) {
-    cancelCustomExBtn.addEventListener('click', hideCustomExerciseInput);
-  }
+  });
 
   if (logSetBtn) {
     logSetBtn.addEventListener('click', async () => {
@@ -828,16 +768,10 @@ export function setupWorkoutMode({ onReloadState } = {}) {
 
   if (!container || !addRowBtn || !submitBtn) return;
 
-  function addRow(ex = '', sets = '', reps = '', wt = '') {
-    const row = document.createElement('div');
-    row.className = 'workout-entry-row';
-    row.style.display = 'flex';
-    row.style.gap = '6px';
-    row.style.alignItems = 'center';
-
+  function buildWorkoutRowSelectHtml(curVal = '') {
     const customExercises = getCustomExercises();
     const customOpts = customExercises
-      .map(name => `<option value="${FlyToast.escape(name)}" ${ex === name ? 'selected' : ''}>✨ ${FlyToast.escape(name)}</option>`)
+      .map(item => `<option value="${FlyToast.escape(item.name)}" ${curVal === item.name ? 'selected' : ''}>${FlyToast.escape(item.emoji)} ${FlyToast.escape(item.name)}</option>`)
       .join('');
 
     const standardExercises = [
@@ -853,23 +787,48 @@ export function setupWorkoutMode({ onReloadState } = {}) {
 
     let matched = false;
     const standardOpts = standardExercises.map(item => {
-      const isSel = item.aliases.includes(ex) || item.name === ex;
+      const isSel = item.aliases.includes(curVal) || item.name === curVal;
       if (isSel) matched = true;
       return `<option value="${item.name}" ${isSel ? 'selected' : ''}>${item.emoji} ${item.name}</option>`;
     }).join('');
 
     let extraOpt = '';
-    if (ex && !matched && !customExercises.includes(ex)) {
-      extraOpt = `<option value="${FlyToast.escape(ex)}" selected>✨ ${FlyToast.escape(ex)}</option>`;
+    if (curVal && !matched && !customExercises.some(item => item.name.toLowerCase() === curVal.toLowerCase())) {
+      extraOpt = `<option value="${FlyToast.escape(curVal)}" selected>✨ ${FlyToast.escape(curVal)}</option>`;
     }
+
+    return `
+      <option value="" disabled ${!curVal ? 'selected' : ''}>Select Exercise</option>
+      ${standardOpts}
+      ${customOpts}
+      ${extraOpt}
+      <option value="__add_custom__">✨ + Custom...</option>
+    `;
+  }
+
+  function refreshWorkoutRowSelect(selectEl) {
+    if (!selectEl) return;
+    const curVal = selectEl.value;
+    selectEl.innerHTML = buildWorkoutRowSelectHtml(curVal);
+    if (curVal && Array.from(selectEl.options).some(o => o.value === curVal)) {
+      selectEl.value = curVal;
+    }
+  }
+
+  window.addEventListener('tardigrade-custom-exercises-updated', () => {
+    container.querySelectorAll('.workout-entry-row .row-ex').forEach(refreshWorkoutRowSelect);
+  });
+
+  function addRow(ex = '', sets = '', reps = '', wt = '') {
+    const row = document.createElement('div');
+    row.className = 'workout-entry-row';
+    row.style.display = 'flex';
+    row.style.gap = '6px';
+    row.style.alignItems = 'center';
 
     row.innerHTML = `
       <select class="form-select row-ex" style="flex: 2; min-width: 0; padding: 8px 6px; font-size: 0.85rem;" aria-label="Exercise">
-        <option value="" disabled ${!ex ? 'selected' : ''}>Select Exercise</option>
-        ${standardOpts}
-        ${customOpts}
-        ${extraOpt}
-        <option value="__add_custom__">✨ + Custom...</option>
+        ${buildWorkoutRowSelectHtml(ex)}
       </select>
       <input type="number" class="form-input row-sets" placeholder="Sets" value="${sets}" min="1" style="width: 54px; min-width: 0; padding: 8px 4px; text-align: center;" aria-label="Sets">
       <input type="number" class="form-input row-reps" placeholder="Reps" value="${reps}" min="1" style="width: 54px; min-width: 0; padding: 8px 4px; text-align: center;" aria-label="Reps">
@@ -882,25 +841,16 @@ export function setupWorkoutMode({ onReloadState } = {}) {
       exSelect.dataset.prevValue = exSelect.value;
       exSelect.addEventListener('change', () => {
         if (exSelect.value === '__add_custom__') {
-          const customName = window.prompt('Enter custom exercise name:');
-          if (customName && customName.trim()) {
-            const trimmed = customName.trim();
-            saveCustomExercise(trimmed);
-            const newOpt = document.createElement('option');
-            newOpt.value = trimmed;
-            newOpt.textContent = `✨ ${trimmed}`;
-            const addCustomOpt = exSelect.querySelector('option[value="__add_custom__"]');
-            if (addCustomOpt) {
-              exSelect.insertBefore(newOpt, addCustomOpt);
-            } else {
-              exSelect.appendChild(newOpt);
+          openCustomExerciseModal({
+            onSave: (saved) => {
+              container.querySelectorAll('.workout-entry-row .row-ex').forEach(refreshWorkoutRowSelect);
+              exSelect.value = saved.name;
+              exSelect.dataset.prevValue = saved.name;
+            },
+            onCancel: () => {
+              exSelect.value = exSelect.dataset.prevValue || '';
             }
-            exSelect.value = trimmed;
-            exSelect.dataset.prevValue = trimmed;
-            FlyToast.success(`Added "${trimmed}" to exercises!`);
-          } else {
-            exSelect.value = exSelect.dataset.prevValue || '';
-          }
+          });
         } else {
           exSelect.dataset.prevValue = exSelect.value;
         }

@@ -911,6 +911,80 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('#navActivityBtn');
     await expect(page.locator('#activityFeedList')).toContainText('Swim');
   });
+
+  test('custom exercise modal: pick emoji, search, create, and verify dropdown integration', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('body[data-state="ready"]');
+
+    // Open activity logger modal
+    await page.click('#floatingLogBtn');
+    await expect(page.locator('#activityLoggerModal')).toBeVisible();
+
+    // Select '+ Add Custom Exercise...' in stepper dropdown
+    await page.selectOption('#stepperExercise', '__add_custom__');
+
+    // Verify custom exercise modal is displayed
+    const modal = page.locator('#customExerciseModal');
+    await expect(modal).toBeVisible();
+    await expect(page.locator('#customExModalTitle')).toContainText('Custom Exercise');
+
+    // Enter custom exercise name
+    await page.fill('#customExNameInput', 'Bulgarian Split Squat');
+
+    // Search for 'leg' in emoji search
+    await page.fill('#customExEmojiSearch', 'leg');
+    const legEmojiBtn = page.locator('.custom-ex-emoji-btn[data-emoji="🦵"]');
+    await expect(legEmojiBtn).toBeVisible();
+
+    // Click leg emoji button
+    await legEmojiBtn.click();
+    await expect(page.locator('#customExEmojiPreview')).toContainText('🦵');
+
+    // Save custom exercise
+    await page.click('#saveCustomExModalBtn');
+
+    // Verify custom exercise modal closed
+    await expect(modal).not.toBeVisible();
+
+    // Verify stepper exercise dropdown selected the new custom exercise with emoji
+    await expect(page.locator('#stepperExercise')).toHaveValue('Bulgarian Split Squat');
+    const selectedOption = page.locator('#stepperExercise option:checked');
+    await expect(selectedOption).toContainText('🦵 Bulgarian Split Squat');
+
+    // Switch to Mode 2 (Full Workout Session Batch)
+    await page.click('#modeWorkoutBtn');
+    await expect(page.locator('#panelWorkout')).toBeVisible();
+
+    // Add a workout row
+    await page.click('#addWorkoutRowBtn');
+    const firstRowEx = page.locator('.workout-entry-row .row-ex').first();
+    await expect(firstRowEx).toBeVisible();
+
+    // Check that 'Bulgarian Split Squat' with '🦵' is already present in this dropdown
+    await expect(firstRowEx.locator('option[value="Bulgarian Split Squat"]')).toContainText('🦵 Bulgarian Split Squat');
+
+    // Select '+ Custom...' in workout batch row
+    await firstRowEx.selectOption('__add_custom__');
+    await expect(modal).toBeVisible();
+
+    // Create another custom exercise
+    await page.fill('#customExNameInput', 'Box Jumps');
+    // Switch to 'strength' category
+    await page.click('.custom-ex-cat-pill[data-cat="strength"]');
+    const rocketEmojiBtn = page.locator('.custom-ex-emoji-btn[data-emoji="🚀"]');
+    await rocketEmojiBtn.click();
+    await expect(page.locator('#customExEmojiPreview')).toContainText('🚀');
+    await page.click('#saveCustomExModalBtn');
+    await expect(modal).not.toBeVisible();
+
+    // Verify the row select updated
+    await expect(firstRowEx).toHaveValue('Box Jumps');
+    await expect(firstRowEx.locator('option:checked')).toContainText('🚀 Box Jumps');
+
+    // Close logger
+    await page.click('#closeActivityLoggerModalBtn');
+    await expect(page.locator('#activityLoggerModal')).not.toBeVisible();
+  });
 });
 
 

@@ -436,16 +436,6 @@
             <option value="Bicep Curl">💪 Bicep Curl</option>
             <option value="__add_custom__">✨ + Add Custom Exercise...</option>
           </select>
-          <!-- Custom Exercise Input (Hidden by default) -->
-          <div id="customExerciseRow" style="display: none; margin-top: 6px; gap: 6px; align-items: center;">
-            <input id="customExerciseInput" type="text" class="form-input" placeholder="e.g. Bulgarian Split Squat" maxlength="60" style="flex: 1;">
-            <button id="addCustomExerciseBtn" type="button" class="btn btn-primary" style="white-space: nowrap; font-size: 0.82rem; padding: 0 12px; height: 38px;">
-              + Add
-            </button>
-            <button id="cancelCustomExerciseBtn" type="button" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0 10px; height: 38px; flex: 0 0 auto;" title="Cancel">
-              ✕
-            </button>
-          </div>
         </div>
 
         <div class="stepper-row">
@@ -863,6 +853,56 @@
           <button type="submit" id="saveActivityEditBtn" class="btn btn-primary" style="flex: 1.4;">Save Changes</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Custom Exercise Modal -->
+  <div id="customExerciseModal" class="modal-backdrop custom-exercise-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="customExModalTitle">
+    <div class="modal-box custom-exercise-modal-box">
+      <div class="modal-header">
+        <h3 id="customExModalTitle" class="modal-title" style="margin: 0;">✨ Custom Exercise</h3>
+        <button id="closeCustomExModalBtn" class="modal-close-icon-btn" title="Close" type="button">✕</button>
+      </div>
+      <div class="form-group" style="margin-top: 10px;">
+        <label class="form-label" for="customExNameInput">Exercise Name</label>
+        <input id="customExNameInput" type="text" class="form-input" placeholder="e.g. Bulgarian Split Squat" maxlength="60" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <label class="form-label" style="margin-bottom: 0;">Choose Icon</label>
+          <div id="customExEmojiPreview" class="custom-ex-preview-badge" title="Selected Emoji">✨</div>
+        </div>
+
+        <!-- Search Bar -->
+        <div style="margin-bottom: 8px;">
+          <input id="customExEmojiSearch" type="text" class="form-input custom-ex-search" placeholder="🔍 Search emojis (e.g. squat, run, bear, fire)..." autocomplete="off">
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div class="custom-ex-cat-bar">
+          <button type="button" class="custom-ex-cat-pill active" data-cat="all">All</button>
+          <button type="button" class="custom-ex-cat-pill" data-cat="strength">🏋️ Strength</button>
+          <button type="button" class="custom-ex-cat-pill" data-cat="cardio">🏃 Cardio</button>
+          <button type="button" class="custom-ex-cat-pill" data-cat="beasts">🐻 Beasts</button>
+          <button type="button" class="custom-ex-cat-pill" data-cat="power">🔥 Power</button>
+          <button type="button" class="custom-ex-cat-pill" data-cat="fuel">🍎 Fuel</button>
+          <button type="button" class="custom-ex-cat-pill" data-cat="sports">🚀 Sports</button>
+        </div>
+
+        <!-- 100+ Scrollable Emoji Grid -->
+        <div id="customExEmojiGrid" class="custom-ex-emoji-grid"></div>
+      </div>
+
+      <div class="action-buttons-row" style="margin-top: 14px; display: flex; gap: 8px;">
+        <button id="cancelCustomExModalBtn" type="button" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+        <button id="saveCustomExModalBtn" type="button" class="btn btn-primary" style="flex: 1.5;">Save Exercise</button>
+      </div>
+
+      <!-- Manage Existing Custom Exercises -->
+      <div id="customExExistingSection" style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-color); display: none;">
+        <label class="form-label" style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px;">Your Custom Exercises</label>
+        <div id="customExExistingList" class="custom-ex-existing-list"></div>
+      </div>
     </div>
   </div>
 
