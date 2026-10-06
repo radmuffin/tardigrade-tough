@@ -121,7 +121,7 @@
           </button>
           <button id="goalTabIronman" class="goal-segment-btn" data-theme="ironman" role="tab" aria-selected="false">
             <span class="segment-emoji">🛡️</span>
-            <span class="segment-title">Ironman</span>
+            <span class="segment-title">Lazy Tri</span>
           </button>
         </div>
         <button id="openNewQuestBtn" class="btn-new-quest" title="Create Quest" type="button">+</button>
@@ -146,6 +146,9 @@
           </div>
           <!-- Composite Goal 3-Discipline Breakdown (Visible for Ironman / Composite Quests) -->
           <div id="heroGoalCompositeBreakdown" class="composite-breakdown-card" style="display: none;">
+            <div class="composite-dates-badge" style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--accent-orange, #f59e0b); background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-sm, 6px); padding: 4px 10px; margin-bottom: 8px;">
+              <span>📅</span> <span>October 2026 Challenge (Oct 1 – Oct 31)</span>
+            </div>
             <div class="composite-leg-item">
               <div class="composite-leg-header">
                 <span class="composite-leg-name">🏊 Swim</span>
@@ -561,6 +564,9 @@
           </div>
         </div>
 
+        <!-- Live Contributing Quests Bar -->
+        <div id="fastAddContributingGoals" class="contributing-goals-bar" style="margin-bottom: 12px; font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;"></div>
+
         <div class="form-group">
           <label class="form-label">Amount</label>
           <input id="fastAddInput" type="number" class="form-input" placeholder="e.g. 1850" style="font-size: 1.25rem; font-weight: 700; font-family: var(--font-mono);">
@@ -634,11 +640,17 @@
 
       <!-- Mode 5: Swimming Laps (25m Default) -->
       <div id="panelSwim" class="log-panel" style="display: none;">
-        <!-- Contributing Goal Selection -->
-        <div class="form-group">
-          <label class="form-label" for="swimGoalSelect">Contributing Goal</label>
-          <select id="swimGoalSelect" class="form-select">
-            <!-- Populated dynamically with active goals (distance & custom quests) -->
+        <!-- Contributing Quests (Multi-Goal Impact) -->
+        <div class="form-group" style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">Contributing Quests</label>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">Multi-Goal Impact</span>
+          </div>
+          <div id="swimMultiGoalChips" class="multi-goal-chips" style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <!-- Populated dynamically with active goals (e.g. Caribou & Lazy Tri) -->
+          </div>
+          <select id="swimGoalSelect" class="form-select" style="display: none;" aria-hidden="true">
+            <!-- Retained hidden for backward compatibility -->
           </select>
         </div>
 
@@ -687,6 +699,7 @@
           <div class="swim-goal-contribution" id="swimGoalContribution">
             <span>Goal Impact:</span>
             <strong id="swimGoalDeltaBadge">+0.31 mi</strong>
+            <span id="swimGoalMultiImpact" style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 6px;"></span>
           </div>
         </div>
 

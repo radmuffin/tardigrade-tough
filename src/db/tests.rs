@@ -537,3 +537,110 @@ fn test_lazy_ironman_composite_goal_unit() {
     assert_eq!(conquered_ironman.status, "completed");
     assert_eq!(conquered_ironman.current_value, 140.6);
 }
+
+#[test]
+fn test_lazy_tri_october_date_bounds() {
+    let mut conn = setup_test_db();
+    let squad = get_or_create_room(&conn, "oct-squad").unwrap();
+    let user = get_or_create_user(&conn, "token-oct", &squad.slug).unwrap();
+
+    // 1. Pre-October workout (Sept 30, 2026) -> Advances Caribou, does NOT advance Lazy Tri
+    let pre_oct_req = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Late September Run".to_string()),
+        distance_val: Some(5.0),
+        total_metric: Some(5.0),
+        created_at: Some("2026-09-30T23:59:59Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &user, &squad.slug, &pre_oct_req).unwrap();
+
+    let (active_goals1, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let caribou1 = active_goals1
+        .iter()
+        .find(|g| g.theme_key == "caribou")
+        .unwrap();
+    let ironman1 = active_goals1
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(
+        caribou1.current_value, 5.0,
+        "Caribou receives pre-October workout"
+    );
+    assert_eq!(
+        ironman1.current_value, 0.0,
+        "Lazy Tri rejects pre-October workout"
+    );
+    assert_eq!(
+        ironman1.composite_progress.as_ref().unwrap().run_current,
+        0.0
+    );
+
+    // 2. Mid-October workout (Oct 15, 2026) -> Advances BOTH Caribou and Lazy Tri
+    let oct_req = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("October Bike Ride".to_string()),
+        distance_val: Some(25.0),
+        total_metric: Some(25.0),
+        created_at: Some("2026-10-15T12:00:00Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &user, &squad.slug, &oct_req).unwrap();
+
+    let (active_goals2, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let caribou2 = active_goals2
+        .iter()
+        .find(|g| g.theme_key == "caribou")
+        .unwrap();
+    let ironman2 = active_goals2
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(caribou2.current_value, 30.0, "Caribou has 5 + 25");
+    assert_eq!(
+        ironman2.current_value, 25.0,
+        "Lazy Tri receives October bike ride"
+    );
+    assert_eq!(
+        ironman2.composite_progress.as_ref().unwrap().bike_current,
+        25.0
+    );
+
+    // 3. Post-October workout (Nov 1, 2026) -> Advances Caribou, does NOT advance Lazy Tri
+    let post_oct_req = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("November Marathon Training".to_string()),
+        distance_val: Some(10.0),
+        total_metric: Some(10.0),
+        created_at: Some("2026-11-01T00:00:00Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &user, &squad.slug, &post_oct_req).unwrap();
+
+    let (active_goals3, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let caribou3 = active_goals3
+        .iter()
+        .find(|g| g.theme_key == "caribou")
+        .unwrap();
+    let ironman3 = active_goals3
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(caribou3.current_value, 40.0, "Caribou has 5 + 25 + 10");
+    assert_eq!(
+        ironman3.current_value, 25.0,
+        "Lazy Tri does not accept post-October workout"
+    );
+    assert_eq!(
+        ironman3.composite_progress.as_ref().unwrap().bike_current,
+        25.0
+    );
+    assert_eq!(
+        ironman3.composite_progress.as_ref().unwrap().run_current,
+        0.0
+    );
+}

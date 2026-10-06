@@ -2997,3 +2997,124 @@ async fn test_api_lazy_ironman_composite_goal_full_journey() {
     );
     assert_eq!(ironman_s3["current_value"], 100.0);
 }
+
+#[tokio::test]
+async fn test_lazy_tri_october_date_bounds_integration() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState::new(db, hub);
+    let app = create_routes(state);
+    let server = TestServer::new(app).unwrap();
+
+    // Initialize room
+    let init_res = server
+        .get("/room/bounds-squad")
+        .add_header("X-Device-Token", "bounds-user")
+        .await;
+    init_res.assert_status_ok();
+
+    // 1. Post workout on Sept 30, 2026 (pre-October)
+    let pre_res = server
+        .post("/activities")
+        .add_header("X-Device-Token", "bounds-user")
+        .json(&serde_json::json!({
+            "room_slug": "bounds-squad",
+            "activity_type": "distance",
+            "exercise_name": "September Trail Run",
+            "distance_val": 8.0,
+            "total_metric": 8.0,
+            "created_at": "2026-09-30T18:00:00Z"
+        }))
+        .await;
+    assert_eq!(pre_res.status_code(), 201);
+
+    // Query room: Caribou advances by 8, Lazy Tri stays at 0
+    let s1_res = server
+        .get("/room/bounds-squad")
+        .add_header("X-Device-Token", "bounds-user")
+        .await;
+    let s1_json: serde_json::Value = s1_res.json();
+    let s1_active = s1_json["data"]["active_goals"].as_array().unwrap();
+    let caribou1 = s1_active
+        .iter()
+        .find(|g| g["theme_key"] == "caribou")
+        .unwrap();
+    let ironman1 = s1_active
+        .iter()
+        .find(|g| g["theme_key"] == "ironman")
+        .unwrap();
+    assert_eq!(caribou1["current_value"], 8.0);
+    assert_eq!(ironman1["current_value"], 0.0);
+    assert_eq!(ironman1["composite_progress"]["run_current"], 0.0);
+
+    // 2. Post workout on Oct 10, 2026 (in October)
+    let oct_res = server
+        .post("/activities")
+        .add_header("X-Device-Token", "bounds-user")
+        .json(&serde_json::json!({
+            "room_slug": "bounds-squad",
+            "activity_type": "distance",
+            "exercise_name": "October Century Bike",
+            "distance_val": 40.0,
+            "total_metric": 40.0,
+            "created_at": "2026-10-10T09:30:00Z"
+        }))
+        .await;
+    assert_eq!(oct_res.status_code(), 201);
+
+    // Query room: Caribou has 48, Lazy Tri has 40 bike
+    let s2_res = server
+        .get("/room/bounds-squad")
+        .add_header("X-Device-Token", "bounds-user")
+        .await;
+    let s2_json: serde_json::Value = s2_res.json();
+    let s2_active = s2_json["data"]["active_goals"].as_array().unwrap();
+    let caribou2 = s2_active
+        .iter()
+        .find(|g| g["theme_key"] == "caribou")
+        .unwrap();
+    let ironman2 = s2_active
+        .iter()
+        .find(|g| g["theme_key"] == "ironman")
+        .unwrap();
+    assert_eq!(caribou2["current_value"], 48.0);
+    assert_eq!(ironman2["current_value"], 40.0);
+    assert_eq!(ironman2["composite_progress"]["bike_current"], 40.0);
+    assert_eq!(ironman2["composite_progress"]["run_current"], 0.0);
+
+    // 3. Post workout on Nov 2, 2026 (post-October)
+    let post_res = server
+        .post("/activities")
+        .add_header("X-Device-Token", "bounds-user")
+        .json(&serde_json::json!({
+            "room_slug": "bounds-squad",
+            "activity_type": "distance",
+            "exercise_name": "November Marathon",
+            "distance_val": 20.0,
+            "total_metric": 20.0,
+            "created_at": "2026-11-02T10:00:00Z"
+        }))
+        .await;
+    assert_eq!(post_res.status_code(), 201);
+
+    // Query room: Caribou has 68, Lazy Tri remains at 40
+    let s3_res = server
+        .get("/room/bounds-squad")
+        .add_header("X-Device-Token", "bounds-user")
+        .await;
+    let s3_json: serde_json::Value = s3_res.json();
+    let s3_active = s3_json["data"]["active_goals"].as_array().unwrap();
+    let caribou3 = s3_active
+        .iter()
+        .find(|g| g["theme_key"] == "caribou")
+        .unwrap();
+    let ironman3 = s3_active
+        .iter()
+        .find(|g| g["theme_key"] == "ironman")
+        .unwrap();
+    assert_eq!(caribou3["current_value"], 68.0);
+    assert_eq!(ironman3["current_value"], 40.0);
+    assert_eq!(ironman3["composite_progress"]["bike_current"], 40.0);
+    assert_eq!(ironman3["composite_progress"]["run_current"], 0.0);
+}

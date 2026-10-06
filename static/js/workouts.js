@@ -135,12 +135,27 @@ export function updateImpact() {
   const wtInput = document.getElementById('stepperWeight');
   const repsInput = document.getElementById('stepperReps');
   const impactVal = document.getElementById('computedImpactVal');
+  const routeLabel = document.getElementById('computedImpactRoute');
   if (!wtInput || !repsInput || !impactVal) return;
 
   const wt = parseFloat(wtInput.value) || 0;
   const reps = parseInt(repsInput.value, 10) || 0;
   const total = wt * reps;
   impactVal.textContent = `${formatNumber(total)} lbs`;
+  if (routeLabel) {
+    if (total > 0) {
+      routeLabel.style.display = 'inline';
+      routeLabel.style.marginLeft = '6px';
+      routeLabel.style.fontSize = '0.8rem';
+      routeLabel.style.color = 'var(--text-secondary)';
+      const activeGoals = state.currentRoomData?.active_goals || [];
+      const weightGoals = activeGoals.filter(g => g.category === 'weight');
+      const goalNames = weightGoals.length > 0 ? weightGoals.map(g => g.title).join(' & ') : 'Pando';
+      routeLabel.textContent = `• Advances ${goalNames}`;
+    } else {
+      routeLabel.style.display = 'none';
+    }
+  }
 }
 
 function attachMetricPresetListeners() {
@@ -546,7 +561,23 @@ export async function executeLogActivity(req, { onReloadState, triggerButton, bu
         } else {
           detail = `+${formatNumber(act.total_metric)}`;
         }
-        FlyToast.success(`✓ Logged ${exName}: ${detail}`);
+
+        // Multi-goal impact feedback
+        let impactSuffix = '';
+        const activeGoals = state.currentRoomData?.active_goals || [];
+        const actDate = act.created_at ? new Date(act.created_at) : new Date();
+        const isOct2026 = actDate.getFullYear() === 2026 && actDate.getMonth() === 9;
+        const impacted = activeGoals.filter(g => {
+          if (act.goal_id && g.id === act.goal_id) return true;
+          if (g.category === act.activity_type) return true;
+          if ((g.theme_key === 'ironman' || g.category === 'composite') && act.activity_type === 'distance' && isOct2026) return true;
+          return false;
+        });
+        if (impacted.length > 1) {
+          const names = impacted.map(g => g.theme_key === 'ironman' ? 'Lazy Tri' : (g.title || g.category)).join(' & ');
+          impactSuffix = ` (Advances ${names})`;
+        }
+        FlyToast.success(`✓ Logged ${exName}: ${detail}${impactSuffix}`);
 
         if (navigator.vibrate) {
           try { navigator.vibrate([40, 30, 40]); } catch (_) {}
@@ -652,11 +683,66 @@ export function setupFastAdd({ onReloadState } = {}) {
     presetsContainer.querySelectorAll('.preset-chip-fast').forEach(b => {
       b.addEventListener('click', () => {
         amtInput.value = (parseFloat(amtInput.value) || 0) + parseFloat(b.dataset.amt);
+        updateContributingGoals();
       });
     });
+
+    updateContributingGoals();
   }
 
-  catSelect.addEventListener('change', updatePresets);
+  const contributingGoalsEl = document.getElementById('fastAddContributingGoals');
+  function updateContributingGoals() {
+    if (!contributingGoalsEl) return;
+    const cat = catSelect.value;
+    const val = parseFloat(amtInput.value) || 0;
+    const activeGoals = state.currentRoomData?.active_goals || [];
+    const isOct2026 = (() => {
+      const now = new Date();
+      return now.getFullYear() === 2026 && now.getMonth() === 9; // 9 = October
+    })();
+
+    if (cat === 'distance') {
+      const caribou = activeGoals.find(g => g.category === 'distance');
+      const lazyTri = activeGoals.find(g => g.theme_key === 'ironman' || g.category === 'composite');
+      const valStr = val > 0 ? ` (+${val} mi)` : '';
+      const subEmoji = currentDistanceSubtype === 'bike' ? '🚴' : (currentDistanceSubtype === 'swim' ? '🏊' : '🏃');
+      const subName = currentDistanceSubtype === 'bike' ? 'Bike' : (currentDistanceSubtype === 'swim' ? 'Swim' : 'Run');
+
+      let html = '<span style="font-weight: 700; color: var(--accent-green);">⚡ Contributes to:</span> ';
+      const badges = [];
+      if (caribou) {
+        badges.push(`<span style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 2px 8px; border-radius: 4px; font-weight: 600;">🦌 Caribou Migration${valStr}</span>`);
+      }
+      if (lazyTri) {
+        if (isOct2026) {
+          badges.push(`<span style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); color: var(--accent-orange, #f59e0b); padding: 2px 8px; border-radius: 4px; font-weight: 700;">🛡️ Lazy Tri [${subEmoji} ${subName}]${valStr}</span>`);
+        } else {
+          badges.push(`<span style="opacity: 0.6; padding: 2px 8px; font-size: 0.72rem;">(🛡️ Lazy Tri is Oct 2026 only)</span>`);
+        }
+      }
+      contributingGoalsEl.innerHTML = html + badges.join(' <span style="color: var(--text-muted);">&amp;</span> ');
+    } else if (cat === 'weight') {
+      const pando = activeGoals.find(g => g.category === 'weight');
+      const valStr = val > 0 ? ` (+${formatNumber(val)} lbs)` : '';
+      let html = '<span style="font-weight: 700; color: var(--accent-green);">⚡ Contributes to:</span> ';
+      const name = pando ? pando.title : 'Weight Goals';
+      html += `<span style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 2px 8px; border-radius: 4px; font-weight: 600;">🌲 ${FlyToast.escape(name)}${valStr}</span>`;
+      contributingGoalsEl.innerHTML = html;
+    } else if (cat === 'elevation') {
+      const everest = activeGoals.find(g => g.category === 'elevation');
+      const valStr = val > 0 ? ` (+${formatNumber(val)} ft)` : '';
+      let html = '<span style="font-weight: 700; color: var(--accent-green);">⚡ Contributes to:</span> ';
+      const name = everest ? everest.title : 'Elevation Goals';
+      html += `<span style="background: var(--bg-surface); border: 1px solid var(--border-color); padding: 2px 8px; border-radius: 4px; font-weight: 600;">🐐 ${FlyToast.escape(name)}${valStr}</span>`;
+      contributingGoalsEl.innerHTML = html;
+    }
+  }
+
+  amtInput.addEventListener('input', updateContributingGoals);
+  catSelect.addEventListener('change', () => {
+    updatePresets();
+    updateContributingGoals();
+  });
   updatePresets();
 
   submitBtn.addEventListener('click', async () => {
@@ -1065,45 +1151,58 @@ export function setupSwimLapLogger({ onReloadState } = {}) {
   let currentPoolUnit = 'm';
   let currentStroke = 'Freestyle';
 
-  function populateGoals() {
-    if (!goalSelect) return;
-    const activeGoals = state.currentRoomData?.active_goals || [];
-    const prevVal = goalSelect.value;
-    goalSelect.innerHTML = '';
+  const multiGoalChipsEl = document.getElementById('swimMultiGoalChips');
+  const multiImpactEl = document.getElementById('swimGoalMultiImpact');
 
-    if (activeGoals.length === 0) {
-      goalSelect.innerHTML = '<option value="">Auto-Route (Active Distance Goal)</option>';
-      return;
+  function populateGoals() {
+    const activeGoals = state.currentRoomData?.active_goals || [];
+    if (goalSelect) {
+      goalSelect.innerHTML = '';
+      activeGoals.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.title;
+        goalSelect.appendChild(opt);
+      });
     }
 
-    // Sort active goals so distance / swim / composite goals appear at the top
-    const sortedGoals = [...activeGoals].sort((a, b) => {
-      const aDist = a.category === 'distance' || a.category === 'composite' || /swim|lap|water|ironman/i.test(a.title || '');
-      const bDist = b.category === 'distance' || b.category === 'composite' || /swim|lap|water|ironman/i.test(b.title || '');
-      if (aDist && !bDist) return -1;
-      if (!aDist && bDist) return 1;
-      return 0;
-    });
+    const isOct2026 = (() => {
+      const now = new Date();
+      return now.getFullYear() === 2026 && now.getMonth() === 9; // 9 = October
+    })();
 
-    sortedGoals.forEach(g => {
-      const opt = document.createElement('option');
-      opt.value = g.id;
-      const emoji = /swim|lap|water/i.test(g.title) ? '🏊 ' : (g.theme_key === 'ironman' ? '🛡️ ' : (g.category === 'distance' ? '🏃 ' : '🎯 '));
-      opt.textContent = `${emoji}${g.title} (${formatNumber(g.current_value)} / ${formatNumber(g.target_value)} ${g.unit || ''})`;
-      goalSelect.appendChild(opt);
-    });
+    if (multiGoalChipsEl) {
+      multiGoalChipsEl.innerHTML = '';
+      const caribou = activeGoals.find(g => g.category === 'distance');
+      const lazyTri = activeGoals.find(g => g.theme_key === 'ironman' || g.category === 'composite');
 
-    if (prevVal && sortedGoals.some(g => String(g.id) === String(prevVal))) {
-      goalSelect.value = prevVal;
-    } else {
-      // Default to the currently viewed goal or first distance/composite goal
-      const curGoal = activeGoals[state.selectedGoalIndex];
-      if (curGoal && (curGoal.category === 'distance' || curGoal.category === 'composite' || /swim|lap|ironman/i.test(curGoal.title))) {
-        goalSelect.value = curGoal.id;
-      } else {
-        const firstDist = sortedGoals.find(g => g.category === 'distance' || g.category === 'composite' || /swim|lap|ironman/i.test(g.title));
-        if (firstDist) goalSelect.value = firstDist.id;
+      if (caribou) {
+        const chip = document.createElement('div');
+        chip.className = 'goal-contrib-chip';
+        chip.style.cssText = 'background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm, 6px); padding: 4px 10px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;';
+        chip.innerHTML = '<span>🦌</span> <span>Caribou Migration</span> <span style="font-size: 0.72rem; color: var(--accent-green); font-weight: 800;">✓ Active</span>';
+        multiGoalChipsEl.appendChild(chip);
       }
+      if (lazyTri) {
+        const chip = document.createElement('div');
+        chip.className = 'goal-contrib-chip';
+        if (isOct2026) {
+          chip.style.cssText = 'background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-sm, 6px); padding: 4px 10px; font-size: 0.8rem; font-weight: 700; color: var(--accent-orange, #f59e0b); display: inline-flex; align-items: center; gap: 4px;';
+          chip.innerHTML = '<span>🛡️</span> <span>Lazy Tri (Swim Leg)</span> <span style="font-size: 0.72rem; font-weight: 800;">✓ Active</span>';
+        } else {
+          chip.style.cssText = 'background: var(--bg-surface); border: 1px solid var(--border-color); opacity: 0.6; border-radius: var(--radius-sm, 6px); padding: 4px 10px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;';
+          chip.innerHTML = '<span>🛡️</span> <span>Lazy Tri (Oct 2026 only)</span>';
+        }
+        multiGoalChipsEl.appendChild(chip);
+      }
+      // Any custom distance quests
+      activeGoals.filter(g => g.category === 'distance' && g.theme_key !== 'caribou').forEach(cg => {
+        const chip = document.createElement('div');
+        chip.className = 'goal-contrib-chip';
+        chip.style.cssText = 'background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm, 6px); padding: 4px 10px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;';
+        chip.innerHTML = `<span>🎯</span> <span>${FlyToast.escape(cg.title)}</span> <span style="font-size: 0.72rem; color: var(--accent-green); font-weight: 800;">✓ Active</span>`;
+        multiGoalChipsEl.appendChild(chip);
+      });
     }
   }
 
@@ -1166,8 +1265,7 @@ export function setupSwimLapLogger({ onReloadState } = {}) {
 
     // Find target goal unit
     const activeGoals = state.currentRoomData?.active_goals || [];
-    const selectedGoal = activeGoals.find(g => String(g.id) === String(goalSelect?.value)) ||
-                         activeGoals.find(g => g.category === 'distance') ||
+    const selectedGoal = activeGoals.find(g => g.category === 'distance') ||
                          activeGoals[0] ||
                          { unit: 'mi' };
     const goalUnit = (selectedGoal.unit || 'mi').toLowerCase();
@@ -1199,12 +1297,25 @@ export function setupSwimLapLogger({ onReloadState } = {}) {
       deltaBadgeEl.textContent = `+${deltaStr}`;
     }
 
+    if (multiImpactEl) {
+      const isOct2026 = (() => {
+        const now = new Date();
+        return now.getFullYear() === 2026 && now.getMonth() === 9;
+      })();
+      const lazyTri = activeGoals.find(g => g.theme_key === 'ironman' || g.category === 'composite');
+      if (isOct2026 && lazyTri) {
+        multiImpactEl.textContent = '• Advances Caribou & Lazy Tri (Swim)';
+      } else {
+        multiImpactEl.textContent = '• Advances Caribou Migration';
+      }
+    }
+
     if (submitBtn) {
       const distShort = currentPoolUnit === 'yd' ? `${Math.round(laps * currentPoolLength)}yd` : `${Math.round(totalMeters)}m`;
       submitBtn.innerHTML = `🏊 Log ${laps} Laps (${distShort} • +${deltaStr})`;
     }
 
-    return { laps, totalMeters, totalKm, totalMiles, metricVal, deltaStr, goalId: selectedGoal?.id };
+    return { laps, totalMeters, totalKm, totalMiles, metricVal, deltaStr };
   }
 
   window.updateSwimCalculations = () => {
@@ -1301,7 +1412,7 @@ export function setupSwimLapLogger({ onReloadState } = {}) {
 
     const payload = {
       room_slug: state.roomSlug,
-      goal_id: calc.goalId || null,
+      goal_id: null, // Auto-routes and contributes to ALL matching active goals in room!
       activity_type: 'distance',
       exercise_name: exName,
       sets: 1,

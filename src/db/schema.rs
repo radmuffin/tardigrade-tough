@@ -236,7 +236,7 @@ pub fn init_db(conn: &mut Connection) -> Result<()> {
     // Ensure all existing rooms have the Lazy Ironman goal seeded if missing
     let _ = conn.execute(
         r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-           SELECT slug, 'Lazy Ironman', 'composite', 140.6, 0.0, 'mi', 'ironman', 'active', 'Conquering 2.4 mi swim, 112 mi bike, and a 26.2 mi marathon run in iron-forged endurance.', created_at
+           SELECT slug, 'Lazy Ironman', 'composite', 140.6, 0.0, 'mi', 'ironman', 'active', 'October 2026 Challenge: Conquering 2.4 mi swim, 112 mi bike, and a 26.2 mi marathon run in iron-forged endurance.', created_at
            FROM rooms
            WHERE slug NOT IN (SELECT room_slug FROM goals WHERE theme_key = 'ironman')"#,
         [],
@@ -268,7 +268,7 @@ pub fn seed_room_default_goals(conn: &Connection, slug: &str, now: &str) -> Resu
     )?;
     conn.execute(
         r#"INSERT INTO goals (room_slug, title, category, target_value, current_value, unit, theme_key, status, description, created_at)
-           VALUES (?, 'Lazy Ironman', 'composite', 140.6, 0.0, 'mi', 'ironman', 'active', 'Conquering 2.4 mi swim, 112 mi bike, and a 26.2 mi marathon run in iron-forged endurance.', ?)"#,
+           VALUES (?, 'Lazy Ironman', 'composite', 140.6, 0.0, 'mi', 'ironman', 'active', 'October 2026 Challenge: Conquering 2.4 mi swim, 112 mi bike, and a 26.2 mi marathon run in iron-forged endurance.', ?)"#,
         params![slug, now],
     )?;
     Ok(())

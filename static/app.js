@@ -87,9 +87,9 @@ export async function loadRoomState() {
         }
       }
 
-      // Ensure active_goals are in the exact order as visual tabs: Pando -> Everest -> Caribou
+      // Ensure active_goals are in the exact order as visual tabs: Pando -> Everest -> Caribou -> Ironman (Lazy Tri)
       if (state.currentRoomData && state.currentRoomData.active_goals) {
-        const themeOrder = ['pando', 'everest', 'caribou'];
+        const themeOrder = ['pando', 'everest', 'caribou', 'ironman'];
         state.currentRoomData.active_goals.sort((a, b) => {
           const ia = themeOrder.indexOf(a.theme_key);
           const ib = themeOrder.indexOf(b.theme_key);

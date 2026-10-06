@@ -280,7 +280,7 @@ export function renderGoalShowcase({ onUpdateStepper } = {}) {
         btn.dataset.theme = g.theme_key;
         btn.dataset.goalId = g.id;
         const emoji = g.theme_key === 'volcano' ? '🌋' : g.theme_key === 'canopy' ? '🌴' : g.theme_key === 'whale' ? '🐋' : g.theme_key === 'ironman' ? '🛡️' : (g.category === 'weight' ? '🌲' : g.category === 'distance' ? '🦌' : g.category === 'elevation' ? '🐐' : g.category === 'ability' ? '⚡' : '🎯');
-        const shortName = g.title.split(' ')[0];
+        const shortName = g.theme_key === 'ironman' ? 'Lazy Tri' : g.title.split(' ')[0];
         btn.innerHTML = `<span class="segment-emoji">${emoji}</span> <span class="segment-title">${FlyToast.escape(shortName)}</span>`;
         btn.addEventListener('click', () => {
           const targetIdx = (state.currentRoomData?.active_goals || []).findIndex(goal => goal.id === g.id);

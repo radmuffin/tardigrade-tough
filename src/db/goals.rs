@@ -44,10 +44,14 @@ pub fn compute_composite_progress_for_goal(
     goal_id: i64,
     room_slug: &str,
 ) -> Result<(CompositeProgress, bool)> {
+    // Lazy Tri composite goal is strictly for October 2026 (2026-10-01 to 2026-10-31)
     let mut stmt = conn.prepare(
         r#"SELECT activity_type, exercise_name, notes, distance_val, total_metric
            FROM activities
-           WHERE room_slug = ? AND (goal_id = ? OR activity_type = 'distance' OR distance_val > 0.0)"#,
+           WHERE room_slug = ?
+             AND (goal_id = ? OR activity_type = 'distance' OR distance_val > 0.0)
+             AND created_at >= '2026-10-01'
+             AND created_at < '2026-11-01'"#,
     )?;
 
     let mut swim_current = 0.0;
@@ -138,7 +142,7 @@ pub fn recalculate_room_goals(conn: &Connection, room_slug: &str) -> Result<()> 
            SET current_value = (
                SELECT COALESCE(SUM(a.total_metric), 0.0)
                FROM activities a
-               WHERE (a.goal_id = goals.id OR (a.goal_id IS NULL AND a.room_slug = goals.room_slug AND a.activity_type = goals.category))
+               WHERE a.room_slug = goals.room_slug AND (a.goal_id = goals.id OR a.activity_type = goals.category)
            )
            WHERE room_slug = ? AND category NOT IN ('distance', 'elevation', 'composite') AND theme_key != 'ironman' AND theme_key != 'whale'"#,
         params![room_slug],
