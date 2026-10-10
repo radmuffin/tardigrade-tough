@@ -302,6 +302,9 @@ test.describe('Tardigrade Tough Web App E2E', () => {
     await page.click('#goalTabIronman');
     await expect(page.locator('#heroBikeSub')).toContainText('12.0 / 112.0 mi');
     await expect(page.locator('#heroGoalCurrent')).toContainText('12 mi');
+    await expect(page.locator('#compositeTeammatesSection')).toBeVisible();
+    await expect(page.locator('#compositeTeammatesList')).toBeVisible();
+    await expect(page.locator('#compositeTeammatesList')).toContainText('12');
 
     // Check Caribou goal has also advanced
     await page.click('#goalTabCaribou');

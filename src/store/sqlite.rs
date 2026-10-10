@@ -159,9 +159,13 @@ impl UserStore for SqliteStore {
 }
 
 impl GoalStore for SqliteStore {
-    fn get_goals_for_room(&self, room_slug: &str) -> StoreResult<(Vec<Goal>, Vec<Goal>)> {
+    fn get_goals_for_room(
+        &self,
+        room_slug: &str,
+        viewer_user_token: Option<&str>,
+    ) -> StoreResult<(Vec<Goal>, Vec<Goal>)> {
         let conn = self.conn.lock().unwrap();
-        crate::db::get_goals_for_room(&conn, room_slug).map_err(Into::into)
+        crate::db::get_goals_for_room(&conn, room_slug, viewer_user_token).map_err(Into::into)
     }
 
     fn create_custom_goal(&self, room_slug: &str, req: &CreateGoalRequest) -> StoreResult<Goal> {

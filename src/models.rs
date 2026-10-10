@@ -121,6 +121,21 @@ pub struct UpdateProfileRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct MemberCompositeProgress {
+    pub user_token: String,
+    pub nickname: String,
+    pub avatar_color: String,
+    #[serde(default)]
+    pub avatar_emoji: String,
+    pub swim_current: f64,
+    pub bike_current: f64,
+    pub run_current: f64,
+    pub total_current: f64,
+    pub percent: f64,
+    pub is_completed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct CompositeProgress {
     pub swim_current: f64,
     pub swim_target: f64,
@@ -128,6 +143,10 @@ pub struct CompositeProgress {
     pub bike_target: f64,
     pub run_current: f64,
     pub run_target: f64,
+    #[serde(default)]
+    pub is_completed: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub members: Vec<MemberCompositeProgress>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -293,3 +293,154 @@
   text-align: right;
 }
 
+/* Teammates Squad Progress in Composite Card */
+.composite-teammates-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.composite-teammates-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.composite-teammates-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.composite-teammates-count {
+  font-family: var(--font-mono);
+  font-size: 0.70rem;
+  color: var(--text-muted);
+}
+
+.composite-teammates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.composite-teammate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  transition: background 0.15s ease;
+}
+
+.composite-teammate-row.is-me {
+  border-color: var(--accent-orange, #f59e0b);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.composite-teammate-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.composite-teammate-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.composite-teammate-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.composite-teammate-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composite-teammate-you {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent-orange, #f59e0b);
+  margin-left: 4px;
+}
+
+.composite-teammate-legs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.composite-teammate-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.composite-teammate-badge-complete {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.70rem;
+  font-weight: 800;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.composite-teammate-pct {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.composite-teammate-bar-mini {
+  width: 50px;
+  height: 4px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.composite-teammate-bar-fill {
+  height: 100%;
+  background: var(--accent-orange, #f59e0b);
+  border-radius: 999px;
+}
+
+

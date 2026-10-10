@@ -27,7 +27,7 @@ fn test_db_initialization_and_default_seeds() {
     let room = get_or_create_room(&conn, "pando-squad").expect("room");
     assert_eq!(room.slug, "pando-squad");
 
-    let (active, completed) = get_goals_for_room(&conn, "pando-squad").expect("goals");
+    let (active, completed) = get_goals_for_room(&conn, "pando-squad", None).expect("goals");
     assert_eq!(active.len(), 4);
     assert_eq!(completed.len(), 1);
 
@@ -93,8 +93,8 @@ fn test_multi_room_isolation_and_cross_contamination() {
     .expect("log user a");
     assert_eq!(act_a.total_metric, 5000.0);
 
-    let (goals_a, _) = get_goals_for_room(&conn, "sally-squad").expect("goals a");
-    let (goals_b, _) = get_goals_for_room(&conn, "brandon-solo").expect("goals b");
+    let (goals_a, _) = get_goals_for_room(&conn, "sally-squad", None).expect("goals a");
+    let (goals_b, _) = get_goals_for_room(&conn, "brandon-solo", None).expect("goals b");
 
     assert_eq!(goals_a[0].current_value, 5000.0);
     assert_eq!(goals_b[0].current_value, 0.0);
@@ -197,7 +197,7 @@ fn test_all_three_goal_metrics_weight_distance_elevation() {
     )
     .expect("elevation log");
 
-    let (active, _) = get_goals_for_room(&conn, "main").expect("goals");
+    let (active, _) = get_goals_for_room(&conn, "main", None).expect("goals");
     let pando = active.iter().find(|g| g.theme_key == "pando").unwrap();
     let caribou = active.iter().find(|g| g.theme_key == "caribou").unwrap();
     let everest = active.iter().find(|g| g.theme_key == "everest").unwrap();
@@ -310,7 +310,7 @@ fn test_activity_deletion_and_rollback() {
     )
     .expect("log");
 
-    let (active_1, _) = get_goals_for_room(&conn, "main").expect("goals");
+    let (active_1, _) = get_goals_for_room(&conn, "main", None).expect("goals");
     let val_1 = active_1
         .iter()
         .find(|g| g.theme_key == "pando")
@@ -323,7 +323,7 @@ fn test_activity_deletion_and_rollback() {
     let authorized_del = delete_activity(&mut conn, act.id, "token_del").expect("delete ok");
     assert_eq!(authorized_del, Some(vec!["main".to_string()]));
 
-    let (active_2, _) = get_goals_for_room(&conn, "main").expect("goals");
+    let (active_2, _) = get_goals_for_room(&conn, "main", None).expect("goals");
     let val_2 = active_2
         .iter()
         .find(|g| g.theme_key == "pando")
@@ -464,7 +464,7 @@ fn test_goal_completion_transition() {
     )
     .expect("trek log");
 
-    let (_, completed) = get_goals_for_room(&conn, "solo_quest").expect("goals");
+    let (_, completed) = get_goals_for_room(&conn, "solo_quest", None).expect("goals");
     let finished_caribou = completed.iter().find(|g| g.theme_key == "caribou");
     assert!(finished_caribou.is_some());
     assert_eq!(finished_caribou.unwrap().status, "completed");
@@ -476,7 +476,7 @@ fn test_goal_completion_transition() {
     assert_eq!(deleted_room, Some(vec!["solo_quest".to_string()]));
 
     let (active_after, completed_after) =
-        get_goals_for_room(&conn, "solo_quest").expect("goals after delete");
+        get_goals_for_room(&conn, "solo_quest", None).expect("goals after delete");
     let caribou_active = active_after.iter().find(|g| g.theme_key == "caribou");
     assert!(
         caribou_active.is_some(),
@@ -839,7 +839,7 @@ fn test_custom_quest_category_proposal_promotion_and_activity_logging() {
     assert_eq!(act.total_metric, 100.0);
 
     // 5. Verify goal was updated with 100 reps
-    let (active_goals, _) = get_goals_for_room(&conn, "squad-custom").expect("goals");
+    let (active_goals, _) = get_goals_for_room(&conn, "squad-custom", None).expect("goals");
     let pushup_goal = active_goals
         .iter()
         .find(|g| g.category == "pushups")
@@ -1769,7 +1769,9 @@ async fn test_data_store_trait_abstraction() {
     assert!(activity.is_pr);
 
     // 5. Verify goal completion through GoalStore
-    let (_active, completed) = store.get_goals_for_room(&room.slug).expect("get_goals");
+    let (_active, completed) = store
+        .get_goals_for_room(&room.slug, None)
+        .expect("get_goals");
     let completed_titan = completed
         .iter()
         .find(|g| g.id == goal.id)
@@ -2342,7 +2344,7 @@ fn test_activity_edit_and_toggle_pr() {
     .expect("found");
     assert_eq!(updated2.total_metric, 10_000.0);
 
-    let (active_goals, _) = get_goals_for_room(&conn, "edit-squad").expect("goals");
+    let (active_goals, _) = get_goals_for_room(&conn, "edit-squad", None).expect("goals");
     let pando = active_goals
         .iter()
         .find(|g| g.category == "weight")
@@ -2424,7 +2426,7 @@ fn test_universal_workout_sync_on_squad_join() {
     assert_eq!(acts[0].total_metric, 7500.0);
 
     // Verify goals in beast-squad received the 7,500 lbs
-    let (goals, _) = get_goals_for_room(&conn, &squad.slug).expect("goals");
+    let (goals, _) = get_goals_for_room(&conn, &squad.slug, None).expect("goals");
     let weight_goal = goals
         .iter()
         .find(|g| g.category == "weight")
@@ -2466,7 +2468,7 @@ fn test_private_workout_isolation_and_toggle() {
     // Verify squad has 0 activities and 0 goal value
     let squad_acts = get_recent_activities(&conn, &squad.slug, 50).expect("squad_acts");
     assert_eq!(squad_acts.len(), 0);
-    let (goals, _) = get_goals_for_room(&conn, &squad.slug).expect("goals");
+    let (goals, _) = get_goals_for_room(&conn, &squad.slug, None).expect("goals");
     let wt = goals.iter().find(|g| g.category == "weight").unwrap();
     assert_eq!(wt.current_value, 0.0);
 
@@ -2479,7 +2481,7 @@ fn test_private_workout_isolation_and_toggle() {
     // Squad should now have the activity and goal value updated
     let squad_acts_after = get_recent_activities(&conn, &squad.slug, 50).expect("squad_acts_after");
     assert_eq!(squad_acts_after.len(), 1);
-    let (goals_after, _) = get_goals_for_room(&conn, &squad.slug).expect("goals_after");
+    let (goals_after, _) = get_goals_for_room(&conn, &squad.slug, None).expect("goals_after");
     let wt_after = goals_after.iter().find(|g| g.category == "weight").unwrap();
     assert_eq!(wt_after.current_value, 100.0);
 
@@ -2492,7 +2494,7 @@ fn test_private_workout_isolation_and_toggle() {
     // Squad copy should be deleted and goal rolled back
     let squad_acts_final = get_recent_activities(&conn, &squad.slug, 50).expect("squad_acts_final");
     assert_eq!(squad_acts_final.len(), 0);
-    let (goals_final, _) = get_goals_for_room(&conn, &squad.slug).expect("goals_final");
+    let (goals_final, _) = get_goals_for_room(&conn, &squad.slug, None).expect("goals_final");
     let wt_final = goals_final.iter().find(|g| g.category == "weight").unwrap();
     assert_eq!(wt_final.current_value, 0.0);
 }
@@ -2527,14 +2529,14 @@ fn test_departed_member_keep_or_purge_contributions() {
     .expect("act");
 
     // Goals should have 10,000 lbs
-    let (goals, _) = get_goals_for_room(&conn, &squad.slug).expect("goals");
+    let (goals, _) = get_goals_for_room(&conn, &squad.slug, None).expect("goals");
     let wt = goals.iter().find(|g| g.category == "weight").unwrap();
     assert_eq!(wt.current_value, 10000.0);
 
     // 1. Remove member with keep_contributions = true
     remove_room_member(&conn, &squad.slug, "token_owner", "token_leaver", true)
         .expect("remove keep");
-    let (goals_kept, _) = get_goals_for_room(&conn, &squad.slug).expect("goals_kept");
+    let (goals_kept, _) = get_goals_for_room(&conn, &squad.slug, None).expect("goals_kept");
     let wt_kept = goals_kept.iter().find(|g| g.category == "weight").unwrap();
     assert_eq!(
         wt_kept.current_value, 10000.0,
@@ -2551,7 +2553,7 @@ fn test_departed_member_keep_or_purge_contributions() {
     purge_member_contributions(&conn, &squad.slug, "token_owner", "token_leaver").expect("purge");
 
     // Goals should now be rolled back to 0.0
-    let (goals_purged, _) = get_goals_for_room(&conn, &squad.slug).expect("goals_purged");
+    let (goals_purged, _) = get_goals_for_room(&conn, &squad.slug, None).expect("goals_purged");
     let wt_purged = goals_purged
         .iter()
         .find(|g| g.category == "weight")
@@ -3117,4 +3119,183 @@ async fn test_lazy_tri_october_date_bounds_integration() {
     assert_eq!(ironman3["current_value"], 40.0);
     assert_eq!(ironman3["composite_progress"]["bike_current"], 40.0);
     assert_eq!(ironman3["composite_progress"]["run_current"], 0.0);
+}
+
+#[tokio::test]
+async fn test_api_lazy_tri_multi_user_squad_journey() {
+    let conn = setup_test_db();
+    let db = Arc::new(Mutex::new(conn));
+    let hub = Arc::new(BroadcastHub::new(256));
+    let state = AppState::new(db, hub);
+    let app = create_routes(state);
+    let server = TestServer::new(app).unwrap();
+
+    // 1. Alice creates/joins squad "tri-squad"
+    let alice_init = server
+        .get("/room/tri-squad")
+        .add_header("X-Device-Token", "alice-token")
+        .await;
+    alice_init.assert_status_ok();
+
+    // Alice sets profile
+    server
+        .post("/users/profile")
+        .add_header("X-Device-Token", "alice-token")
+        .json(&serde_json::json!({
+            "nickname": "Alice",
+            "avatar_color": "#ff007f",
+            "avatar_emoji": "🦈"
+        }))
+        .await
+        .assert_status_ok();
+
+    // 2. Bob joins squad "tri-squad"
+    let bob_init = server
+        .get("/room/tri-squad")
+        .add_header("X-Device-Token", "bob-token")
+        .await;
+    bob_init.assert_status_ok();
+
+    // Bob sets profile
+    server
+        .post("/users/profile")
+        .add_header("X-Device-Token", "bob-token")
+        .json(&serde_json::json!({
+            "nickname": "Bob",
+            "avatar_color": "#00ff7f",
+            "avatar_emoji": "🚴"
+        }))
+        .await
+        .assert_status_ok();
+
+    // 3. Alice logs October workouts for swim, bike, and run (completing Lazy Tri)
+    // Swim: 2.4 mi
+    let swim_res = server
+        .post("/activities")
+        .add_header("X-Device-Token", "alice-token")
+        .json(&serde_json::json!({
+            "room_slug": "tri-squad",
+            "activity_type": "distance",
+            "exercise_name": "Swim laps",
+            "distance_val": 2.4,
+            "total_metric": 2.4,
+            "created_at": "2026-10-02T08:00:00Z"
+        }))
+        .await;
+    assert_eq!(swim_res.status_code(), 201);
+
+    // Bike: 112 mi
+    let bike_res = server
+        .post("/activities")
+        .add_header("X-Device-Token", "alice-token")
+        .json(&serde_json::json!({
+            "room_slug": "tri-squad",
+            "activity_type": "distance",
+            "exercise_name": "Road Bike",
+            "distance_val": 112.0,
+            "total_metric": 112.0,
+            "created_at": "2026-10-05T09:00:00Z"
+        }))
+        .await;
+    assert_eq!(bike_res.status_code(), 201);
+
+    // Run: 26.2 mi
+    let run_res = server
+        .post("/activities")
+        .add_header("X-Device-Token", "alice-token")
+        .json(&serde_json::json!({
+            "room_slug": "tri-squad",
+            "activity_type": "distance",
+            "exercise_name": "Marathon",
+            "distance_val": 26.2,
+            "total_metric": 26.2,
+            "created_at": "2026-10-12T10:00:00Z"
+        }))
+        .await;
+    assert_eq!(run_res.status_code(), 201);
+
+    // 4. Bob logs October workout: 10 mi bike
+    let bob_bike = server
+        .post("/activities")
+        .add_header("X-Device-Token", "bob-token")
+        .json(&serde_json::json!({
+            "room_slug": "tri-squad",
+            "activity_type": "distance",
+            "exercise_name": "Gravel Bike",
+            "distance_val": 10.0,
+            "total_metric": 10.0,
+            "created_at": "2026-10-15T11:00:00Z"
+        }))
+        .await;
+    assert_eq!(bob_bike.status_code(), 201);
+
+    // 5. Query room as Alice
+    let alice_view = server
+        .get("/room/tri-squad")
+        .add_header("X-Device-Token", "alice-token")
+        .await;
+    let alice_json: serde_json::Value = alice_view.json();
+    let alice_active = alice_json["data"]["active_goals"].as_array().unwrap();
+    let alice_completed = alice_json["data"]["completed_goals"].as_array().unwrap();
+
+    // Caribou (collective squad goal) should have 2.4 + 112 + 26.2 + 10 = 150.6 mi
+    let caribou_for_alice = alice_active
+        .iter()
+        .find(|g| g["theme_key"] == "caribou")
+        .unwrap();
+    assert_eq!(caribou_for_alice["current_value"], 150.6);
+
+    // Lazy Tri in active goals for Alice should show Alice's personal progress (140.6)
+    let tri_for_alice = alice_active
+        .iter()
+        .find(|g| g["theme_key"] == "ironman")
+        .unwrap();
+    assert_eq!(tri_for_alice["current_value"], 140.6);
+    assert_eq!(tri_for_alice["composite_progress"]["is_completed"], true);
+    assert_eq!(tri_for_alice["composite_progress"]["swim_current"], 2.4);
+    assert_eq!(tri_for_alice["composite_progress"]["bike_current"], 112.0);
+    assert_eq!(tri_for_alice["composite_progress"]["run_current"], 26.2);
+
+    // Teammate roster in composite_progress.members
+    let members_alice_view = tri_for_alice["composite_progress"]["members"]
+        .as_array()
+        .unwrap();
+    assert_eq!(members_alice_view.len(), 2);
+    // Alice is 1st (completed)
+    assert_eq!(members_alice_view[0]["user_token"], "alice-token");
+    assert_eq!(members_alice_view[0]["is_completed"], true);
+    assert_eq!(members_alice_view[0]["total_current"], 140.6);
+    // Bob is 2nd
+    assert_eq!(members_alice_view[1]["user_token"], "bob-token");
+    assert_eq!(members_alice_view[1]["is_completed"], false);
+    assert_eq!(members_alice_view[1]["bike_current"], 10.0);
+    assert_eq!(members_alice_view[1]["total_current"], 10.0);
+
+    // Alice also gets Lazy Tri in completed_goals for Trophy Room!
+    let alice_tri_trophy = alice_completed.iter().find(|g| g["theme_key"] == "ironman");
+    assert!(alice_tri_trophy.is_some());
+
+    // 6. Query room as Bob
+    let bob_view = server
+        .get("/room/tri-squad")
+        .add_header("X-Device-Token", "bob-token")
+        .await;
+    let bob_json: serde_json::Value = bob_view.json();
+    let bob_active = bob_json["data"]["active_goals"].as_array().unwrap();
+    let bob_completed = bob_json["data"]["completed_goals"].as_array().unwrap();
+
+    // Lazy Tri for Bob should show Bob's personal progress (10.0 mi)
+    let tri_for_bob = bob_active
+        .iter()
+        .find(|g| g["theme_key"] == "ironman")
+        .unwrap();
+    assert_eq!(tri_for_bob["current_value"], 10.0);
+    assert_eq!(tri_for_bob["composite_progress"]["is_completed"], false);
+    assert_eq!(tri_for_bob["composite_progress"]["swim_current"], 0.0);
+    assert_eq!(tri_for_bob["composite_progress"]["bike_current"], 10.0);
+    assert_eq!(tri_for_bob["composite_progress"]["run_current"], 0.0);
+
+    // Bob has NOT completed Lazy Tri, so it must NOT be in Bob's completed_goals
+    let bob_tri_trophy = bob_completed.iter().find(|g| g["theme_key"] == "ironman");
+    assert!(bob_tri_trophy.is_none());
 }

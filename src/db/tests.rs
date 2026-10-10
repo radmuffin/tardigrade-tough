@@ -43,7 +43,7 @@ fn test_init_db_and_seed_defaults() {
     assert!(room.keep_departed_contributions);
 
     let (active_goals, completed_goals) =
-        get_goals_for_room(&conn, "test-squad").expect("goals query failed");
+        get_goals_for_room(&conn, "test-squad", None).expect("goals query failed");
     assert_eq!(
         active_goals.len(),
         4,
@@ -241,7 +241,7 @@ fn test_departed_member_purge_unit() {
     let _ = log_single_activity(&mut conn, &member_user, &squad_slug, &lift_req).unwrap();
 
     // Verify Pando goal increased
-    let (active_goals, _) = get_goals_for_room(&conn, &squad_slug).unwrap();
+    let (active_goals, _) = get_goals_for_room(&conn, &squad_slug, None).unwrap();
     let pando = active_goals
         .iter()
         .find(|g| g.theme_key == "pando")
@@ -252,7 +252,7 @@ fn test_departed_member_purge_unit() {
     remove_room_member(&conn, &squad_slug, owner_token, member_token, false).unwrap();
 
     // Verify Pando goal was rolled back to 0.0
-    let (active_goals_after, _) = get_goals_for_room(&conn, &squad_slug).unwrap();
+    let (active_goals_after, _) = get_goals_for_room(&conn, &squad_slug, None).unwrap();
     let pando_after = active_goals_after
         .iter()
         .find(|g| g.theme_key == "pando")
@@ -318,7 +318,7 @@ fn test_create_custom_goal_and_recalculate() {
 
     // Recalculating with no activities preserves current_value 0.0
     recalculate_room_goals(&conn, &squad.slug).unwrap();
-    let (active_goals, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_goals, _) = get_goals_for_room(&conn, &squad.slug, None).unwrap();
     let found = active_goals.iter().find(|g| g.id == goal.id).unwrap();
     assert_eq!(found.current_value, 0.0);
 }
@@ -381,7 +381,7 @@ fn test_lazy_ironman_composite_goal_unit() {
     let squad = get_or_create_room(&conn, "tri-squad").unwrap();
     let user = get_or_create_user(&conn, "token-tri", &squad.slug).unwrap();
 
-    let (active_init, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_init, _) = get_goals_for_room(&conn, &squad.slug, Some("token-tri")).unwrap();
     let ironman_init = active_init
         .iter()
         .find(|g| g.theme_key == "ironman")
@@ -406,7 +406,7 @@ fn test_lazy_ironman_composite_goal_unit() {
     };
     log_single_activity(&mut conn, &user, &squad.slug, &run_req).unwrap();
 
-    let (active_after_run, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_after_run, _) = get_goals_for_room(&conn, &squad.slug, Some("token-tri")).unwrap();
     let caribou = active_after_run
         .iter()
         .find(|g| g.theme_key == "caribou")
@@ -433,7 +433,7 @@ fn test_lazy_ironman_composite_goal_unit() {
     };
     log_single_activity(&mut conn, &user, &squad.slug, &bike_req).unwrap();
 
-    let (active_after_bike, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_after_bike, _) = get_goals_for_room(&conn, &squad.slug, Some("token-tri")).unwrap();
     let caribou_b = active_after_bike
         .iter()
         .find(|g| g.theme_key == "caribou")
@@ -462,7 +462,7 @@ fn test_lazy_ironman_composite_goal_unit() {
     };
     log_single_activity(&mut conn, &user, &squad.slug, &swim_req).unwrap();
 
-    let (active_after_swim, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_after_swim, _) = get_goals_for_room(&conn, &squad.slug, Some("token-tri")).unwrap();
     let caribou_s = active_after_swim
         .iter()
         .find(|g| g.theme_key == "caribou")
@@ -490,7 +490,7 @@ fn test_lazy_ironman_composite_goal_unit() {
     };
     log_single_activity(&mut conn, &user, &squad.slug, &mega_bike).unwrap();
 
-    let (active_over, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_over, _) = get_goals_for_room(&conn, &squad.slug, Some("token-tri")).unwrap();
     let ironman_over = active_over
         .iter()
         .find(|g| g.theme_key == "ironman")
@@ -525,11 +525,22 @@ fn test_lazy_ironman_composite_goal_unit() {
     };
     log_single_activity(&mut conn, &user, &squad.slug, &finish_run).unwrap();
 
-    let (active_final, completed_final) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_final, completed_final) =
+        get_goals_for_room(&conn, &squad.slug, Some("token-tri")).unwrap();
+    let ironman_active = active_final
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .expect("Ironman remains in active goals so diorama & teammates remain accessible");
+    assert_eq!(ironman_active.status, "completed");
+    assert_eq!(ironman_active.current_value, 140.6);
     assert!(
-        !active_final.iter().any(|g| g.theme_key == "ironman"),
-        "Ironman should no longer be active"
+        ironman_active
+            .composite_progress
+            .as_ref()
+            .unwrap()
+            .is_completed
     );
+
     let conquered_ironman = completed_final
         .iter()
         .find(|g| g.theme_key == "ironman")
@@ -556,7 +567,7 @@ fn test_lazy_tri_october_date_bounds() {
     };
     log_single_activity(&mut conn, &user, &squad.slug, &pre_oct_req).unwrap();
 
-    let (active_goals1, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_goals1, _) = get_goals_for_room(&conn, &squad.slug, Some("token-oct")).unwrap();
     let caribou1 = active_goals1
         .iter()
         .find(|g| g.theme_key == "caribou")
@@ -590,7 +601,7 @@ fn test_lazy_tri_october_date_bounds() {
     };
     log_single_activity(&mut conn, &user, &squad.slug, &oct_req).unwrap();
 
-    let (active_goals2, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_goals2, _) = get_goals_for_room(&conn, &squad.slug, Some("token-oct")).unwrap();
     let caribou2 = active_goals2
         .iter()
         .find(|g| g.theme_key == "caribou")
@@ -621,7 +632,7 @@ fn test_lazy_tri_october_date_bounds() {
     };
     log_single_activity(&mut conn, &user, &squad.slug, &post_oct_req).unwrap();
 
-    let (active_goals3, _) = get_goals_for_room(&conn, &squad.slug).unwrap();
+    let (active_goals3, _) = get_goals_for_room(&conn, &squad.slug, Some("token-oct")).unwrap();
     let caribou3 = active_goals3
         .iter()
         .find(|g| g.theme_key == "caribou")
@@ -642,5 +653,197 @@ fn test_lazy_tri_october_date_bounds() {
     assert_eq!(
         ironman3.composite_progress.as_ref().unwrap().run_current,
         0.0
+    );
+}
+
+#[test]
+fn test_lazy_tri_individual_squad_progress() {
+    let mut conn = setup_test_db();
+    let squad = get_or_create_room(&conn, "tri-team-squad").unwrap();
+    let alice = get_or_create_user(&conn, "alice-token", &squad.slug).unwrap();
+    let bob = get_or_create_user(&conn, "bob-token", &squad.slug).unwrap();
+
+    // Alice logs 10 mi run and 50 mi bike in October
+    let alice_run = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Alice Trail Run".to_string()),
+        distance_val: Some(10.0),
+        total_metric: Some(10.0),
+        created_at: Some("2026-10-05T08:00:00Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &alice, &squad.slug, &alice_run).unwrap();
+
+    let alice_bike = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Alice Road Cycle".to_string()),
+        distance_val: Some(50.0),
+        total_metric: Some(50.0),
+        created_at: Some("2026-10-07T10:00:00Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &alice, &squad.slug, &alice_bike).unwrap();
+
+    // Bob logs 20 mi bike and 1.0 mi swim in October
+    let bob_bike = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Bob Gravel Bike".to_string()),
+        distance_val: Some(20.0),
+        total_metric: Some(20.0),
+        created_at: Some("2026-10-06T09:00:00Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &bob, &squad.slug, &bob_bike).unwrap();
+
+    let bob_swim = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Bob Lap Swim".to_string()),
+        distance_val: Some(1.0),
+        total_metric: Some(1.0),
+        created_at: Some("2026-10-08T07:30:00Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &bob, &squad.slug, &bob_swim).unwrap();
+
+    // 1. Check Alice's perspective
+    let (alice_active, _) = get_goals_for_room(&conn, &squad.slug, Some("alice-token")).unwrap();
+    let caribou = alice_active
+        .iter()
+        .find(|g| g.theme_key == "caribou")
+        .unwrap();
+    assert_eq!(
+        caribou.current_value, 81.0,
+        "Caribou Migration receives total squad distance: 10 + 50 + 20 + 1"
+    );
+
+    let alice_tri = alice_active
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(
+        alice_tri.current_value, 60.0,
+        "Alice's Lazy Tri only counts Alice's 10 + 50"
+    );
+    let alice_comp = alice_tri.composite_progress.as_ref().unwrap();
+    assert_eq!(alice_comp.run_current, 10.0);
+    assert_eq!(alice_comp.bike_current, 50.0);
+    assert_eq!(alice_comp.swim_current, 0.0);
+    assert!(!alice_comp.is_completed);
+
+    // Teammates list should contain both Alice and Bob
+    assert_eq!(alice_comp.members.len(), 2);
+    let m_alice = alice_comp
+        .members
+        .iter()
+        .find(|m| m.user_token == "alice-token")
+        .unwrap();
+    assert_eq!(m_alice.total_current, 60.0);
+    assert!(!m_alice.is_completed);
+    let m_bob = alice_comp
+        .members
+        .iter()
+        .find(|m| m.user_token == "bob-token")
+        .unwrap();
+    assert_eq!(m_bob.total_current, 21.0);
+    assert!(!m_bob.is_completed);
+
+    // 2. Check Bob's perspective
+    let (bob_active, _) = get_goals_for_room(&conn, &squad.slug, Some("bob-token")).unwrap();
+    let bob_tri = bob_active
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(
+        bob_tri.current_value, 21.0,
+        "Bob's Lazy Tri only counts Bob's 20 + 1"
+    );
+    let bob_comp = bob_tri.composite_progress.as_ref().unwrap();
+    assert_eq!(bob_comp.run_current, 0.0);
+    assert_eq!(bob_comp.bike_current, 20.0);
+    assert_eq!(bob_comp.swim_current, 1.0);
+    assert!(!bob_comp.is_completed);
+
+    // 3. Complete Alice's Lazy Tri (needs 2.4 swim, 62 bike, 16.2 run)
+    let alice_swim_fin = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Alice Pool Swim".to_string()),
+        distance_val: Some(2.4),
+        total_metric: Some(2.4),
+        created_at: Some("2026-10-10T08:00:00Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &alice, &squad.slug, &alice_swim_fin).unwrap();
+
+    let alice_bike_fin = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Alice Century Ride".to_string()),
+        distance_val: Some(62.0),
+        total_metric: Some(62.0),
+        created_at: Some("2026-10-12T08:00:00Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &alice, &squad.slug, &alice_bike_fin).unwrap();
+
+    let alice_run_fin = LogActivityRequest {
+        room_slug: Some(squad.slug.clone()),
+        activity_type: "distance".to_string(),
+        exercise_name: Some("Alice Half Marathon".to_string()),
+        distance_val: Some(16.2),
+        total_metric: Some(16.2),
+        created_at: Some("2026-10-14T08:00:00Z".to_string()),
+        ..Default::default()
+    };
+    log_single_activity(&mut conn, &alice, &squad.slug, &alice_run_fin).unwrap();
+
+    // Alice should be completed
+    let (alice_active2, alice_completed2) =
+        get_goals_for_room(&conn, &squad.slug, Some("alice-token")).unwrap();
+    let alice_tri2 = alice_active2
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(alice_tri2.current_value, 140.6);
+    assert!(alice_tri2.composite_progress.as_ref().unwrap().is_completed);
+    assert!(
+        alice_completed2.iter().any(|g| g.theme_key == "ironman"),
+        "Alice has conquered Lazy Tri trophy"
+    );
+
+    // Bob must STILL be active and incomplete!
+    let (bob_active2, bob_completed2) =
+        get_goals_for_room(&conn, &squad.slug, Some("bob-token")).unwrap();
+    let bob_tri2 = bob_active2
+        .iter()
+        .find(|g| g.theme_key == "ironman")
+        .unwrap();
+    assert_eq!(bob_tri2.current_value, 21.0);
+    assert!(!bob_tri2.composite_progress.as_ref().unwrap().is_completed);
+    assert!(
+        !bob_completed2.iter().any(|g| g.theme_key == "ironman"),
+        "Bob does NOT have Lazy Tri trophy yet"
+    );
+
+    // But Bob sees Alice as completed in the teammates list!
+    let bob_comp2 = bob_tri2.composite_progress.as_ref().unwrap();
+    let bob_view_alice = bob_comp2
+        .members
+        .iter()
+        .find(|m| m.user_token == "alice-token")
+        .unwrap();
+    assert!(bob_view_alice.is_completed, "Bob sees Alice completed");
+    let bob_view_bob = bob_comp2
+        .members
+        .iter()
+        .find(|m| m.user_token == "bob-token")
+        .unwrap();
+    assert!(
+        !bob_view_bob.is_completed,
+        "Bob sees himself still in progress"
     );
 }

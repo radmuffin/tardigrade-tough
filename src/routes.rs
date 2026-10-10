@@ -241,7 +241,10 @@ async fn get_room_data(
         .ensure_room_member(&target_slug, user.as_str())
         .ok();
 
-    let (active_goals, completed_goals) = match state.store.get_goals_for_room(&target_slug) {
+    let (active_goals, completed_goals) = match state
+        .store
+        .get_goals_for_room(&target_slug, Some(user.as_str()))
+    {
         Ok(g) => g,
         Err(e) => {
             return (
@@ -420,7 +423,7 @@ async fn purge_member_contributions_handler(
         Ok(_) => {
             let (active_goals, _) = state
                 .store
-                .get_goals_for_room(&clean_slug)
+                .get_goals_for_room(&clean_slug, Some(user.as_str()))
                 .unwrap_or_default();
             let leaderboard = state.store.get_leaderboard(&clean_slug).unwrap_or_default();
             let _ = state.hub.broadcast(WsMessage {
@@ -450,7 +453,7 @@ async fn leave_room_handler(
         Ok(solo_slug) => {
             let (active_goals, _) = state
                 .store
-                .get_goals_for_room(&clean_slug)
+                .get_goals_for_room(&clean_slug, Some(user.as_str()))
                 .unwrap_or_default();
             let leaderboard = state.store.get_leaderboard(&clean_slug).unwrap_or_default();
             let _ = state.hub.broadcast(WsMessage {
@@ -501,7 +504,7 @@ async fn remove_member_handler(
         Ok(solo_slug) => {
             let (active_goals, _) = state
                 .store
-                .get_goals_for_room(&clean_slug)
+                .get_goals_for_room(&clean_slug, Some(user.as_str()))
                 .unwrap_or_default();
             let leaderboard = state.store.get_leaderboard(&clean_slug).unwrap_or_default();
             let _ = state.hub.broadcast(WsMessage {
@@ -676,7 +679,7 @@ async fn log_activity(
             Ok(activity) => {
                 let (active_goals, _) = state
                     .store
-                    .get_goals_for_room(&solo_slug)
+                    .get_goals_for_room(&solo_slug, Some(user.as_str()))
                     .unwrap_or_default();
                 let leaderboard = state.store.get_leaderboard(&solo_slug).unwrap_or_default();
 
@@ -722,7 +725,7 @@ async fn log_activity(
 
         let (solo_goals, _) = state
             .store
-            .get_goals_for_room(&solo_slug)
+            .get_goals_for_room(&solo_slug, Some(user.as_str()))
             .unwrap_or_default();
         let solo_leaderboard = state.store.get_leaderboard(&solo_slug).unwrap_or_default();
 
@@ -752,7 +755,7 @@ async fn log_activity(
                 {
                     let (sq_goals, _) = state
                         .store
-                        .get_goals_for_room(&squad.slug)
+                        .get_goals_for_room(&squad.slug, Some(user.as_str()))
                         .unwrap_or_default();
                     let sq_leaderboard =
                         state.store.get_leaderboard(&squad.slug).unwrap_or_default();
@@ -848,7 +851,7 @@ async fn log_batch_activities(
 
     let (active_goals, _) = state
         .store
-        .get_goals_for_room(&solo_slug)
+        .get_goals_for_room(&solo_slug, Some(user.as_str()))
         .unwrap_or_default();
     let leaderboard = state.store.get_leaderboard(&solo_slug).unwrap_or_default();
 
@@ -879,7 +882,7 @@ async fn log_batch_activities(
             if !squad_created.is_empty() {
                 let (sq_goals, _) = state
                     .store
-                    .get_goals_for_room(&squad.slug)
+                    .get_goals_for_room(&squad.slug, Some(user.as_str()))
                     .unwrap_or_default();
                 let sq_leaderboard = state.store.get_leaderboard(&squad.slug).unwrap_or_default();
 
@@ -910,7 +913,7 @@ async fn delete_activity_handler(
             for room_slug in affected_rooms {
                 let (active_goals, _) = state
                     .store
-                    .get_goals_for_room(&room_slug)
+                    .get_goals_for_room(&room_slug, Some(user.as_str()))
                     .unwrap_or_default();
                 let leaderboard = state.store.get_leaderboard(&room_slug).unwrap_or_default();
 
@@ -989,7 +992,7 @@ async fn toggle_activity_private_handler(
                 for squad in squads {
                     let (goals, completed) = state
                         .store
-                        .get_goals_for_room(&squad.slug)
+                        .get_goals_for_room(&squad.slug, Some(user.as_str()))
                         .unwrap_or_default();
                     let leaderboard = state.store.get_leaderboard(&squad.slug).unwrap_or_default();
                     let _ = state.hub.broadcast(WsMessage {
@@ -1140,7 +1143,7 @@ async fn checkoff_goal_handler(
         Ok((goal, activity)) => {
             let (active_goals, completed_goals) = state
                 .store
-                .get_goals_for_room(&goal.room_slug)
+                .get_goals_for_room(&goal.room_slug, Some(user.as_str()))
                 .unwrap_or_default();
             let leaderboard = state
                 .store
@@ -1191,7 +1194,7 @@ async fn checkoff_goal_handler(
                     {
                         let (sq_goals, sq_completed) = state
                             .store
-                            .get_goals_for_room(&target_room)
+                            .get_goals_for_room(&target_room, Some(user.as_str()))
                             .unwrap_or_default();
                         let sq_leaderboard = state
                             .store

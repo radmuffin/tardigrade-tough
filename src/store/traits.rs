@@ -89,7 +89,11 @@ pub trait UserStore: Send + Sync {
 }
 
 pub trait GoalStore: Send + Sync {
-    fn get_goals_for_room(&self, room_slug: &str) -> StoreResult<(Vec<Goal>, Vec<Goal>)>;
+    fn get_goals_for_room(
+        &self,
+        room_slug: &str,
+        viewer_user_token: Option<&str>,
+    ) -> StoreResult<(Vec<Goal>, Vec<Goal>)>;
     fn create_custom_goal(&self, room_slug: &str, req: &CreateGoalRequest) -> StoreResult<Goal>;
     fn checkoff_goal(
         &self,

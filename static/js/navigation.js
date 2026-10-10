@@ -355,6 +355,64 @@ export function renderGoalShowcase({ onUpdateStepper } = {}) {
       if (runPctEl) runPctEl.textContent = `${runPct.toFixed(1)}%`;
       if (runBarEl) runBarEl.style.width = `${runPct}%`;
       if (runSubEl) runSubEl.textContent = `${cp.run_current.toFixed(1)} / ${cp.run_target.toFixed(1)} mi`;
+
+      // Squad Teammates Progress Roster
+      const teammatesSection = document.getElementById('compositeTeammatesSection');
+      const teammatesList = document.getElementById('compositeTeammatesList');
+      const teammatesCount = document.getElementById('compositeTeammatesCount');
+
+      if (teammatesSection && teammatesList) {
+        const members = cp.members || [];
+        const isSquad = state.roomSlug && !state.roomSlug.startsWith('solo-');
+        if (isSquad && members.length > 0) {
+          teammatesSection.style.display = 'flex';
+          if (teammatesCount) {
+            teammatesCount.textContent = `${members.length} ${members.length === 1 ? 'member' : 'members'}`;
+          }
+
+          const myToken = state.currentRoomData?.user_profile?.user_token;
+
+          teammatesList.innerHTML = members.map(m => {
+            const isMe = myToken && m.user_token === myToken;
+            const nick = FlyToast.escape(m.nickname || 'Athlete');
+            const color = FlyToast.escape(m.avatar_color || '#7aa2f7');
+            const avatarContent = m.avatar_emoji ? FlyToast.escape(m.avatar_emoji) : (nick.charAt(0).toUpperCase() || 'A');
+            const pct = Math.min(100, Math.max(0, m.percent || 0));
+
+            const swimVal = (m.swim_current || 0).toFixed(1);
+            const bikeVal = (m.bike_current || 0).toFixed(0);
+            const runVal = (m.run_current || 0).toFixed(1);
+
+            const statusHtml = m.is_completed
+              ? '<span class="composite-teammate-badge-complete">✓ Done 🏆</span>'
+              : `<span class="composite-teammate-pct">${pct.toFixed(1)}%</span>
+                 <div class="composite-teammate-bar-mini">
+                   <div class="composite-teammate-bar-fill" style="width: ${pct}%;"></div>
+                 </div>`;
+
+            return `
+              <div class="composite-teammate-row ${isMe ? 'is-me' : ''}">
+                <div class="composite-teammate-main">
+                  <div class="composite-teammate-avatar" style="background-color: ${color};">${avatarContent}</div>
+                  <div class="composite-teammate-meta">
+                    <span class="composite-teammate-name">${nick}${isMe ? '<span class="composite-teammate-you">(You)</span>' : ''}</span>
+                    <span class="composite-teammate-legs">
+                      <span>🏊 ${swimVal}</span>
+                      <span>🚴 ${bikeVal}</span>
+                      <span>🏃 ${runVal}</span>
+                    </span>
+                  </div>
+                </div>
+                <div class="composite-teammate-stat">
+                  ${statusHtml}
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          teammatesSection.style.display = 'none';
+        }
+      }
     } else {
       compBreakdownEl.style.display = 'none';
     }

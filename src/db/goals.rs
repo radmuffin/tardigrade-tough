@@ -43,10 +43,62 @@ pub fn compute_composite_progress_for_goal(
     conn: &Connection,
     goal_id: i64,
     room_slug: &str,
+    viewer_user_token: Option<&str>,
 ) -> Result<(CompositeProgress, bool)> {
-    // Lazy Tri composite goal is strictly for October 2026 (2026-10-01 to 2026-10-31)
+    // 1. Gather all squad members from room_members + users
+    let mut member_map: std::collections::HashMap<String, (String, String, String)> =
+        std::collections::HashMap::new();
+    let mut member_order: Vec<String> = Vec::new();
+
+    let mut mem_stmt = conn.prepare(
+        r#"SELECT rm.user_token, COALESCE(u.nickname, ''), COALESCE(u.avatar_color, '#7aa2f7'), COALESCE(u.avatar_emoji, '')
+           FROM room_members rm
+           LEFT JOIN users u ON u.user_token = rm.user_token
+           WHERE rm.room_slug = ?
+           ORDER BY rm.joined_at ASC"#,
+    )?;
+    let mem_rows = mem_stmt.query_map(params![room_slug], |r| {
+        Ok((
+            r.get::<_, String>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, String>(2)?,
+            r.get::<_, String>(3)?,
+        ))
+    })?;
+    for m in mem_rows.flatten() {
+        let (tok, nick, color, emoji) = m;
+        member_map.insert(tok.clone(), (nick, color, emoji));
+        if !member_order.contains(&tok) {
+            member_order.push(tok);
+        }
+    }
+
+    // If viewer_user_token provided and not yet in member_map, query users table
+    if let Some(vtok) = viewer_user_token {
+        if !vtok.is_empty() && !member_map.contains_key(vtok) {
+            let u_res: rusqlite::Result<(String, String, String)> = conn.query_row(
+                "SELECT nickname, avatar_color, avatar_emoji FROM users WHERE user_token = ?",
+                params![vtok],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0).unwrap_or_default(),
+                        row.get::<_, String>(1)
+                            .unwrap_or_else(|_| "#7aa2f7".to_string()),
+                        row.get::<_, String>(2).unwrap_or_default(),
+                    ))
+                },
+            );
+            if let Ok((nick, color, emoji)) = u_res {
+                member_map.insert(vtok.to_string(), (nick, color, emoji));
+                member_order.push(vtok.to_string());
+            }
+        }
+    }
+
+    // 2. Query all activities in room for October 2026
     let mut stmt = conn.prepare(
-        r#"SELECT activity_type, exercise_name, notes, distance_val, total_metric
+        r#"SELECT user_token, activity_type, exercise_name, notes, distance_val, total_metric,
+                  COALESCE(user_nickname, ''), COALESCE(user_avatar_color, ''), COALESCE(user_avatar_emoji, '')
            FROM activities
            WHERE room_slug = ?
              AND (goal_id = ? OR activity_type = 'distance' OR distance_val > 0.0)
@@ -54,22 +106,41 @@ pub fn compute_composite_progress_for_goal(
              AND created_at < '2026-11-01'"#,
     )?;
 
-    let mut swim_current = 0.0;
-    let mut bike_current = 0.0;
-    let mut run_current = 0.0;
+    let mut user_legs: std::collections::HashMap<String, (f64, f64, f64)> =
+        std::collections::HashMap::new();
 
     let rows = stmt.query_map(params![room_slug, goal_id], |r| {
         Ok((
             r.get::<_, String>(0)?,
             r.get::<_, String>(1)?,
             r.get::<_, String>(2)?,
-            r.get::<_, f64>(3)?,
+            r.get::<_, String>(3)?,
             r.get::<_, f64>(4)?,
+            r.get::<_, f64>(5)?,
+            r.get::<_, String>(6)?,
+            r.get::<_, String>(7)?,
+            r.get::<_, String>(8)?,
         ))
     })?;
 
     for row in rows.flatten() {
-        let (act_type, ex_name, notes, dist_val, total_metric) = row;
+        let (u_tok, act_type, ex_name, notes, dist_val, total_metric, u_nick, u_color, u_emoji) =
+            row;
+        if !u_tok.is_empty() && !member_map.contains_key(&u_tok) {
+            let nick = if u_nick.is_empty() {
+                "Athlete".to_string()
+            } else {
+                u_nick
+            };
+            let color = if u_color.is_empty() {
+                "#7aa2f7".to_string()
+            } else {
+                u_color
+            };
+            member_map.insert(u_tok.clone(), (nick, color, u_emoji));
+            member_order.push(u_tok.clone());
+        }
+
         let metric = if dist_val > 0.0 {
             dist_val
         } else {
@@ -79,35 +150,115 @@ pub fn compute_composite_progress_for_goal(
             continue;
         }
 
+        let entry = user_legs.entry(u_tok).or_insert((0.0, 0.0, 0.0));
         match classify_ironman_leg(&act_type, &ex_name, &notes) {
-            IronmanLeg::Swim => swim_current += metric,
-            IronmanLeg::Bike => bike_current += metric,
-            IronmanLeg::Run => run_current += metric,
+            IronmanLeg::Swim => entry.0 += metric,
+            IronmanLeg::Bike => entry.1 += metric,
+            IronmanLeg::Run => entry.2 += metric,
         }
     }
 
     let swim_target = 2.4;
     let bike_target = 112.0;
     let run_target = 26.2;
+    let total_target = 140.6;
 
-    let effective_swim = swim_current.min(swim_target);
-    let effective_bike = bike_current.min(bike_target);
-    let effective_run = run_current.min(run_target);
+    let mut members_progress: Vec<MemberCompositeProgress> = Vec::new();
 
-    let is_completed = effective_swim >= swim_target
-        && effective_bike >= bike_target
-        && effective_run >= run_target;
+    for tok in &member_order {
+        let (nick, color, emoji) = member_map
+            .get(tok)
+            .cloned()
+            .unwrap_or_else(|| ("Athlete".to_string(), "#7aa2f7".to_string(), String::new()));
+        let (raw_swim, raw_bike, raw_run) = user_legs.get(tok).copied().unwrap_or((0.0, 0.0, 0.0));
+        let swim_current = (raw_swim * 100.0).round() / 100.0;
+        let bike_current = (raw_bike * 100.0).round() / 100.0;
+        let run_current = (raw_run * 100.0).round() / 100.0;
+
+        let eff_swim = raw_swim.min(swim_target);
+        let eff_bike = raw_bike.min(bike_target);
+        let eff_run = raw_run.min(run_target);
+        let total_current = ((eff_swim + eff_bike + eff_run) * 100.0).round() / 100.0;
+        let is_completed =
+            eff_swim >= swim_target && eff_bike >= bike_target && eff_run >= run_target;
+        let percent = (((total_current / total_target) * 100.0) * 10.0).round() / 10.0;
+
+        members_progress.push(MemberCompositeProgress {
+            user_token: tok.clone(),
+            nickname: if nick.trim().is_empty() {
+                "Athlete".to_string()
+            } else {
+                nick
+            },
+            avatar_color: if color.trim().is_empty() {
+                "#7aa2f7".to_string()
+            } else {
+                color
+            },
+            avatar_emoji: emoji,
+            swim_current,
+            bike_current,
+            run_current,
+            total_current,
+            percent,
+            is_completed,
+        });
+    }
+
+    // Sort teammates: completed first, then highest percent, then highest total_current
+    members_progress.sort_by(|a, b| {
+        b.is_completed
+            .cmp(&a.is_completed)
+            .then_with(|| {
+                b.percent
+                    .partial_cmp(&a.percent)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .then_with(|| {
+                b.total_current
+                    .partial_cmp(&a.total_current)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+    });
+
+    // 3. Resolve viewer stats
+    let (viewer_swim, viewer_bike, viewer_run, viewer_is_completed) = {
+        if let Some(vtok) = viewer_user_token {
+            if let Some(m) = members_progress.iter().find(|m| m.user_token == vtok) {
+                (
+                    m.swim_current,
+                    m.bike_current,
+                    m.run_current,
+                    m.is_completed,
+                )
+            } else {
+                (0.0, 0.0, 0.0, false)
+            }
+        } else if members_progress.len() == 1 {
+            let m = &members_progress[0];
+            (
+                m.swim_current,
+                m.bike_current,
+                m.run_current,
+                m.is_completed,
+            )
+        } else {
+            (0.0, 0.0, 0.0, false)
+        }
+    };
 
     Ok((
         CompositeProgress {
-            swim_current: (swim_current * 100.0).round() / 100.0,
+            swim_current: viewer_swim,
             swim_target,
-            bike_current: (bike_current * 100.0).round() / 100.0,
+            bike_current: viewer_bike,
             bike_target,
-            run_current: (run_current * 100.0).round() / 100.0,
+            run_current: viewer_run,
             run_target,
+            is_completed: viewer_is_completed,
+            members: members_progress,
         },
-        is_completed,
+        viewer_is_completed,
     ))
 }
 
@@ -168,21 +319,22 @@ pub fn recalculate_room_goals(conn: &Connection, room_slug: &str) -> Result<()> 
         .collect();
 
     for gid in comp_ids {
-        let (comp_progress, is_done) = compute_composite_progress_for_goal(conn, gid, room_slug)?;
-        let effective_val = comp_progress.swim_current.min(comp_progress.swim_target)
-            + comp_progress.bike_current.min(comp_progress.bike_target)
-            + comp_progress.run_current.min(comp_progress.run_target);
-        let status = if is_done { "completed" } else { "active" };
+        // Keep status in DB as 'active' so the Lazy Tri challenge remains active
+        // in the room for all squad members during October
         conn.execute(
-            "UPDATE goals SET current_value = ?, status = ? WHERE id = ?",
-            params![effective_val, status, gid],
+            "UPDATE goals SET status = 'active' WHERE id = ?",
+            params![gid],
         )?;
     }
 
     Ok(())
 }
 
-pub fn get_goals_for_room(conn: &Connection, room_slug: &str) -> Result<(Vec<Goal>, Vec<Goal>)> {
+pub fn get_goals_for_room(
+    conn: &Connection,
+    room_slug: &str,
+    viewer_user_token: Option<&str>,
+) -> Result<(Vec<Goal>, Vec<Goal>)> {
     recalculate_room_goals(conn, room_slug)?;
 
     let mut stmt = conn.prepare(
@@ -197,13 +349,26 @@ pub fn get_goals_for_room(conn: &Connection, room_slug: &str) -> Result<(Vec<Goa
 
     for mut g in rows.flatten() {
         if g.category == "composite" || g.theme_key == "ironman" {
-            if let Ok((comp_progress, _)) =
-                compute_composite_progress_for_goal(conn, g.id, room_slug)
+            if let Ok((comp_progress, is_viewer_completed)) =
+                compute_composite_progress_for_goal(conn, g.id, room_slug, viewer_user_token)
             {
+                let viewer_eff = comp_progress.swim_current.min(comp_progress.swim_target)
+                    + comp_progress.bike_current.min(comp_progress.bike_target)
+                    + comp_progress.run_current.min(comp_progress.run_target);
+                g.current_value = (viewer_eff * 100.0).round() / 100.0;
+                if is_viewer_completed {
+                    g.status = "completed".to_string();
+                }
                 g.composite_progress = Some(comp_progress);
             }
-        }
-        if g.status == "completed" {
+
+            // Always keep Lazy Tri in active_goals during October so diorama & teammate tracking are visible
+            active.push(g.clone());
+            // And if viewer has completed their individual Lazy Tri, also award trophy in completed_goals
+            if g.status == "completed" {
+                completed.push(g);
+            }
+        } else if g.status == "completed" {
             completed.push(g);
         } else {
             active.push(g);
@@ -255,7 +420,9 @@ pub fn create_custom_goal(
     };
 
     if goal.category == "composite" || goal.theme_key == "ironman" {
-        if let Ok((comp_progress, _)) = compute_composite_progress_for_goal(conn, id, room_slug) {
+        if let Ok((comp_progress, _)) =
+            compute_composite_progress_for_goal(conn, id, room_slug, None)
+        {
             goal.composite_progress = Some(comp_progress);
         }
     }
